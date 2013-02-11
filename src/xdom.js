@@ -14,9 +14,68 @@
  * is returned, or alter a given dom element.
  */
 
+
+
 window['xdom'] = (function() {
     var htmlDiv = document.createElement('div');
 
+    /**
+     * These contain alternative names for custom elements.
+     * At the time of writing, it's just shorthand for input
+     * types. So a name with 'checkbox' returns an input box
+     * of type 'checkbox'.
+     */
+    var prebuiltNames = (function() {
+        var names = {};
+
+        var newInputFun = function( type ) {
+            return function() {
+                var input = document.createElement('input');
+                input.type = type;
+                return input;
+            }
+        };
+
+        var inputTypes = [
+                'button',
+                'checkbox',
+                'color',
+                'date',
+                'datetime',
+                'datetime-local',
+                'email',
+                'file',
+                'hidden',
+                'image',
+                'month',
+                'number',
+                'password',
+                'radio',
+                'range',
+                'reset',
+                'search',
+                'submit',
+                'tel',
+                'text',
+                'time',
+                'url',
+                'week'
+        ];
+        
+        for ( var i = 0; i < inputTypes.length; i++ ) {
+            var type = inputTypes[i];
+            names[ type ] = newInputFun( type );
+        }
+
+        return names;
+    });
+
+    /**
+     * Runs 'createArray' with the values given,
+     * and then returns the result.
+     * 
+     * This is shorthand for creating new DOM elements.
+     */
     var xdom = function() {
         return xdom.createArray( arguments );
     }
@@ -45,10 +104,10 @@ window['xdom'] = (function() {
 
             if ( first instanceof HTMLElement ) {
                 dom = first;
-            } else if ( first instanceof XElement ) {
-                // todo
             } else if ( isObject(first) ) {
                 dom = xdom.describe( dom );
+            } else if ( first instanceof XElement ) {
+                dom = first.cloneDom();
             } else {
                 dom = document.createElement('div');
                 startI = 0;
@@ -62,6 +121,12 @@ window['xdom'] = (function() {
         }
     }
 
+    /**
+     * Allows you to describe a component,
+     * which is then created, and returned.
+     * 
+     * The description is done using JS Object literals.
+     */
     xdom.describe = function( obj ) {
         return xdom.addClassesArray(
                 xdom.describeDom( obj ),
@@ -84,11 +149,39 @@ window['xdom'] = (function() {
     xdom.describeDom = function( obj ) {
         assertObject( obj );
 
+        var name = obj.name;
+        var setup = prebuiltNames[ name ];
+
         return xdom.setAttributes(
-                document.createElement( obj.type || 'div' ),
+                xdom.createElement( obj.name ),
                 obj
         );
+    }
 
+    /**
+     * Creates an element, of the given name.
+     * 
+     * What makes this special is that it also hooks into
+     * the provided names, such as 'button' as shorthand
+     * the input with type button.
+     * 
+     * @param name The name of the component to create.
+     * @return A HTMLElement for the name given.
+     */
+    xdom.createElement = function( name ) {
+        assert( name !== null, "Null name cannot be provided" );
+
+        if ( name === undefined ) {
+            name = 'div';
+        }
+
+        var setup = prebuiltNames[ name ];
+
+        if ( setup !== undefined ) {
+            return setup();
+        } else {
+            return document.createElement( name );
+        }
     }
 
     xdom.removeClass = xdom.supports.classList ? 
@@ -268,7 +361,7 @@ window['xdom'] = (function() {
 
             for ( var k in obj ) {
                 if (
-                        k !== 'type' &&
+                        k !== 'name' &&
                         k !== 'css'  &&
                         k !== 'text' &&
                         k !== 'html' &&

@@ -1,7 +1,7 @@
 "use strict";
 
 (function( window, undefined ) {
-    var runAssert function( msg, args, i ) {
+    var runAssert = function( msg, args, i ) {
         if ( i === undefined ) {
             i = 0;
         }
@@ -99,6 +99,39 @@
             }
         }
     })();
+
+    /**
+     * Converts the given arguments object to an Array object.
+     * 
+     * @param args The arguments object to convert.
+     * @param i Optional, an offset of where to start copying from the arguments.
+     * @return An Array object.
+     */
+    var argumentsToArray = window['argumentsToArray'] = function( args, i ) {
+        var len, arr;
+
+        // iterating from the start to the end
+        if ( i === undefined || i === 0 ) {
+            len = args.length;
+            arr = new Array( len );
+
+            for ( ; i < len; i++ ) {
+                arr[i] = args[i];
+            }
+        // offset is past the end of the arguments array
+        } else if ( i >= args.length ) {
+            return [];
+        } else {
+            len = args.length - i;
+            arr = new Array( len );
+
+            for ( var j = 0; j < len; j++ ) {
+                arr[j] = args[j+i];
+            }
+        }
+
+        return arr;
+    }
 
     /**
      * This tests for JS Object literals, such as {}.
