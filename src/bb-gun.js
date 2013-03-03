@@ -936,17 +936,22 @@ window['BBGun'] = (function() {
         },
 
         toggleClass: function() {
-            bb.toggleClassArray( this.__xeDom, arguments );
+            bb.toggleClassArray( this.__xeDom, arguments, 0 );
+            return this;
+        },
+
+        toggleClassInv: function() {
+            bb.toggleClassInvArray( this.__xeDom, arguments, 0 );
             return this;
         },
 
         addClass: function() {
-            bb.addClassArray( this.__xeDom, arguments );
+            bb.addClassArray( this.__xeDom, arguments, 0 );
             return this;
         },
 
         setClass: function() {
-            bb.setClassArray( this.__xeDom, arguments );
+            bb.setClassArray( this.__xeDom, arguments, 0 );
             return this;
         },
 

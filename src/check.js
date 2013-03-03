@@ -174,7 +174,6 @@ function assert( foo, msg ) {
 function assertNot( foo, msg ) {
     if (
             foo !== false &&
-            foo !== undefined && 
             foo !== null &&
             foo !== undefined
     ) {

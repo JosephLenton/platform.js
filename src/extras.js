@@ -27,23 +27,67 @@
              *      this.foo.bar.something().whatever.doWork.bind(
              *              this.foo.bar.something().whatever
              *      )
+             *
+             * You can also provide array descriptions,
+             * to call multiple methods in order.
+             * For example:
+             *
+             *      this.foo.method(
+             *              [ 'doA', a, b, c ],
+             *              [ 'doB', x, y, z ]
+             *      )
+             *
+             * When the function created is called,
+             * it's last argument is executed.
              */
             method: function( name ) {
+                if ( isString(name) ) {
+                    return this.methodApply( name, arguments, 1 );
+                } else {
+                    for ( var i = 0; i < args.length; i++ ) {
+                        var arg = args[i];
+
+                        assert( isArray(arg) );
+                        assert( arg.length > 0, "empty array given" );
+                    }
+
+                    var self = this;
+                    return function() {
+                        var lastR;
+
+                        for ( var i = 0; i < args.length; i++ ) {
+                            var arg = args[i];
+
+                            if ( arg.length === 1 ) {
+                                lastR = self[arg[0]]();
+                            } else {
+                                lastR = self.call.apply( self, args );
+                            }
+                        }
+
+                        return lastR;
+                    }
+                }
+            },
+
+            methodApply: function( name, args, startI ) {
                 var fun = this[name];
 
                 if ( (typeof fun !== 'function') || !(fun instanceof Function) ) {
-                    throw new Error( "function not found ", name );
-                } else if ( arguments.length === 1 ) {
+                    throw new Error( "function " + name + " not found ", name );
+                } else if ( startI >= args.length ) {
                     return fun.bind( this );
+                } else if ( startI === 0 ) {
+                    return fun.bind( this, args );
                 } else {
-                    var args = new Array( arguments.length );
-                    args[0] = this;
+                    var args2 = new Array( (args.length-startI) + 1 );
+                    args2[0] = this;
 
-                    for ( var i = 1; i < args.length; i++ ) {
-                        args[i] = arguments[i];
+                    for ( var i = startI; i < args.length; i++ ) {
+                        args2[(i-startI)+1] = args[i];
                     }
 
-                    return fun.bind.apply( fun, args );
+                    return fun.bind.apply( fun, args2 );
                 }
             }
     } );
@@ -214,6 +258,30 @@
                     return this.filter( fun, thisObj );
                 } else {
                     return this.filter( fun );
+                }
+            },
+
+            /**
+             * Similar to 'forEach',
+             * except that the target goes first in the parameter list.
+             *
+             * The target is also returned if it is provided,
+             * and if not, then this array is returned.
+             */
+            each: function( target, callback ) {
+                if ( arguments.length === 1 ) {
+                    callback = target;
+                    assertFunction( callback );
+
+                    this.forEach( target );
+
+                    return this;
+                } else {
+                    assertFunction( callback );
+
+                    this.forEach( callback, target );
+
+                    return target;
                 }
             },
 

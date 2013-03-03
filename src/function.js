@@ -167,6 +167,15 @@
         return fun;
     }
 
+    var oldBind = Function.prototype.bind;
+    Function.prototype.bind = function( target ) {
+        assert( arguments.length > 0, "not enough arguments" );
+
+        var newFun = oldBind.apply( this, arguments );
+        newFun.__bound = target;
+        return newFun
+    }
+
     /**
      * This is very similar to 'bind'.
      *
@@ -659,6 +668,79 @@
                     return post.apply( this, arguments );
                 }).
                 proto( this );
+    }
+
+    var boundOne = function( self, fun ) {
+        return function() {
+            self.apply( this, arguments );
+            return fun.apply( this, arguments );
+        }
+    }
+
+    var boundArr = function( self, funs ) {
+        return (function() {
+            var funsLen = funs.length;
+
+            for ( var i = 0; i < funs-1; i++ ) {
+                funs[i].apply( this, arguments );
+            }
+
+            return funs[funsLen-1].apply( this, arguments );
+        });
+    }
+
+    /**
+     * Used in conjunction with 'Object.method',
+     * it allows you to chain method calls.
+     */
+    var andFun = function( self, args ) {
+        var method = args[0];
+        var bound = self.__bound;
+        assert( bound, self.name + " has not been bound to anything" );
+
+        return this.then(
+                bound.methodApply( method, args, 1 )
+        )
+    }
+
+    /**
+     * Mixes the functions given, onto this one, like sub.
+     *
+     * The other use is if called on a 'bound' function,
+     * then this is the same as calling 'method',
+     * on that object it is bound to,
+     * if the first parameter is a string.
+     * 
+     * i.e.
+     *  
+     *      var doAB = obj.method( 'doA' ).then( 'doB' );
+     *
+     * ... is the same as ...
+     *
+     *      var doAB = function() {
+     *          obj.doA();
+     *          obj.doB();
+     *      }
+     */
+    Function.prototype.then = function() {
+        var argsLen = arguments.length,
+            args = arguments;
+
+        if ( argsLen === 0 ) {
+            logError( "not enough parameters" );
+        } else {
+            var arg = arguments[0];
+
+            if ( isFunction(arg) ) {
+                if ( argsLen === 1 ) {
+                    return boundOne( this, arguments[0] );
+                } else {
+                    return boundArr( this, arguments );
+                }
+            } else {
+                return andFun( this, arguments );
+            }
+        }
     }
 
     /**

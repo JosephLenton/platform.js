@@ -457,8 +457,10 @@ window['bb'] = (function() {
                         ],
 
                         function( type ) {
+                            assert( type );
+
                             var input = document.createElement('input');
-                            input.type = type;
+                            input.setAttribute( 'type', type );
                             return input;
                         }
                 );
@@ -536,7 +538,7 @@ window['bb'] = (function() {
                 } else if ( isArray(arg) ) {
                     iterateClasses( arg, 0, arg.length, fun );
                 } else {
-                    logError( "invalid parameter", arg );
+                    logError( "invalid parameter", arg, args, i, endI );
                 }
             }
         }
@@ -839,10 +841,8 @@ window['bb'] = (function() {
                 assert( name !== '', "empty string given for name", name );
             }
 
-            var setup = this.setup.data.elements[ name ];
-
             if ( this.setup.data.elements.hasOwnProperty(name) ) {
-                return this.setup.data.elements[name]();
+                return this.setup.data.elements[name]( name );
             } else if ( HTML_ELEMENTS.hasOwnProperty(name) ) {
                 return document.createElement( name );
             } else {
@@ -898,10 +898,22 @@ window['bb'] = (function() {
          * @param onRemoval Optional, a function called if the class gets removed.
          */
         bb.toggleClass = function( dom ) {
-            return this.toggleClassArray( dom, arguments, 1 );
-        },
+            return toggleClassArray( dom, arguments, 1, false );
+        }
+
+        bb.toggleClassInv = function( dom ) {
+            return toggleClassArray( dom, arguments, 1, true );
+        }
 
         bb.toggleClassArray = function( dom, args, startI ) {
+            return toggleClassArray( dom, args, startI, false );
+        }
+
+        bb.toggleClassInvArray = function( dom, args, startI ) {
+            return toggleClassArray( dom, args, startI, true );
+        }
+
+        var toggleClassArray = function( dom, args, startI, inv ) {
             if ( startI === undefined ) {
                 startI = 0;
             }
@@ -931,48 +943,73 @@ window['bb'] = (function() {
                 onAdd = null;
                 onRemove = null;
             }
-                
-            if ( arg === true ) {
-                iterateClasses( arguments, startI, endI, function(klass) {
+             
+            if ( arg === true || (inv && arg === false) ) {
+                assert( startI+1 < endI, "no classes provided" );
+
+                iterateClasses( args, startI+1, endI, function(klass) {
                     dom.classList.add( klass );
                 } );
 
                 if ( onAdd !== null ) {
-                    onAdd.call( dom );
+                    onAdd.call( dom, true );
                 }
-            } else if ( arg === false ) {
-                iterateClasses( arguments, startI, endI, function(klass) {
+            } else if ( arg === false || (inv && arg === true) ) {
+                assert( startI+1 < endI, "no classes provided" );
+
+                iterateClasses( args, startI+1, endI, function(klass) {
                     dom.classList.remove( klass );
                 } );
 
                 if ( onRemove !== null ) {
-                    onRemove.call( dom );
+                    onRemove.call( dom, false );
                 }
             } else {
-                var hasRemove = false,
-                    hasAdd = false;
+                var lastArg = args[args.length-1];
 
-                iterateClasses( arguments, startI, endI, function(klass) {
-                    if ( dom.classList.contains(klass) ) {
-                        dom.classList.remove(klass);
-                        hasRemove = true;
-                    } else {
-                        dom.classList.add(klass);
-                        hasAdd = true;
+                if ( lastArg === true || (inv && lastArg === false) ) {
+                    assert( startI < endI-1, "no classes provided" );
+
+                    iterateClasses( args, startI, endI-1, function(klass) {
+                        dom.classList.add( klass );
+                    } );
+                } else if ( lastArg === false || (inv && lastArg === true) ) {
+                    assert( startI < endI-1, "no classes provided" );
+
+                    iterateClasses( args, startI, endI-1, function(klass) {
+                        dom.classList.remove( klass );
+                    } );
+                } else {
+                    var hasRemove = false,
+                        hasAdd = false;
+
+                    iterateClasses( args, startI, endI, function(klass) {
+                        if ( dom.classList.contains(klass) ) {
+                            dom.classList.remove(klass);
+                            hasRemove = true;
+                        } else {
+                            dom.classList.add(klass);
+                            hasAdd = true;
+                        }
+                    } );
+
+                    if ( onAdd !== null ) {
+                        if ( onRemove !== null ) {
+                            if ( hasAdd ) {
+                                onAdd.call( dom, true );
+                            }
+                            if ( hasRemove ) {
+                                onRemove.call( dom, true );
+                            }
+                        } else {
+                            onAdd.call( dom, hasAdd );
+                        }
                     }
-                } );
-
-                if ( hasAdd && onAdd !== null ) {
-                    onAdd.call( dom );
-                }
-
-                if ( hasRemove && onRemove !== null ) {
-                    onRemove.call( dom );
                 }
             }
 
             return dom;
-        },
+        }
 
         bb.addClass = function( dom ) {
             if ( arguments.length === 2 ) {
