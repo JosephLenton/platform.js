@@ -16,6 +16,10 @@
      */
 
     extend( Object.prototype, {
+            getProp: function( name ) {
+                return this[name];
+            },
+
             /**
              * Finds the method, and binds it to 'this' object.
              * This is so you can do:
@@ -44,6 +48,8 @@
                 if ( isString(name) ) {
                     return this.methodApply( name, arguments, 1 );
                 } else {
+                    var args = arguments;
+
                     for ( var i = 0; i < args.length; i++ ) {
                         var arg = args[i];
 
@@ -77,18 +83,31 @@
                     throw new Error( "function " + name + " not found ", name );
                 } else if ( startI >= args.length ) {
                     return fun.bind( this );
-                } else if ( startI === 0 ) {
-                    return fun.bind( this, args );
                 } else {
-                    var args2 = new Array( (args.length-startI) + 1 );
-                    args2[0] = this;
+                    var newArgs;
 
-                    for ( var i = startI; i < args.length; i++ ) {
-                        args2[(i-startI)+1] = args[i];
+                    if ( startI === 0 ) {
+                        newArgs = new Array( args.length + 1 );
+                        newArgs[0] = this;
+
+                        for ( var i = 0; i < args.length; i++ ) {
+                            newArgs[i+1] = args[i];
+                        }
+                    } else {
+                        var newArgs = new Array( (args.length-startI) + 1 );
+                        newArgs[0] = this;
+
+                        for ( var i = startI; i < args.length; i++ ) {
+                            newArgs[(i-startI)+1] = args[i];
+                        }
                     }
 
-                    return fun.bind.apply( fun, args2 );
+                    return fun.bind.apply( fun, newArgs );
                 }
+            },
+
+            has: function( name ) {
+                return this.hasOwnProperty( name );
             }
     } );
 
