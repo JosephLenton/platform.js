@@ -90,6 +90,7 @@ exports.jsx = (function() {
         var isMarkdown      = true,
             commentStarted  = false,
             isExample       = false,
+            seenExample     = false,
             isList          = false;
 
         var code = [ '"use strict";(function() {' ];
@@ -107,10 +108,11 @@ exports.jsx = (function() {
 
             if ( isMarkdown ) {
                 if (
-                        isExample &&
+                        seenExample &&
                         line.length < 4
                 ) {
-                    isExample = false;
+                    isExample   = false;
+                    seenExample = false;
                 } else if (
                     line.length === 3 &&
                     line.charAt(0) === '`' &&
@@ -118,6 +120,7 @@ exports.jsx = (function() {
                     line.charAt(2) === '`'
                 ) {
                     isExample = true;
+                    seenExample = false;
                 } else if (
                     line.length >= 8 &&
                     line.charAt(0) === '@' &&
@@ -130,6 +133,10 @@ exports.jsx = (function() {
                     line.charAt(7) === 'e'
                 ) {
                     isExample = true;
+                    seenExample = false;
+                } else if ( isExample && !seenExample && line.trim() !== '' ) {
+                    seenExample = true;
+
                 } else if (
                         line.length > 4 &&
                         line.charAt(0) === ' ' &&
