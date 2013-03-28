@@ -557,7 +557,7 @@ in a callback method.
          * It's a HTML element.
          */
         if ( obj.charAt(0) === '<' ) {
-            var dom = htmlToElement( obj );
+            var dom = bb.util.htmlToElement( obj );
 
             if ( dom === undefined ) {
                 logError( "invalid html given", obj );
@@ -1352,7 +1352,7 @@ the input with type button.
                 if ( dom.__isBBGun ) {
                     return dom.dom();
                 }  else {
-                    assert( dom instanceof Element, "htmlToElement must return a HTML Element, or BBGun", dom );
+                    assert( dom instanceof Element, "html element event, must return a HTML Element, or BBGun", dom );
 
                     return dom;
                 }
@@ -1395,7 +1395,7 @@ the input with type button.
                 i = 0;
             }
 
-            dom = bb.get(dom, false);
+            dom = this.get(dom, false);
 
             iterateClasses( klasses, i, klasses.length, function(klass) {
                 dom.classList.remove( klass );
@@ -1489,7 +1489,7 @@ false for the removed fun.
         }
 
         bb.addClassOne = function(dom, klass) {
-            dom = bb.get(dom, false);
+            dom = this.get(dom, false);
             assert(dom instanceof Element, "falsy dom given");
 
             klass = klass.trim();
@@ -1583,14 +1583,14 @@ false for the removed fun.
         }
 
         bb.beforeOne = function( dom, node ) {
-            var dom = bb.get( dom, true );
+            var dom = this.get( dom, true );
             assertParent( dom );
 
             return beforeOne( this, dom.parentNode, dom, node );
         }
 
         bb.afterOne = function( dom, node ) {
-            var dom = bb.get( dom, true );
+            var dom = this.get( dom, true );
             assertParent( dom );
 
             return afterOne( this, dom.parentNode, dom, node );
@@ -1601,7 +1601,7 @@ false for the removed fun.
                 i = 0;
             }
 
-            var dom = bb.get( dom, true );
+            var dom = this.get( dom, true );
             assertParent( dom );
             var parentDom = dom.parentNode;
 
@@ -1617,7 +1617,7 @@ false for the removed fun.
                 i = 0;
             }
 
-            var dom = bb.get( dom, true );
+            var dom = this.get( dom, true );
             assertParent( dom );
             var parentDom = dom.parentNode;
 
@@ -1654,7 +1654,7 @@ false for the removed fun.
 
         bb.addOne = function( dom, dest ) {
             return addOne( this,
-                    bb.get( dom ),
+                    this.get( dom ),
                     dest
             );
         }

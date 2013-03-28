@@ -14,8 +14,13 @@ var jsx = require( './../jsx.js' ).jsx;
 
 var fs = require( 'fs' );
 
+/**
+ * Directories are scanned first,
+ * and files are concatonated second.
+ */
 var concatFiles = function( src ) {
     var str = '';
+    var srcFiles = [];
 
     var files = fs.readdirSync( src );
     for ( var i = 0; i < files.length; i++ ) {
@@ -24,17 +29,23 @@ var concatFiles = function( src ) {
         var stats = fs.lstatSync( f );
 
         if ( f.charAt(0) !== '.' ) {
-            if ( stats.isDirectory() !== '.' ) {
-                if ( f.search(/\.js$/) !== -1 ) {
-                    str += fs.readFileSync( f, 'utf8' );
-                } else if ( f.search(/\.jsx$/) !== -1 ) {
-                    str += jsx.parse(
-                            fs.readFileSync( f, 'utf8' )
-                    );
-                }
-            } else if ( stats.isFile() ) {
+            if ( stats.isFile() ) {
+                srcFiles.push( f );
+            } else if ( stats.isDirectory() ) {
                 str += concatFiles( f );
             }
+        }
+    }
+
+    for ( var i = 0; i < srcFiles.length; i++ ) {
+        var f = srcFiles[i];
+
+        if ( f.search(/\.js$/) !== -1 ) {
+            str += fs.readFileSync( f, 'utf8' );
+        } else if ( f.search(/\.jsx$/) !== -1 ) {
+            str += jsx.parse(
+                    fs.readFileSync( f, 'utf8' )
+            );
         }
     }
 

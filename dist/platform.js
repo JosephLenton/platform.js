@@ -1,3 +1,2573 @@
+"use strict";
+
+(function() {
+    var extend = function( obj, extras ) {
+        for ( var k in extras ) {
+            if ( extras.hasOwnProperty(k) ) {
+                obj[k] = extras[k];
+            }
+        }
+    }
+
+    /*
+     * ### ### ### ### ### ### ### ### ### ### ### ### 
+     *          Object
+     * ### ### ### ### ### ### ### ### ### ### ### ### 
+     */
+
+    extend( Object.prototype, {
+            getProp: function( name ) {
+                return this[name];
+            },
+
+            /**
+             * Finds the method, and binds it to 'this' object.
+             * This is so you can do:
+             *
+             *      this.foo.bar.something().whatever.method( 'doWork' );
+             *
+             * ... instead of ...
+             *
+             *      this.foo.bar.something().whatever.doWork.bind(
+             *              this.foo.bar.something().whatever
+             *      )
+             *
+             * You can also provide array descriptions,
+             * to call multiple methods in order.
+             * For example:
+             *
+             *      this.foo.method(
+             *              [ 'doA', a, b, c ],
+             *              [ 'doB', x, y, z ]
+             *      )
+             *
+             * When the function created is called,
+             * it's last argument is executed.
+             */
+            method: function( name ) {
+                if ( isString(name) ) {
+                    return this.methodApply( name, arguments, 1 );
+                } else {
+                    var args = arguments;
+
+                    for ( var i = 0; i < args.length; i++ ) {
+                        var arg = args[i];
+
+                        assert( isArray(arg) );
+                        assert( arg.length > 0, "empty array given" );
+                    }
+
+                    var self = this;
+                    return function() {
+                        var lastR;
+
+                        for ( var i = 0; i < args.length; i++ ) {
+                            var arg = args[i];
+
+                            if ( arg.length === 1 ) {
+                                lastR = self[arg[0]]();
+                            } else {
+                                lastR = self.call.apply( self, args );
+                            }
+                        }
+
+                        return lastR;
+                    }
+                }
+            },
+
+            methodApply: function( name, args, startI ) {
+                var fun = this[name];
+
+                if ( (typeof fun !== 'function') || !(fun instanceof Function) ) {
+                    throw new Error( "function " + name + " not found ", name );
+                } else if ( startI >= args.length ) {
+                    return fun.bind( this );
+                } else {
+                    var newArgs;
+
+                    if ( startI === 0 ) {
+                        newArgs = new Array( args.length + 1 );
+                        newArgs[0] = this;
+
+                        for ( var i = 0; i < args.length; i++ ) {
+                            newArgs[i+1] = args[i];
+                        }
+                    } else {
+                        var newArgs = new Array( (args.length-startI) + 1 );
+                        newArgs[0] = this;
+
+                        for ( var i = startI; i < args.length; i++ ) {
+                            newArgs[(i-startI)+1] = args[i];
+                        }
+                    }
+
+                    return fun.bind.apply( fun, newArgs );
+                }
+            },
+
+            has: function( name ) {
+                return this.hasOwnProperty( name );
+            }
+    } );
+
+    /*
+     * ### ### ### ### ### ### ### ### ### ### ### ### 
+     *          String
+     * ### ### ### ### ### ### ### ### ### ### ### ### 
+     */
+
+    extend( String.prototype, {
+            /**
+             * This is the equivalent to:
+             *
+             *      someString.split( str ).pop() || ''
+             *
+             * What it does, is find the last occurance of
+             * 'str', and then returns a substring of
+             * everything after that occurance.
+             *
+             * @param str The string to look for.
+             * @return The string found, or an empty string if not found.
+             */
+            lastSplit: function( str ) {
+                var index = this.lastIndexOf( str );
+
+                if ( index === -1 ) {
+                    return '';
+                } else {
+                    return this.substring( index+1 );
+                }
+            }
+    } )
+
+    /*
+     * ### ### ### ### ### ### ### ### ### ### ### ### 
+     *          Array
+     * ### ### ### ### ### ### ### ### ### ### ### ### 
+     */
+
+    var oldMap = Array.prototype.map;
+
+    /**
+     * Same as 'filterMethod', however this will remove
+     * all items which return 'true', rather than keep them.
+     *
+     * This is useful for when things return 'true',
+     * and you don't want them. For example:
+     *
+     *  var nonEmptyNodes = nodes.filterOutMethod( 'isEmpty' )
+     */
+    extend( Array.prototype, {
+            filterOutMethod: function( meth ) {
+                var fun;
+                if ( arguments.length > 1 ) {
+                    var args = new Array( arguments.length-1 );
+                    for ( var i = 1; i < arguments.length; i++ ) {
+                        args[i-1] = arguments[i];
+                    }
+
+                    fun = function( obj ) {
+                        var r = obj[meth].apply( obj, args );
+                        return r === null || r === false || r === undefined;
+                    }
+                } else {
+                    fun = function( obj ) {
+                        var r = obj[meth]();
+                        return r === null || r === false || r === undefined;
+                    }
+                }
+
+                return this.filter( fun );
+            },
+
+            /**
+             * Calls the given method against all elements in the array.
+             * If it returns a non-falsy item (false, null, or undefined),
+             * then it will be kept.
+             *
+             * Otherwise, it will be removed.
+             *
+             *  var emptyNodes = nodes.filterOutMethod( 'isEmpty' )
+             */
+            filterMethod: function( meth ) {
+                var fun;
+                if ( arguments.length > 1 ) {
+                    var args = new Array( arguments.length-1 );
+                    for ( var i = 1; i < arguments.length; i++ ) {
+                        args[i-1] = arguments[i];
+                    }
+
+                    fun = function() {
+                        var r = this[meth].apply( this, args );
+                        return r !== null && r !== false && r !== undefined;
+                    }
+                } else {
+                    fun = function() {
+                        var r = this[meth]();
+                        return r !== null && r !== false && r !== undefined;
+                    }
+                }
+
+                return this.filter( fun );
+            },
+
+            /**
+             * This is shorthand for using filterType,
+             * where 'keepProto' is set to false.
+             */
+            filterOutType: function( proto, thisObj ) {
+                if ( arguments.length > 1 ) {
+                    return this.filterType( proto, thisObj, false );
+                } else {
+                    return this.filterType( proto, false );
+                }
+            },
+
+            /**
+             * Filters object based on the prototype given.
+             * This can work in two ways:
+             *
+             *  - keepProto = true - keep only object, of that type
+             *  - keepProto = true - keep all objects, except for that type
+             *
+             * By default, keepProto is true, and so will keep only items
+             * which match the proto constructor given.
+             */
+            filterType: function( proto, thisObj, keepProto ) {
+                var hasThis = false;
+                var argsLen = arguments.length;
+
+                if ( argsLen === 0 ) {
+                    throw new Error( "not enough parameters given, no prototype!" );
+                } else if ( argsLen === 1 ) {
+                    keepProto = true;
+                } else if ( argsLen === 2 ) {
+                    if ( thisObj === true || thisObj === false ) {
+                        keepProto = thisObj;
+                        hasThis = false;
+                    } else {
+                        keepProto = true;
+                        hasThis = true;
+                    }
+                } else {
+                    hasThis = true;
+                }
+
+                var fun = keepProto ?
+                        function() { return  (this instanceof proto) } :
+                        function() { return !(this instanceof proto) } ;
+
+                /*
+                 * If a this object is provided,
+                 * ensure it's not a common falsy value,
+                 * often used for no object.
+                 */
+                if ( hasThis &&
+                        (
+                                thisObj === undefined ||
+                                thisObj === null ||
+                                thisObj === false
+                        )
+                ) {
+                    throw new Error( "invalid 'thisObj' given" );
+                }
+
+                if ( hasThis ) {
+                    return this.filter( fun, thisObj );
+                } else {
+                    return this.filter( fun );
+                }
+            },
+
+            /**
+             * Similar to 'forEach',
+             * except that the target goes first in the parameter list.
+             *
+             * The target is also returned if it is provided,
+             * and if not, then this array is returned.
+             */
+            each: function( target, callback ) {
+                if ( arguments.length === 1 ) {
+                    callback = target;
+                    assertFunction( callback );
+
+                    this.forEach( target );
+
+                    return this;
+                } else {
+                    assertFunction( callback );
+
+                    this.forEach( callback, target );
+
+                    return target;
+                }
+            },
+
+            map: function( fun ) {
+                if ( typeof fun === 'string' || (fun instanceof String) ) {
+                    var args = new Array( arguments.length-1 );
+                    for ( var i = 0; i < args.length; i++ ) {
+                        args[i] = arguments[i-1];
+                    }
+
+                    return oldMap.call( this, function(obj) {
+                        return obj[fun].apply( obj, args );
+                    } );
+                } else {
+                    return oldMap.apply( this, arguments );
+                }
+            },
+
+            inject: function( sum, fun ) {
+                if ( arguments.length === 1 ) {
+                    assertFunction( sum, "no inject function provided" );
+                    return this.reduce( sum );
+                } else {
+                    assertFunction( fun, "no inject function provided" );
+                    return this.reduce( fun, sum );
+                }
+            }
+    })
+})();
+
+
+"use strict";(function() {
+ /* 
+Function.js
+===========
+
+@author Joseph Lenton
+
+A Function utility library. Helps with building classes, with aspects-related
+constructs.
+
+Also includes some helper functions, to make working with functions easier.
+
+-------------------------------------------------------------------------------
+    
+# Lazy
+
+A system for describing lazy parameters. When using bind, method, or curry,
+this gives you exact control over *which* parameters can be omitted.
+
+For example
+
+```
+    var f2 = f.curry( a, b, _, c );
+    f2( x );
+
+The above is the same as calling:
+
+```
+    f( a, b, x, c );
+
+In the example, the parameter left out is exactly defined, using the underscore.
+
+------------------------------------------------------------------------------- */
+
+    var Lazy = function() {
+        logError( "evaluating a lazy value" );
+    }
+
+    window['_'] = Lazy;
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## Function.create
+
+The equivalent to calling 'new Fun()'.
+
+The reason this exists, is because by oferring it as a function,
+you can then bind and pass it around.
+
+------------------------------------------------------------------------------- */
+
+    Function.create = function() {
+        var argsLen = arguments.length;
+
+        if ( argsLen === 0 ) {
+            return new this();
+        } else if ( argsLen === 1 ) {
+            return new this( arguments[0] );
+        } else if ( argsLen === 2 ) {
+            return new this( arguments[0], arguments[1] );
+        } else if ( argsLen === 3 ) {
+            return new this( arguments[0], arguments[1], arguments[2] );
+        } else if ( argsLen === 4 ) {
+            return new this( arguments[0], arguments[1], arguments[2], arguments[3] );
+        } else if ( argsLen === 5 ) {
+            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4] );
+        } else if ( argsLen === 6 ) {
+            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5] );
+        } else if ( argsLen === 7 ) {
+            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6] );
+        } else if ( argsLen === 8 ) {
+            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7] );
+        } else if ( argsLen === 9 ) {
+            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8] );
+        } else if ( argsLen === 10 ) {
+            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8], arguments[9] );
+        } else {
+            var obj  = Object.create( this.prototype );
+            var obj2 = this.apply( obj, arguments );
+
+            if ( Object(obj2) === obj2 ) {
+                return obj2;
+            } else {
+                return obj;
+            }
+        }
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.bind
+
+The same as the old bound, only it also supports lazy arguments.
+
+On top of lazy, it also adds tracking of the bound target. This is needed for
+other function methods, for adding in extras on top.
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.bind = function( target ) {
+        assert( arguments.length > 0, "not enough arguments" );
+
+        var newFun = newPartial( this, target || undefined, arguments, 1, false );
+        newFun.prototype = this.prototype;
+        newFun.__bound = target;
+
+        return newFun;
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## Function.lazy
+
+This is very similar to 'bind'.
+
+It creates a new function, for which you can add on,
+extra parameters.
+
+Where it differes, is that if those parameters are functions,
+they will be executed in turn.
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.lazy = function(target) {
+        var args = arguments;
+        var self = this;
+
+        return (function() {
+                    /*
+                     * The use of -1 and +1,
+                     * with the 'args' array,
+                     * is to skip out the 'target' parameter.
+                     */
+                    var allArgs = new Array( (arguments.length + args.length)-1 )
+                    var argsLen = args.length-1;
+
+                    for ( var i = 0; i < argsLen; i++ ) {
+                        if ( slate.util.isFunction(args[i]) ) {
+                            allArgs[i] = args[i+1]();
+                        } else {
+                            allArgs[i] = args[i+1];
+                        }
+                    }
+
+                    for ( var i = 0; i < arguments.length; i++ ) {
+                        allArgs[ argsLen + i ] = arguments[i];
+                    }
+
+                    return self.apply( target, allArgs );
+                }).proto( this );
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.eventFields
+
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.eventFields = function( field ) {
+        for ( var i = 0; i < arguments.length; i++ ) {
+            var field = arguments[i];
+
+            assert( this[field] === undefined, "overriding existing field with new event stack" );
+
+            this[field] = Function.eventField( this );
+        }
+
+        return this;
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+### newPrototypeArray
+
+
+------------------------------------------------------------------------------- */
+    
+    var newPrototypeArray = function( src, arr, check ) {
+        var hasCheck = ( arguments.length >= 3 );
+        var proto = src.prototype;
+
+        var obj = {};
+        for ( var k in proto ) {
+            if ( proto.hasOwnProperty(k) ) {
+                obj[k] = proto[k];
+            }
+        }
+
+        for ( var i = 0; i < arr.length; i++ ) {
+            var srcObj = arr[i];
+
+            if ( srcObj instanceof Array ) {
+                for ( var j = 0; j < srcObj.length; j++ ) {
+                    var k = srcObj[j];
+
+                    assert( hasCheck, "Function implementation missing for " + k );
+
+                    var alt = check( obj, k, undefined );
+
+                    assert( alt !== undefined, "Function implementation missing for " + k );
+
+                    obj[k] = alt;
+                }
+            } else {
+                while ( (typeof srcObj === 'function') || (srcObj instanceof Function) ) {
+                    srcObj = srcObj.prototype;
+                }
+
+                for ( var k in srcObj ) {
+                    if ( srcObj.hasOwnProperty(k) ) {
+                        if ( hasCheck ) {
+                            var alt = check( obj, k, srcObj[k] );
+
+                            if ( alt !== undefined ) {
+                                obj[k] = alt;
+                            } else {
+                                obj[k] = srcObj[k];
+                            }
+                        } else {
+                            obj[k] = srcObj[k];
+                        }
+                    }
+                }
+            }
+        }
+
+        obj.constructor = src;
+
+        return obj;
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.proto
+
+Duplicates this function, and sets a new prototype for it.
+
+@param The new prototype.
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.proto = function( newProto ) {
+        if ( (typeof newProto === 'function') || (newProto instanceof Function) ) {
+            for ( var k in newProto ) {
+                if ( newProto.hasOwnProperty(k) && k !== 'prototype' ) {
+                    this[k] = newProto[k];
+                }
+            }
+
+            newProto = newProto.prototype;
+        }
+
+        this.prototype = newProto;
+
+        return this;
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.newPrototype
+
+This creates a new prototype,
+with the methods provided extending it.
+
+it's the same as 'extend', but returns an object for use
+as a prototype instead of a funtion.
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.newPrototype = function() {
+        return newPrototypeArray( this, arguments );
+    }
+
+    /**
+     * Used to generate the Function extension methods.
+     */
+    var newFunctionExtend = function( errMsg, isOkCallback ) {
+        return function() {
+            var errors = null;
+
+            var proto = newPrototypeArray( this, arguments, function(dest, k, val) {
+                if ( k !== 'constructor' ) {
+                    var val = isOkCallback(dest, k, val);
+
+                    if (
+                            val !== undefined &&
+                            val !== null &&
+                            val !== false &&
+                            val !== true
+                    ) {
+                        return val;
+                    } else if ( val !== true ) {
+                        if ( errors === null ) {
+                            errors = [ k ];
+                        } else {
+                            errors.push( k );
+                        }
+                    } else {
+                        return undefined;
+                    }
+                }
+            } )
+             
+            if ( errors !== null ) {
+                throw new Error( errMsg + "\n    " + errors.join(', ') );
+            }
+
+            var self = this;
+            var fun = function() {
+                self.apply( this, arguments );
+            }
+
+            fun.prototype = proto;
+            proto.constructor = fun;
+
+            return fun;
+        }
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.override
+
+Same as append, but the methods it overrides *must* exist.
+
+This allows you to have a sanity check.
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.override = newFunctionExtend(
+            "Methods are overriding, but they do not exist,",
+            function(dest, k, val) {
+                return ( dest[k] !== undefined )
+            }
+    )
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.before
+
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.before = newFunctionExtend(
+            "Pre-Adding method behaviour, but original method not found,",
+            function(dest, k, val) {
+                if ( dest[k] === undefined ) {
+                    return undefined;
+                } else {
+                    return dest[k].preSub( val );
+                }
+            }
+    )
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.after
+
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.after = newFunctionExtend(
+            "Adding method behaviour, but original method not found,",
+            function(dest, k, val) {
+                if ( dest[k] === undefined ) {
+                    return undefined;
+                } else {
+                    return dest[k].sub( val );
+                }
+            }
+    )
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.extend
+
+Adds on extra methods, but none of them are allowed 
+to override any others.
+
+This is used as a sanity check.
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.extend = newFunctionExtend(
+            "Extending methods already exist, ",
+            function(dest, k, val) {
+                return ( dest[k] === undefined )
+            }
+    )
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.require
+
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.require = newFunctionExtend(
+            "Pre-Adding method behaviour, but original method not found,",
+            function(dest, k, val) {
+                if ( dest[k] !== undefined ) {
+                    return dest[k];
+                } else {
+                    return function() {
+                        throw new Error( "Function not implemented " + k );
+                    }
+                }
+            }
+    )
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.params
+
+This is just like curry,
+in that you can add extra parameters to this function.
+
+It differs, in that no more parameters can be added
+when the function is called.
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.params = function() {
+        var self = this,
+            args = arguments;
+
+        return (function() {
+                    return self.apply( this, args );
+                }).proto( this );
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.curry
+
+This is essentially the same as 'bind', but with no target given.
+
+It copies this function, and returns a new one, with the parameters given tacked
+on at the start. You can also use the underscore to leave gaps for parameters
+given.
+
+```
+    var f2 = someFunction.curry( _, 1, 2, 3 );
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.curry = function() {
+        return newPartial( this, undefined, arguments, 0, false ).
+                proto( self );
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.postCurry
+
+postCurry is the same as 'curry',
+only the arguments are appended to the end,
+instead of at the front.
+
+With curry ...
+
+```
+     var f2 = f.curry( 1, 2, 3 )
+
+Here f2 becomes:
+
+```
+     function f2( 1, 2, 3, ... ) { }
+
+With 'postCurry', it is the other way around.
+For example:
+
+```
+    var f2 = f.postCurry( 1, 2, 3 ) { }
+
+Here f2 becomes:
+
+```
+    function f2( ..., 1, 2, 3 )
+
+Another example, given the code:
+
+```
+     var f = function( a1, a2, a3, a4 ) {
+         // do nothing
+     }
+     
+     var fRice = f.rice( 1, 2 )
+     fRice( "a", "b" );
+     
+Variables inside f will be ...
+
+```
+     a1 -> "a"
+     a2 -> "b"
+     a3 ->  1
+     a4 ->  2
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.postCurry = function() {
+        return newPartial( this, undefined, arguments, 0, true ).
+                proto( self );
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+### newPartial
+
+------------------------------------------------------------------------------- */
+
+    var newPartial = function( fun, target, initArgs, initArgsStartI, isPostPend ) {
+        return (function() {
+                    if ( target === undefined ) {
+                        target = this;
+                    }
+
+                    /*
+                     * Concat the old and new arguments together,
+                     * into one.
+                     *
+                     * The first check allows us to skip this process,
+                     * if arguments were not supplied for the second call.
+                     */
+                    var combinedArgs;
+                    if ( arguments.length === 0 ) {
+                        for ( var i = initArgsStartI; i < initArgs.length; i++ ) {
+                            if ( initArgs[i] === Lazy ) {
+                                logError( "value not provided for lazy argument" );
+                            }
+                        }
+
+                        combinedArgs = initArgs;
+                    } else {
+                        var argsLen     = arguments.length;
+                        var initArgsLen =  initArgs.length;
+
+                        // post-pend (our args go last)
+                        if ( isPostPend ) {
+                            /*
+                             * combinedArgs = initArgs + arguments
+                             */
+                            combinedArgs = [];
+
+                            for ( var i = initArgsLen-1; i >= initArgsStartI; i-- ) {
+                                var arg = initArgs[i];
+
+                                if ( arg === Lazy ) {
+                                    argsLen--;
+                                    combinedArgs.unshift( arguments[argsLen] );
+                                } else {
+                                    combinedArgs.unshift( initArgs[i] );
+                                }
+                            }
+
+                            assert( argsLen >= 0, "not enough arguments given" );
+
+                            for ( var i = argsLen-1; i >= 0; i++ ) {
+                                combinedArgs.unshift( arguments[i] );
+                            }
+
+                        // pre-pend (normal curry)
+                        } else {
+                            combinedArgs = [];
+                            var startI = 0;
+
+                            for ( var i = initArgsStartI; i < initArgsLen; i++ ) {
+                                var arg = initArgs[i];
+
+                                if ( arg === Lazy ) {
+                                    combinedArgs.push( arguments[startI] );
+                                    startI++;
+                                } else {
+                                    combinedArgs.push( arg );
+                                }
+                            }
+
+                            assert( startI <= argsLen, "not enough arguments given" );
+
+                            while ( startI < argsLen ) {
+                                combinedArgs.push( arguments[startI++] );
+                            }
+                        }
+                    }
+
+                    return fun.apply( target, combinedArgs );
+                });
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.preSub
+
+Copies this function, tacking on the 'pre' function given.
+
+That is because the after behaviour does *not* modify this function,
+but makes a copy first.
+
+@param pre A function to call.
+@return A new function, with the pre behaviour tacked on, to run before it.
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.preSub = function( pre ) {
+        var self = this;
+        return (function() {
+                    pre.apply( this, arguments );
+                    return self.apply( this, arguments );
+                }).
+                proto( this );
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.wrap
+
+This allows you to wrap around this function,
+with new functionality.
+
+Note that with the given 'wrap' function,
+the first parameter is always the function being wrapped.
+So parameters start from index 1, not 0.
+
+@example
+     foo.wrap( function(fooCaller, param1, param2, param3) {
+         param1 *= 2;
+         var fooResult = fooCaller( param1, param2 );
+         return param3 + fooResult;
+     } );
+
+@param wrap The variable to wrap functionality with.
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.wrap = function( wrap ) {
+        assertFunction( wrap, "function not provided for wrap parameter" );
+
+        var self = this;
+        return (function() {
+                    var args = new Array( arguments.length+1 );
+                    for ( var i = 0; i < arguments.length; i++ ) {
+                        args[i+1] = arguments[i];
+                    }
+
+                    args[0] = self.bind( this );
+
+                    return wrap.call( this, arguments );
+                }).
+                proto( this );
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.sub
+
+Copies this function, tacking on the 'post' function given.
+
+This is intended for sub-classing,
+hence the name, 'sub'.
+
+That is because the after behaviour does *not* modify this function,
+but makes a copy first.
+
+@param post A function to call.
+@return A new function, with the post behaviour tacked on.
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.sub = function( post ) {
+        var self = this;
+
+        return (function() {
+                    self.apply( this, arguments );
+                    return post.apply( this, arguments );
+                }).
+                proto( this );
+    }
+
+    var boundOne = function( self, fun ) {
+        return function() {
+            self.apply( this, arguments );
+            return fun.apply( this, arguments );
+        }
+    }
+
+    var boundArr = function( self, funs ) {
+        return (function() {
+            var funsLen = funs.length;
+
+            for ( var i = 0; i < funs-1; i++ ) {
+                funs[i].apply( this, arguments );
+            }
+
+            return funs[funsLen-1].apply( this, arguments );
+        });
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+### addFun
+
+Used in conjunction with 'Object.method',
+it allows you to chain method calls.
+
+------------------------------------------------------------------------------- */
+
+    var andFun = function( self, args ) {
+        var method = args[0];
+        var bound = self.__bound;
+        assert( bound, self.name + " has not been bound to anything" );
+
+        return this.then(
+                bound.methodApply( method, args, 1 )
+        )
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.then
+
+Mixes the functions given, onto this one, like sub.
+
+The other use is if called on a 'bound' function,
+then this is the same as calling 'method',
+on that object it is bound to,
+if the first parameter is a string.
+
+i.e.
+ 
+```
+     var doAB = obj.method( 'doA' ).then( 'doB' );
+
+... is the same as ...
+
+```
+     var doAB = function() {
+         obj.doA();
+         obj.doB();
+     }
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.then = function() {
+        var argsLen = arguments.length,
+            args = arguments;
+
+        if ( argsLen === 0 ) {
+            logError( "not enough parameters" );
+        } else {
+            var arg = arguments[0];
+
+            if ( isFunction(arg) ) {
+                if ( argsLen === 1 ) {
+                    return boundOne( this, arguments[0] );
+                } else {
+                    return boundArr( this, arguments );
+                }
+            } else {
+                return andFun( this, arguments );
+            }
+        }
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.subBefore
+
+When called, a copy of this function is returned,
+with the given 'pre' function tacked on before it.
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.subBefore = function( pre ) {
+        return (function() {
+                    post.call( this, arguments );
+                    return self.call( this, arguments );
+                }).
+                proto( this );
+    }
+
+ /* Time Functions
+==============
+
+-------------------------------------------------------------------------------
+
+## function.callLater
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.callLater = function( target ) {
+        var argsLen = arguments.length;
+        var self = this;
+
+        if ( argsLen <= 1 ) {
+            return setTimeout( function() {
+                self.call( target );
+            }, 0 );
+        } else if ( argsLen === 2 ) {
+            var param1 = arguments[1];
+
+            return setTimeout( function() {
+                self.call( target, param1 );
+            }, 0 );
+        } else if ( argsLen === 3 ) {
+            var param1 = arguments[1];
+            var param2 = arguments[2];
+
+            return setTimeout( function() {
+                self.call( target, param1, param2 );
+            }, 0 );
+        } else if ( argsLen === 4 ) {
+            var param1 = arguments[1];
+            var param2 = arguments[2];
+            var param3 = arguments[3];
+
+            return setTimeout( function() {
+                self.call( target, param1, param2, param3 );
+            }, 0 );
+        } else {
+            return this.applyLater( target, arguments );
+        }
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.applyLater
+
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.applyLater = function( target, args ) {
+        if ( arguments.length <= 1 ) {
+            args = new Array(0);
+        }
+
+        var self = this;
+
+        return setTimeout( function() {
+            self.apply( target, args );
+        }, 0 );
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+## function.later
+
+Sets this function to be called later.
+If a timeout is given, then that is how long it
+will wait for.
+
+If no timeout is given, it defaults to 0.
+
+Cancelling the timeout can be done using 'clearTimeout'.
+
+@param target Optional, a target object to bind this function to.
+@param timeout Optional, the timeout to wait before calling this function, defaults to 0.
+@return The setTimeout identifier token, allowing you to cancel the timeout.
+
+------------------------------------------------------------------------------- */
+
+    Function.prototype.later = function( timeout ) {
+        var fun = this;
+
+        if ( arguments.length === 0 ) {
+            timeout = 0;
+        } else if ( ! (typeof timeout === 'number') ) {
+            fun = fun.bind( timeout );
+
+            if ( arguments.length > 1 ) {
+                timeout = arguments[1];
+            } else {
+                timeout = 0;
+            }
+        }
+
+        return setTimeout( fun, timeout );
+    }
+
+
+})();
+"use strict";
+
+/**
+ * shim.js
+ *
+ * This is a collection of shims from around the internet,
+ * and some built by me, which add support for missing JS features.
+ */
+
+/*
+ * ### ### ### ### ### ### ### ### ### ### ### ### ### 
+ *          Object
+ * ### ### ### ### ### ### ### ### ### ### ### ### ### 
+ */
+
+(function() {
+    var shim = function( obj, index, fun ) {
+        if ( arguments.length === 2 ) {
+            for ( var k in index ) {
+                if ( ! obj.hasOwnProperty(k) ) {
+                    obj[k] = index[k];
+                }
+            }
+        } else if ( arguments.length === 3 ) {
+            if ( ! obj.hasOwnProperty(index) ) {
+                obj[index] = fun;
+            }
+        } else {
+            throw new Error( 'incorrect number of arguments' );
+        }
+    }
+
+    /**
+     * Object.create
+     *
+     * @see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Object/create
+     */
+    shim( Object, 'create', function(o) {
+        if (arguments.length > 1) {
+            throw new Error('Object.create implementation only accepts the first parameter.');
+        }
+
+        function F() {}
+        F.prototype = o;
+
+        return new F();
+    })
+
+    /*
+     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
+     *          Array
+     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
+     */
+
+    // Production steps of ECMA-262, Edition 5, 15.4.4.18
+    // Reference: http://es5.github.com/#x15.4.4.18
+    shim( Array.prototype, 'forEach', function( callback, thisArg ) {
+        var T, k;
+
+        if ( this == null ) {
+          throw new TypeError( "this is null or not defined" );
+        }
+
+        // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
+        var O = Object(this);
+
+        // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
+        // 3. Let len be ToUint32(lenValue).
+        var len = O.length >>> 0; // Hack to convert O.length to a UInt32
+
+        // 4. If IsCallable(callback) is false, throw a TypeError exception.
+        // See: http://es5.github.com/#x9.11
+        if ( {}.toString.call(callback) !== "[object Function]" ) {
+          throw new TypeError( callback + " is not a function" );
+        }
+
+        // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
+        if ( thisArg ) {
+          T = thisArg;
+        }
+
+        // 6. Let k be 0
+        k = 0;
+
+        // 7. Repeat, while k < len
+        while( k < len ) {
+
+          var kValue;
+
+          // a. Let Pk be ToString(k).
+          //   This is implicit for LHS operands of the in operator
+          // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
+          //   This step can be combined with c
+          // c. If kPresent is true, then
+          if ( Object.prototype.hasOwnProperty.call(O, k) ) {
+
+            // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
+            kValue = O[ k ];
+
+            // ii. Call the Call internal method of callback with T as the this value and
+            // argument list containing kValue, k, and O.
+            callback.call( T, kValue, k, O );
+          }
+          // d. Increase k by 1.
+          k++;
+        }
+        // 8. return undefined
+    })
+
+    /*
+     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
+     *          String
+     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
+     */
+
+    /**
+     * @see https://github.com/paulmillr/es6-shim/blob/master/es6-shim.js
+     */
+    shim( String.prototype, {
+            toArray: function() {
+                return this.split( '' );
+            },
+
+            contains: function( str, index ) {
+                if ( arguments.length === 1 ) {
+                    return this.indexOf(str) !== -1;
+                } else if ( arguments.length === 2 ) {
+                    return this.indexOf(str, index) !== -1;
+                } else if ( arguments.length === 0 ) {
+                    throw new Error( "no search string provided" );
+                }
+            },
+
+            // Fast repeat, uses the `Exponentiation by squaring` algorithm.
+            repeat: function(times) {
+              if (times < 1) return '';
+              if (times % 2) return this.repeat(times - 1) + this;
+              var half = this.repeat(times / 2);
+              return half + half;
+            },
+
+            startsWith: function(searchString) {
+              var position = arguments[1];
+
+              // Let searchStr be ToString(searchString).
+              var searchStr = searchString.toString();
+
+              // ReturnIfAbrupt(searchStr).
+
+              // Let S be the result of calling ToString,
+              // giving it the this value as its argument.
+              var s = this.toString();
+
+              // ReturnIfAbrupt(S).
+
+              // Let pos be ToInteger(position).
+              // (If position is undefined, this step produces the value 0).
+              var pos = (position === undefined) ? 0 : Number.toInteger(position);
+              // ReturnIfAbrupt(pos).
+
+              // Let len be the number of elements in S.
+              var len = s.length;
+
+              // Let start be min(max(pos, 0), len).
+              var start = Math.min(Math.max(pos, 0), len);
+
+              // Let searchLength be the number of elements in searchString.
+              var searchLength = searchString.length;
+
+              // If searchLength+start is greater than len, return false.
+              if ((searchLength + start) > len) return false;
+
+              // If the searchLength sequence of elements of S starting at
+              // start is the same as the full element sequence of searchString,
+              // return true.
+              var index = ''.indexOf.call(s, searchString, start);
+              return index === start;
+            },
+
+            endsWith: function(searchString) {
+              var endPosition = arguments[1];
+
+              // ReturnIfAbrupt(CheckObjectCoercible(this value)).
+              // Let S be the result of calling ToString, giving it the this value as its argument.
+              // ReturnIfAbrupt(S).
+              var s = this.toString();
+
+              // Let searchStr be ToString(searchString).
+              // ReturnIfAbrupt(searchStr).
+              var searchStr = searchString.toString();
+
+              // Let len be the number of elements in S.
+              var len = s.length;
+
+              // If endPosition is undefined, let pos be len, else let pos be ToInteger(endPosition).
+              // ReturnIfAbrupt(pos).
+              var pos = (endPosition === undefined) ?
+                len :
+                Number.toInteger(endPosition);
+
+              // Let end be min(max(pos, 0), len).
+              var end = Math.min(Math.max(pos, 0), len);
+
+              // Let searchLength be the number of elements in searchString.
+              var searchLength = searchString.length;
+
+              // Let start be end - searchLength.
+              var start = end - searchLength;
+
+              // If start is less than 0, return false.
+              if (start < 0) return false;
+
+              // If the searchLength sequence of elements of S starting at start is the same as the full element sequence of searchString, return true.
+              // Otherwise, return false.
+              var index = ''.indexOf.call(s, searchString, start);
+              return index === start;
+            }
+    })
+
+    /*
+     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
+     *          Function
+     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
+     */
+
+    /**
+     * Function.bind
+     *
+     * @see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Function/bind
+     */
+    shim( Function.prototype, 'bind', function(oThis) {
+        if (typeof this !== "function") {
+          // closest thing possible to the ECMAScript 5 internal IsCallable function
+          throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
+        }
+     
+        var aArgs = Array.prototype.slice.call(arguments, 1), 
+            fToBind = this, 
+            fNOP = function () {},
+            fBound = function () {
+              return fToBind.apply(this instanceof fNOP && oThis
+                                     ? this
+                                     : oThis,
+                                   aArgs.concat(Array.prototype.slice.call(arguments)));
+            };
+     
+        fNOP.prototype = this.prototype;
+        fBound.prototype = new fNOP();
+     
+        return fBound;
+    });
+
+    /*
+     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
+     *          Element
+     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
+     */
+
+    /**
+     *      Element.matchesSelector()
+     *
+     * A new W3C selection tester, for testing if a node
+     * matches a selection. Very new, so it's either browser
+     * specific, or needs a shim.
+     *
+     * @author termi https://gist.github.com/termi
+     * @see https://gist.github.com/termi/2369850/f4022295bf19332ff17e79350ec06c5114d7fbc9
+     */
+    shim( Element.prototype, 'matchesSelector',
+        Element.prototype.matches ||
+        Element.prototype.webkitMatchesSelector ||
+        Element.prototype.mozMatchesSelector ||
+        Element.prototype.msMatchesSelector ||
+        Element.prototype.oMatchesSelector || function(selector) {
+            if(!selector)return false;
+            if(selector === "*")return true;
+            if(this === document.documentElement && selector === ":root")return true;
+            if(this === document.body && selector === "body")return true;
+
+            var thisObj = this,
+                match = false,
+                parent,
+                i,
+                str,
+                tmp;
+
+            if (/^[\w#\.][\w-]*$/.test(selector) || /^(\.[\w-]*)+$/.test(selector)) {
+                switch (selector.charAt(0)) {
+                    case '#':
+                        return thisObj.id === selector.slice(1);
+                        break;
+                    case '.':
+                        match = true;
+                        i = -1;
+                        tmp = selector.slice(1).split(".");
+                        str = " " + thisObj.className + " ";
+                        while(tmp[++i] && match) {
+                            match = !!~str.indexOf(" " + tmp[i] + " ");
+                        }
+                        return match;
+                        break;
+                    default:
+                        return thisObj.tagName && thisObj.tagName.toUpperCase() === selector.toUpperCase();
+                }
+            }
+
+            parent = thisObj.parentNode;
+          
+            if (parent && parent.querySelector) {
+                match = parent.querySelector(selector) === thisObj;
+            }
+
+            if (!match && (parent = thisObj.ownerDocument)) {
+                tmp = parent.querySelectorAll( selector );
+
+                for (i in tmp ) if(_hasOwnProperty(tmp, i)) {
+                    match = tmp[i] === thisObj;
+                    if(match)return true;
+                }
+            }
+
+            return match;
+        }
+    )
+
+    shim( Element.prototype, 'matches', Element.prototype.matchesSelector );
+
+    /*
+     * classList.js: Cross-browser full element.classList implementation.
+     * 2012-11-15
+     *
+     * By Eli Grey, http://eligrey.com
+     * Public Domain.
+     * NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
+     */
+     
+    /*global self, document, DOMException */
+     
+    /*! @source http://purl.eligrey.com/github/classList.js/blob/master/classList.js*/
+     
+    if (typeof document !== "undefined" && !("classList" in document.createElement("a"))) {
+        (function (view) {
+            "use strict";
+             
+            if ( !('HTMLElement' in view) && !('Element' in view) ) {
+                return;
+            }
+             
+            var
+                  classListProp = "classList"
+                , protoProp = "prototype"
+                , elemCtrProto = (view.HTMLElement || view.Element)[protoProp]
+                , objCtr = Object
+                , strTrim = String[protoProp].trim || function () {
+                    return this.replace(/^\s+|\s+$/g, "");
+                }
+                , arrIndexOf = Array[protoProp].indexOf || function (item) {
+                    var
+                          i = 0
+                        , len = this.length
+                    ;
+                    for (; i < len; i++) {
+                        if (i in this && this[i] === item) {
+                            return i;
+                        }
+                    }
+                    return -1;
+                }
+                // Vendors: please allow content code to instantiate DOMExceptions
+                , DOMEx = function (type, message) {
+                    this.name = type;
+                    this.code = DOMException[type];
+                    this.message = message;
+                }
+                , checkTokenAndGetIndex = function (classList, token) {
+                    if (token === "") {
+                        throw new DOMEx(
+                              "SYNTAX_ERR"
+                            , "An invalid or illegal string was specified"
+                        );
+                    }
+                    if (/\s/.test(token)) {
+                        throw new DOMEx(
+                              "INVALID_CHARACTER_ERR"
+                            , "String contains an invalid character"
+                        );
+                    }
+                    return arrIndexOf.call(classList, token);
+                }
+                , ClassList = function (elem) {
+                    var
+                          trimmedClasses = strTrim.call(elem.className)
+                        , classes = trimmedClasses ? trimmedClasses.split(/\s+/) : []
+                        , i = 0
+                        , len = classes.length
+                    ;
+                    for (; i < len; i++) {
+                        this.push(classes[i]);
+                    }
+                    this._updateClassName = function () {
+                        elem.className = this.toString();
+                    };
+                }
+                , classListProto = ClassList[protoProp] = []
+                , classListGetter = function () {
+                    return new ClassList(this);
+                }
+            ;
+            // Most DOMException implementations don't allow calling DOMException's toString()
+            // on non-DOMExceptions. Error's toString() is sufficient here.
+            DOMEx[protoProp] = Error[protoProp];
+            classListProto.item = function (i) {
+                return this[i] || null;
+            };
+            classListProto.contains = function (token) {
+                token += "";
+                return checkTokenAndGetIndex(this, token) !== -1;
+            };
+            classListProto.add = function () {
+                var
+                      tokens = arguments
+                    , i = 0
+                    , l = tokens.length
+                    , token
+                    , updated = false
+                ;
+                do {
+                    token = tokens[i] + "";
+                    if (checkTokenAndGetIndex(this, token) === -1) {
+                        this.push(token);
+                        updated = true;
+                    }
+                }
+                while (++i < l);
+             
+                if (updated) {
+                    this._updateClassName();
+                }
+            };
+
+            classListProto.remove = function () {
+                var
+                      tokens = arguments
+                    , i = 0
+                    , l = tokens.length
+                    , token
+                    , updated = false
+                ;
+                do {
+                    token = tokens[i] + "";
+                    var index = checkTokenAndGetIndex(this, token);
+                    if (index !== -1) {
+                        this.splice(index, 1);
+                        updated = true;
+                    }
+                }
+                while (++i < l);
+             
+                if (updated) {
+                    this._updateClassName();
+                }
+            };
+
+            classListProto.toggle = function (token, forse) {
+                token += "";
+             
+                var
+                      result = this.contains(token)
+                    , method = result ?
+                        forse !== true && "remove"
+                    :
+                        forse !== false && "add"
+                ;
+             
+                if (method) {
+                    this[method](token);
+                }
+             
+                return result;
+            };
+
+            classListProto.toString = function () {
+                return this.join(" ");
+            };
+             
+            if (objCtr.defineProperty) {
+                var classListPropDesc = {
+                      get: classListGetter
+                    , enumerable: true
+                    , configurable: true
+                };
+                try {
+                    objCtr.defineProperty(elemCtrProto, classListProp, classListPropDesc);
+                } catch (ex) { // IE 8 doesn't support enumerable:true
+                    if (ex.number === -0x7FF5EC54) {
+                        classListPropDesc.enumerable = false;
+                        objCtr.defineProperty(elemCtrProto, classListProp, classListPropDesc);
+                    }
+                }
+            } else if (objCtr[protoProp].__defineGetter__) {
+                elemCtrProto.__defineGetter__(classListProp, classListGetter);
+            }
+        }(self));
+    }
+})()
+"use strict";(function() {
+ /* 
+# check.js.
+@author Joseph Lenton
+
+This includes
+ - assertions
+ - object type checks
+ */
+
+    var objPrototype   = ({}).__proto__;
+    var objConstructor = objPrototype.constructor;
+    
+    var argsConstructor = (function() {
+        return arguments.constructor;
+    })();
+
+ /* -------------------------------------------------------------------------------
+
+## isObject
+
+Tests for a JSON object literal.
+
+```
+    isObject( {} ) // -> true
+    isObject( new FooBar() ) // -> false
+
+Specifically it *only* does object literals, and not regular objects.
+
+For regular objects do ...
+
+```
+    obj instanceof Object
+
+@param obj The object to test.
+@return True if it is an object, false if not.
+
+------------------------------------------------------------------------------- */
+
+    window['isObject'] = function( obj ) {
+        if ( obj !== undefined && obj !== null ) {
+            var proto = obj.__proto__;
+
+            if ( proto !== undefined && proto !== null ) {
+                return proto             === objPrototype   &&
+                       proto.constructor === objConstructor ;
+            }
+        }
+
+        return false;
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## isFunction
+
+@param f The value to test.
+@return True if the function is a function primitive, or Function object.
+
+------------------------------------------------------------------------------- */
+
+    window['isFunction'] = function( f ) {
+        return ( typeof f === 'function' ) || ( f instanceof Function );
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## isNumber
+
+@param n The value to test.
+@return True if 'n' is a primitive number, or a Number object.
+
+------------------------------------------------------------------------------- */
+
+    window['isNumber'] = function( n ) {
+        return ( typeof n === 'number' ) || ( n instanceof Number );
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## isNumeric
+
+Returns true if the value is like a number.
+This is either an actual number, or a string which represents one.
+
+@param str The string to test.
+@return True, if given a number, or if it looks like a number, otherwise false.
+
+------------------------------------------------------------------------------- */
+
+    window['isNumeric'] = function( str ) {
+        return ( typeof str === 'number' ) ||
+               ( str instanceof Number   ) ||
+               ( String(str).search( /^\s*(\+|-)?((\d+(\.\d+)?)|(\.\d+))\s*$/ ) !== -1 )
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## isString
+
+@param str The value to test.
+@return True if the given value, is a string primitive or a String object.
+
+------------------------------------------------------------------------------- */
+
+    window['isString'] = function( str ) {
+        return ( typeof str === 'string' ) || ( str instanceof String );
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## isLiteral
+
+Returns true or false, if the object given is a primitive value, including
+undefined and null, or one of the objects that can also represent them (such
+as Number or String).
+
+@param obj The value to test.
+@return True if the object is null, undefined, true, false, a string or a number.
+
+------------------------------------------------------------------------------- */
+
+    window['isLiteral'] = function(obj) {
+        return isString(obj) ||
+                isNumber(obj) ||
+                obj === undefined ||
+                obj === null ||
+                obj === true ||
+                obj === false
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## isArrayArguments
+
+You cannot be absolutely certain an 'arguments' is an 'arguments', so takes an
+educated guess. That means it may not be 100% correct. However in practice, you
+would have to build an object that looks like an array 'arguments', to fool
+this.
+
+@param arr The object to test, for being an Array or arguments.
+@return True if the object is an array, or believed to be an array arguments.
+
+------------------------------------------------------------------------------- */
+
+    window['isArrayArguments'] = function( arr ) {
+        return ( arr instanceof Array ) ||
+               (
+                       arr !== undefined &&
+                       arr !== null &&
+                       arr.constructor === argsConstructor &&
+                       arr.length !== undefined
+               )
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## isArray
+
+This does not include testring for 'arguments'; they will fail this test. To
+include them, use 'isArrayArguments'.
+
+@param arr The value to test.
+@return True, if the object given is an array object.
+
+------------------------------------------------------------------------------- */
+
+    window['isArray'] = function( arr ) {
+        return ( arr instanceof Array );
+    }
+
+
+ /* Assertions
+==========
+
+These are a list of assertion checking functions, which ensure that what is
+given matches the definition of the assertion, and if so, nothing will happen.
+
+If they do not, an AssertionError is thrown.
+
+The functions optionally take a message, and will print out any extra arguments
+to console.log.
+
+All of the tests take the form:
+
+```
+    assertionFun( test, errorMessage, ... consoleArguments )
+
+The test is whatever is being checked, and the optional errorMessage is
+displayed if the assertion fails.
+
+The 'consoleArguments', is 1 or more optional values, which will be printed to
+the console. That is useful for adding debugging information on why an
+assertion fails.
+
+-------------------------------------------------------------------------------
+
+## Assertion Error
+
+An Error type, specific for assertions.
+
+------------------------------------------------------------------------------- */
+
+    var AssertionError = function( msg ) {
+        if ( ! msg ) {
+            msg = "assertion failed";
+        }
+
+        Error.call( this, msg );
+
+        this.name = "AssertionError";
+        this.message = msg;
+
+        var errStr = '';
+        var scriptLine;
+        try {
+            var thisStack;
+            if ( this.stack ) {
+                thisStack = this.stack;
+
+                scriptLine = thisStack.split( "\n" )[1];
+                if ( scriptLine ) {
+                    scriptLine = scriptLine.replace( /:[0-9]+:[0-9]+$/, '' );
+                    scriptLine = scriptLine.replace( /^.* /, '' );
+                    throw new Error();
+                }
+            }
+        } catch ( err ) {
+            var errStack = err.stack.split("\n");
+
+            for ( var i = 1; i < errStack.length; i++ ) {
+                if ( errStack[i].indexOf( scriptLine ) === -1 ) {
+                    errStr = errStack.slice(i).join( "\n" );
+                    break;
+                }
+            }
+
+            if ( errStr === '' ) {
+                errStr = errStack.join( "\n" );
+            }
+        }
+
+        console.error( 'Assertion Error, ' + msg );
+        for ( var i = 1; i < arguments.length; i++ ) {
+            console.log( arguments[i] );
+        }
+        if ( errStr !== '' ) {
+            console.error( "\n" + errStr );
+        }
+    }
+    AssertionError.prototype = new Error();
+    AssertionError.prototype.constructor = AssertionError;
+
+ /* -------------------------------------------------------------------------------
+
+### newAssertion
+
+A helper method, for building the AssertionError object.
+
+It is used, to move the parameters around, from the format the assertion
+functions use, to match that of the AssertionError.
+
+In the error, the msg is the first parameter, and in the functions, it is the
+second.
+
+@param args The arguments for the new AssertionError.
+
+------------------------------------------------------------------------------- */
+
+    var newAssertionError = function( args, altMsg ) {
+        var msg = args[1];
+        args[1] = args[0];
+        args[0] = msg || altMsg;
+
+        var err = Object.create( AssertionError );
+        AssertionError.apply( err, args );
+        return err;
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## logError
+
+A shorthand alternative to performing
+
+```
+    throw new Error( "whatever" )
+
+Throws a new Error object,
+which displays the message given.
+
+What is unique about this function,
+is that it will also print out all of the
+arguments given, before it throws the error.
+
+```
+    logError( "some-error", a, b, c )
+    
+    // equivalent to ...
+    
+    console.log( a );
+    console.log( b );
+    console.log( c );
+    throw new Error( "some-error" );
+
+This allows you to have console.log +
+throw new Error, built together, as one.
+
+@param msg The message to display in the error.
+
+------------------------------------------------------------------------------- */
+
+    window["logError"] = function( msg ) {
+        var err = Object.create( AssertionError.prototype );
+        AssertionError.apply( err, arguments );
+        throw err;
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## assert
+
+Note that 0 and empty strings, will not cause failure.
+
+@param test
+@param msg
+
+------------------------------------------------------------------------------- */
+
+    window["assert"] = function( test, msg ) {
+        if ( test === undefined || test === null || test === false ) {
+            throw newAssertionError( arguments );
+        }
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## assertNot
+
+Throws an assertion error, if what is given if truthy.
+
+Note that 0 and empty strings, will cause failure.
+
+@param test
+@param msg
+
+------------------------------------------------------------------------------- */
+
+    window["assertNot"] = function( test, msg ) {
+        if (
+                test !== false &&
+                test !== null &&
+                test !== undefined
+        ) {
+            throw newAssertionError( arguments, "item is truthy" );
+        }
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## assertUnreachable
+
+Displays a generic error message, that the current location in code, is meant
+to be unreachable. So something has gone wrong.
+
+This always throws an assertion error.
+
+------------------------------------------------------------------------------- */
+
+    window["assertUnreachable"] = function( msg ) {
+        assert( false, msg || "this section of code should never be reached" );
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## assertObject
+
+Throws an assertion error, if the object given is *not* a JSON Object literal.
+So regular objects, they will throw an assertion. It's only the '{ }' style
+objects that this allows.
+
+------------------------------------------------------------------------------- */
+
+    window["assertObject"] = function( obj, msg ) {
+        if ( ! isObject(obj) ) {
+            throw newAssertionError( arguments, "code expected a JSON object literal" );
+        }
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## assertLiteral
+
+Throws an AssertionError if the value given is not
+a literal value.
+
+@param obj
+@param msg
+
+------------------------------------------------------------------------------- */
+
+    window["assertLiteral"] = function( obj, msg ) {
+        if ( ! isLiteral(obj) ) {
+            throw newAssertionError( arguments, "primitive value expected" );
+        }
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## assertFunction
+
+@param f A function object to test.
+@param msg The message to display if the test fails.
+
+------------------------------------------------------------------------------- */
+
+    window["assertFunction"] = function( f, msg ) {
+        if ( typeof f !== 'function' && !(f instanceof Function) ) {
+            throw newAssertionError( arguments, "function expected" );
+        }
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## assertBool
+
+@param f The boolean value to test.
+@param msg The error message on failure.
+
+------------------------------------------------------------------------------- */
+
+    window["assertBool"] = function( f, msg ) {
+        if ( f !== true && f !== false ) {
+            throw newAssertionError( arguments, "boolean expected" );
+        }
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## assertArray
+
+@param arr The array to test.
+@param msg The error message.
+
+------------------------------------------------------------------------------- */
+
+    window["assertArray"] = function( arr, msg ) {
+        if ( ! (arr instanceof Array) && (arr.length === undefined) ) {
+            throw newAssertionError( arguments, "array expected" );
+        }
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## assertString
+
+@param str The string to test against.
+@param msg The error message to show.
+
+------------------------------------------------------------------------------- */
+
+    window["assertString"] = function( str, msg ) {
+        if ( typeof str !== 'string' && !(str instanceof String) ) {
+            throw newAssertionError( arguments, "string expected" );
+        }
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## assertNumber
+
+This includes both number primitives, and Number objects.
+
+@param n The number to check.
+@param msg An optional error message.
+
+------------------------------------------------------------------------------- */
+
+    window["assertNumber"] = function( n, msg ) {
+        if ( typeof n !== 'number' && !(n instanceof Number) ) {
+            throw newAssertionError( arguments, "number expected" );
+        }
+    }
+
+})();
+"use strict";
+
+(function() {
+    var IS_TOUCH = !! ('ontouchstart' in window)  // works on most browsers 
+                || !!('onmsgesturechange' in window); // works on IE 10
+
+    /**
+     * How quickly someone must tap,
+     * for it to be a 'fast click'.
+     *
+     * In milliseconds.
+     */
+    var FAST_CLICK_DURATION = 150,
+        FAST_CLICK_DIST = 20,
+        SLOW_CLICK_DIST = 15;
+
+    var startTouch = function( xy, touch ) {
+        if ( touch ) {
+            xy.finger = touch.identifier;
+            xy.timestart = Date.now();
+
+            updateXY( xy, touch, false );
+
+            return true;
+        } else {
+            return false;
+        }
+    };
+
+    var updateXY = function( xy, ev, updateMove ) {
+        var x,
+            y;
+
+        if ( ev.offsetX !== undefined ) { // Opera
+            x = ev.offsetX;
+            y = ev.offsetY;
+        } else if ( ev.layerX !== undefined ) { // Firefox
+            x = ev.layerX;
+            y = ev.layerY;
+        } else if ( ev.clientX !== undefined ) {
+            x = ev.clientX;
+            y = ev.clientY;
+
+            for (
+                    var tag = ev.target;
+                    tag.offsetParent;
+                    tag = tag.offsetParent
+            ) {
+                x -= tag.offsetLeft;
+                y -= tag.offsetTop;
+            }
+        // fail, so just put no movement in
+        } else {
+            x = 0;
+            y = 0;
+        }
+
+        if ( updateMove ) {
+            xy.moveX += (xy.x - x)
+            xy.moveY += (xy.y - y)
+        } else {
+            xy.moveX = 0;
+            xy.moveY = 0;
+        }
+
+        xy.x = x;
+        xy.y = y;
+    }
+
+    var pressBuilder = function( el, onDown, onMove, onUp ) {
+        if ( ! (el instanceof HTMLElement) ) {
+            throw new Error( "non-html element given" );
+        }
+
+        var xy = {
+                timestart : 0,
+                finger    : 0,
+
+                x: 0,
+                y: 0,
+
+                moveX: 0,
+                moveY: 0
+        };
+
+        if ( IS_TOUCH ) {
+            var touchstart = function( ev ) {
+                var touch = ev.changedTouches[ 0 ];
+        
+                if ( startTouch(xy, touch) ) {
+                    onDown.call( el, ev, touch );
+                }
+            }
+
+            el.addEventListener( 'touchstart', touchstart, false );
+
+            el.addEventListener( 'touchmove', function(ev) {
+                if ( xy.finger === -1 ) {
+                    touchstart( ev );
+                } else {
+                    for ( var i = 0; i < ev.changedTouches.length; i++ ) {
+                        var touch = ev.changedTouches[ i ];
+                    
+                        if ( touch && touch.identifier === xy.finger ) {
+                            onMove.call( el, ev, touch );
+                            return;
+                        }
+                    }
+                }
+            }, false );
+
+            var touchEnd = function(ev) {
+                for ( var i = 0; i < ev.changedTouches.length; i++ ) {
+                    var touch = ev.changedTouches[ i ];
+                
+                    if ( touch && touch.identifier === xy.finger ) {
+                        xy.finger = -1;
+
+                        updateXY( xy, touch, true );
+
+                        var duration = Date.now() - xy.timestart;
+                        var dist = Math.sqrt( xy.moveX*xy.moveX + xy.moveY*xy.moveY )
+
+                        if (
+                                ( dist < FAST_CLICK_DIST && duration < FAST_CLICK_DURATION ) ||
+                                  dist < SLOW_CLICK_DIST
+                        ) {
+                            // true is a click
+                            onUp.call( el, ev, touch, true );
+                        } else {
+                            // false is a hold
+                            onUp.call( el, ev, touch, false );
+                        }
+
+                        return;
+                    }
+                }
+            }
+
+            document.getElementsByTagName('body')[0].
+                    addEventListener( 'touchend', touchEnd );
+            el.addEventListener( 'touchend', touchEnd, false );
+
+            el.addEventListener( 'click', function(ev) {
+                if ( (ev.which || ev.button) === 1 ) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                }
+            } );
+        } else {
+            var isDown = false;
+
+            el.addEventListener( 'mousedown', function(ev) {
+                ev = ev || window.event;
+
+                if ( (ev.which || ev.button) === 1 ) {
+                    isDown = true;
+                    onDown.call( el, ev, ev );
+                }
+            } );
+
+            el.addEventListener( 'mousemove', function(ev) {
+                ev = ev || window.event;
+
+                if ( (ev.which || ev.button) === 1 && isDown ) {
+                    onMove.call( el, ev, ev );
+                }
+            } );
+
+            el.addEventListener( 'mouseup', function(ev) {
+                ev = ev || window.event;
+
+                if ( (ev.which || ev.button) === 1 && isDown ) {
+                    isDown = false;
+                    onUp.call( el, ev, ev );
+                }
+            } );
+        }
+
+        return el;
+    };
+
+    var clickBuilder = function( el, callback ) {
+        if ( ! (el instanceof HTMLElement) ) {
+            throw new Error( "non-html element given" );
+        }
+
+        var xy = { finger: -1, timestart: 0, x: 0, y: 0, moveX: 0, moveY: 0 };
+
+        if ( IS_TOUCH ) {
+            var touchstart = function(ev) {
+                startTouch( xy, ev.changedTouches[0] );
+            };
+
+            el.addEventListener( 'touchstart', touchstart, false );
+
+            el.addEventListener( 'touchmove', function(ev) {
+                if ( xy.finger === -1 ) {
+                    touchstart( ev );
+                } else {
+                    for ( var i = 0; i < ev.changedTouches.length; i++ ) {
+                        var touch = ev.changedTouches[ i ];
+                    
+                        if ( touch && touch.identifier === xy.finger ) {
+                            updateXY( xy, touch, true );
+                            return;
+                        }
+                    }
+                }
+            }, false )
+
+            el.addEventListener( 'touchend', function(ev) {
+                for ( var i = 0; i < ev.changedTouches.length; i++ ) {
+                    var touch = ev.changedTouches[ i ];
+                    
+                    if ( touch && touch.identifier === xy.finger ) {
+                        xy.finger = -1;
+
+                        updateXY( xy, touch, true );
+
+                        var duration = Date.now() - xy.timestart;
+                        var dist = Math.sqrt( xy.moveX*xy.moveX + xy.moveY*xy.moveY )
+
+                        if (
+                                ( dist < FAST_CLICK_DIST && duration < FAST_CLICK_DURATION ) ||
+                                  dist < SLOW_CLICK_DIST
+                        ) {
+                            callback.call( el, ev );
+                            ev.preventDefault();
+                        }
+
+                        return;
+                    }
+                }
+            }, false )
+
+            var killEvent = function(ev) {
+                if ( (ev.which || ev.button) === 1 ) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                }
+            }
+
+            el.addEventListener( 'click'    , killEvent );
+            el.addEventListener( 'mouseup'  , killEvent );
+            el.addEventListener( 'mousedown', killEvent );
+        } else {
+            el.addEventListener( 'click', function(ev) {
+                ev = ev || window.event;
+
+                if ( (ev.which || ev.button) === 1 ) {
+                    ev.preventDefault();
+                
+                    callback.call( el, ev, ev );
+                }
+            } );
+        }
+
+        return el;
+    };
+
+    var holdBuilder = IS_TOUCH ?
+            function( el, fun ) {
+                pressBuilder(
+                        el,
+
+                        // goes down
+                        function(ev) {
+                            fun.call( el, ev, true, false );
+                        },
+
+                        // moves
+                        function(ev) {
+                            // do nothing
+                        },
+
+                        function(ev, touchEv, isClick) {
+                            fun.call( el, ev, false, isClick );
+                        }
+                )
+
+                return el;
+            } :
+            function( el, fun ) {
+                var isDown = false;
+
+                el.addEventListener( 'mousedown', function(ev) {
+                    ev = ev || window.event;
+
+                    if ( (ev.which || ev.button) === 1 ) {
+                        ev.preventDefault();
+                    
+                        isDown = true;
+                        fun.call( el, ev, true );
+                    }
+                } );
+
+                el.addEventListener( 'mouseup', function(ev) {
+                    ev = ev || window.event;
+
+                    if ( (ev.which || ev.button) === 1 && isDown ) {
+                        ev.preventDefault();
+                    
+                        isDown = false;
+                        fun.call( el, ev, false );
+                    }
+                } );
+
+                return el;
+            } ;
+
+    var touchy = window['touchy'] = {
+            click: clickBuilder,
+            press: pressBuilder,
+            hold : holdBuilder
+    }
+})();
 "use strict";(function() {
  /* 
 ===============================================================================
@@ -558,7 +3128,7 @@ in a callback method.
          * It's a HTML element.
          */
         if ( obj.charAt(0) === '<' ) {
-            var dom = htmlToElement( obj );
+            var dom = bb.util.htmlToElement( obj );
 
             if ( dom === undefined ) {
                 logError( "invalid html given", obj );
@@ -1353,7 +3923,7 @@ the input with type button.
                 if ( dom.__isBBGun ) {
                     return dom.dom();
                 }  else {
-                    assert( dom instanceof Element, "htmlToElement must return a HTML Element, or BBGun", dom );
+                    assert( dom instanceof Element, "html element event, must return a HTML Element, or BBGun", dom );
 
                     return dom;
                 }
@@ -1396,7 +3966,7 @@ the input with type button.
                 i = 0;
             }
 
-            dom = bb.get(dom, false);
+            dom = this.get(dom, false);
 
             iterateClasses( klasses, i, klasses.length, function(klass) {
                 dom.classList.remove( klass );
@@ -1490,7 +4060,7 @@ false for the removed fun.
         }
 
         bb.addClassOne = function(dom, klass) {
-            dom = bb.get(dom, false);
+            dom = this.get(dom, false);
             assert(dom instanceof Element, "falsy dom given");
 
             klass = klass.trim();
@@ -1584,14 +4154,14 @@ false for the removed fun.
         }
 
         bb.beforeOne = function( dom, node ) {
-            var dom = bb.get( dom, true );
+            var dom = this.get( dom, true );
             assertParent( dom );
 
             return beforeOne( this, dom.parentNode, dom, node );
         }
 
         bb.afterOne = function( dom, node ) {
-            var dom = bb.get( dom, true );
+            var dom = this.get( dom, true );
             assertParent( dom );
 
             return afterOne( this, dom.parentNode, dom, node );
@@ -1602,7 +4172,7 @@ false for the removed fun.
                 i = 0;
             }
 
-            var dom = bb.get( dom, true );
+            var dom = this.get( dom, true );
             assertParent( dom );
             var parentDom = dom.parentNode;
 
@@ -1618,7 +4188,7 @@ false for the removed fun.
                 i = 0;
             }
 
-            var dom = bb.get( dom, true );
+            var dom = this.get( dom, true );
             assertParent( dom );
             var parentDom = dom.parentNode;
 
@@ -1655,7 +4225,7 @@ false for the removed fun.
 
         bb.addOne = function( dom, dest ) {
             return addOne( this,
-                    bb.get( dom ),
+                    this.get( dom ),
                     dest
             );
         }
@@ -1798,19 +4368,19 @@ to the text values given.
  - style
 
  - html
- - text     Sets the textContent of this element. */
+ - text     Sets the textContent of this element.
  - value,   Sets the value within this element. This applies to inputs and
             textareas.
- */
- /*  - stopPropagation For the events named, they are set, with a function which 
-            will simply stop propagation of that event. */
- /*  - preventDefault  For the events named, this will set a function, which
+
+ - stopPropagation For the events named, they are set, with a function which 
+            will simply stop propagation of that event.
+ - preventDefault  For the events named, this will set a function, which
             prevents the default action from taking place.
- */
- /*  - addTo,   given an element (or a description of an element), this element
+
+ - addTo,   given an element (or a description of an element), this element
             is added to the one given.
 
- /* Anything else is set as an attribute of the object.
+Anything else is set as an attribute of the object.
 
 ------------------------------------------------------------------------------- */
 
@@ -2891,2574 +5461,4 @@ window['BBGun'] = (function() {
     }
 
     return newBBGunType();
-})();
-"use strict";
-
-(function() {
-    var extend = function( obj, extras ) {
-        for ( var k in extras ) {
-            if ( extras.hasOwnProperty(k) ) {
-                obj[k] = extras[k];
-            }
-        }
-    }
-
-    /*
-     * ### ### ### ### ### ### ### ### ### ### ### ### 
-     *          Object
-     * ### ### ### ### ### ### ### ### ### ### ### ### 
-     */
-
-    extend( Object.prototype, {
-            getProp: function( name ) {
-                return this[name];
-            },
-
-            /**
-             * Finds the method, and binds it to 'this' object.
-             * This is so you can do:
-             *
-             *      this.foo.bar.something().whatever.method( 'doWork' );
-             *
-             * ... instead of ...
-             *
-             *      this.foo.bar.something().whatever.doWork.bind(
-             *              this.foo.bar.something().whatever
-             *      )
-             *
-             * You can also provide array descriptions,
-             * to call multiple methods in order.
-             * For example:
-             *
-             *      this.foo.method(
-             *              [ 'doA', a, b, c ],
-             *              [ 'doB', x, y, z ]
-             *      )
-             *
-             * When the function created is called,
-             * it's last argument is executed.
-             */
-            method: function( name ) {
-                if ( isString(name) ) {
-                    return this.methodApply( name, arguments, 1 );
-                } else {
-                    var args = arguments;
-
-                    for ( var i = 0; i < args.length; i++ ) {
-                        var arg = args[i];
-
-                        assert( isArray(arg) );
-                        assert( arg.length > 0, "empty array given" );
-                    }
-
-                    var self = this;
-                    return function() {
-                        var lastR;
-
-                        for ( var i = 0; i < args.length; i++ ) {
-                            var arg = args[i];
-
-                            if ( arg.length === 1 ) {
-                                lastR = self[arg[0]]();
-                            } else {
-                                lastR = self.call.apply( self, args );
-                            }
-                        }
-
-                        return lastR;
-                    }
-                }
-            },
-
-            methodApply: function( name, args, startI ) {
-                var fun = this[name];
-
-                if ( (typeof fun !== 'function') || !(fun instanceof Function) ) {
-                    throw new Error( "function " + name + " not found ", name );
-                } else if ( startI >= args.length ) {
-                    return fun.bind( this );
-                } else {
-                    var newArgs;
-
-                    if ( startI === 0 ) {
-                        newArgs = new Array( args.length + 1 );
-                        newArgs[0] = this;
-
-                        for ( var i = 0; i < args.length; i++ ) {
-                            newArgs[i+1] = args[i];
-                        }
-                    } else {
-                        var newArgs = new Array( (args.length-startI) + 1 );
-                        newArgs[0] = this;
-
-                        for ( var i = startI; i < args.length; i++ ) {
-                            newArgs[(i-startI)+1] = args[i];
-                        }
-                    }
-
-                    return fun.bind.apply( fun, newArgs );
-                }
-            },
-
-            has: function( name ) {
-                return this.hasOwnProperty( name );
-            }
-    } );
-
-    /*
-     * ### ### ### ### ### ### ### ### ### ### ### ### 
-     *          String
-     * ### ### ### ### ### ### ### ### ### ### ### ### 
-     */
-
-    extend( String.prototype, {
-            /**
-             * This is the equivalent to:
-             *
-             *      someString.split( str ).pop() || ''
-             *
-             * What it does, is find the last occurance of
-             * 'str', and then returns a substring of
-             * everything after that occurance.
-             *
-             * @param str The string to look for.
-             * @return The string found, or an empty string if not found.
-             */
-            lastSplit: function( str ) {
-                var index = this.lastIndexOf( str );
-
-                if ( index === -1 ) {
-                    return '';
-                } else {
-                    return this.substring( index+1 );
-                }
-            }
-    } )
-
-    /*
-     * ### ### ### ### ### ### ### ### ### ### ### ### 
-     *          Array
-     * ### ### ### ### ### ### ### ### ### ### ### ### 
-     */
-
-    var oldMap = Array.prototype.map;
-
-    /**
-     * Same as 'filterMethod', however this will remove
-     * all items which return 'true', rather than keep them.
-     *
-     * This is useful for when things return 'true',
-     * and you don't want them. For example:
-     *
-     *  var nonEmptyNodes = nodes.filterOutMethod( 'isEmpty' )
-     */
-    extend( Array.prototype, {
-            filterOutMethod: function( meth ) {
-                var fun;
-                if ( arguments.length > 1 ) {
-                    var args = new Array( arguments.length-1 );
-                    for ( var i = 1; i < arguments.length; i++ ) {
-                        args[i-1] = arguments[i];
-                    }
-
-                    fun = function( obj ) {
-                        var r = obj[meth].apply( obj, args );
-                        return r === null || r === false || r === undefined;
-                    }
-                } else {
-                    fun = function( obj ) {
-                        var r = obj[meth]();
-                        return r === null || r === false || r === undefined;
-                    }
-                }
-
-                return this.filter( fun );
-            },
-
-            /**
-             * Calls the given method against all elements in the array.
-             * If it returns a non-falsy item (false, null, or undefined),
-             * then it will be kept.
-             *
-             * Otherwise, it will be removed.
-             *
-             *  var emptyNodes = nodes.filterOutMethod( 'isEmpty' )
-             */
-            filterMethod: function( meth ) {
-                var fun;
-                if ( arguments.length > 1 ) {
-                    var args = new Array( arguments.length-1 );
-                    for ( var i = 1; i < arguments.length; i++ ) {
-                        args[i-1] = arguments[i];
-                    }
-
-                    fun = function() {
-                        var r = this[meth].apply( this, args );
-                        return r !== null && r !== false && r !== undefined;
-                    }
-                } else {
-                    fun = function() {
-                        var r = this[meth]();
-                        return r !== null && r !== false && r !== undefined;
-                    }
-                }
-
-                return this.filter( fun );
-            },
-
-            /**
-             * This is shorthand for using filterType,
-             * where 'keepProto' is set to false.
-             */
-            filterOutType: function( proto, thisObj ) {
-                if ( arguments.length > 1 ) {
-                    return this.filterType( proto, thisObj, false );
-                } else {
-                    return this.filterType( proto, false );
-                }
-            },
-
-            /**
-             * Filters object based on the prototype given.
-             * This can work in two ways:
-             *
-             *  - keepProto = true - keep only object, of that type
-             *  - keepProto = true - keep all objects, except for that type
-             *
-             * By default, keepProto is true, and so will keep only items
-             * which match the proto constructor given.
-             */
-            filterType: function( proto, thisObj, keepProto ) {
-                var hasThis = false;
-                var argsLen = arguments.length;
-
-                if ( argsLen === 0 ) {
-                    throw new Error( "not enough parameters given, no prototype!" );
-                } else if ( argsLen === 1 ) {
-                    keepProto = true;
-                } else if ( argsLen === 2 ) {
-                    if ( thisObj === true || thisObj === false ) {
-                        keepProto = thisObj;
-                        hasThis = false;
-                    } else {
-                        keepProto = true;
-                        hasThis = true;
-                    }
-                } else {
-                    hasThis = true;
-                }
-
-                var fun = keepProto ?
-                        function() { return  (this instanceof proto) } :
-                        function() { return !(this instanceof proto) } ;
-
-                /*
-                 * If a this object is provided,
-                 * ensure it's not a common falsy value,
-                 * often used for no object.
-                 */
-                if ( hasThis &&
-                        (
-                                thisObj === undefined ||
-                                thisObj === null ||
-                                thisObj === false
-                        )
-                ) {
-                    throw new Error( "invalid 'thisObj' given" );
-                }
-
-                if ( hasThis ) {
-                    return this.filter( fun, thisObj );
-                } else {
-                    return this.filter( fun );
-                }
-            },
-
-            /**
-             * Similar to 'forEach',
-             * except that the target goes first in the parameter list.
-             *
-             * The target is also returned if it is provided,
-             * and if not, then this array is returned.
-             */
-            each: function( target, callback ) {
-                if ( arguments.length === 1 ) {
-                    callback = target;
-                    assertFunction( callback );
-
-                    this.forEach( target );
-
-                    return this;
-                } else {
-                    assertFunction( callback );
-
-                    this.forEach( callback, target );
-
-                    return target;
-                }
-            },
-
-            map: function( fun ) {
-                if ( typeof fun === 'string' || (fun instanceof String) ) {
-                    var args = new Array( arguments.length-1 );
-                    for ( var i = 0; i < args.length; i++ ) {
-                        args[i] = arguments[i-1];
-                    }
-
-                    return oldMap.call( this, function(obj) {
-                        return obj[fun].apply( obj, args );
-                    } );
-                } else {
-                    return oldMap.apply( this, arguments );
-                }
-            },
-
-            inject: function( sum, fun ) {
-                if ( arguments.length === 1 ) {
-                    assertFunction( sum, "no inject function provided" );
-                    return this.reduce( sum );
-                } else {
-                    assertFunction( fun, "no inject function provided" );
-                    return this.reduce( fun, sum );
-                }
-            }
-    })
-})();
-
-
-"use strict";
-
-/**
- * shim.js
- *
- * This is a collection of shims from around the internet,
- * and some built by me, which add support for missing JS features.
- */
-
-/*
- * ### ### ### ### ### ### ### ### ### ### ### ### ### 
- *          Object
- * ### ### ### ### ### ### ### ### ### ### ### ### ### 
- */
-
-(function() {
-    var shim = function( obj, index, fun ) {
-        if ( arguments.length === 2 ) {
-            for ( var k in index ) {
-                if ( ! obj.hasOwnProperty(k) ) {
-                    obj[k] = index[k];
-                }
-            }
-        } else if ( arguments.length === 3 ) {
-            if ( ! obj.hasOwnProperty(index) ) {
-                obj[index] = fun;
-            }
-        } else {
-            throw new Error( 'incorrect number of arguments' );
-        }
-    }
-
-    /**
-     * Object.create
-     *
-     * @see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Object/create
-     */
-    shim( Object, 'create', function(o) {
-        if (arguments.length > 1) {
-            throw new Error('Object.create implementation only accepts the first parameter.');
-        }
-
-        function F() {}
-        F.prototype = o;
-
-        return new F();
-    })
-
-    /*
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     *          Array
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     */
-
-    // Production steps of ECMA-262, Edition 5, 15.4.4.18
-    // Reference: http://es5.github.com/#x15.4.4.18
-    shim( Array.prototype, 'forEach', function( callback, thisArg ) {
-        var T, k;
-
-        if ( this == null ) {
-          throw new TypeError( "this is null or not defined" );
-        }
-
-        // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
-        var O = Object(this);
-
-        // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
-        // 3. Let len be ToUint32(lenValue).
-        var len = O.length >>> 0; // Hack to convert O.length to a UInt32
-
-        // 4. If IsCallable(callback) is false, throw a TypeError exception.
-        // See: http://es5.github.com/#x9.11
-        if ( {}.toString.call(callback) !== "[object Function]" ) {
-          throw new TypeError( callback + " is not a function" );
-        }
-
-        // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
-        if ( thisArg ) {
-          T = thisArg;
-        }
-
-        // 6. Let k be 0
-        k = 0;
-
-        // 7. Repeat, while k < len
-        while( k < len ) {
-
-          var kValue;
-
-          // a. Let Pk be ToString(k).
-          //   This is implicit for LHS operands of the in operator
-          // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
-          //   This step can be combined with c
-          // c. If kPresent is true, then
-          if ( Object.prototype.hasOwnProperty.call(O, k) ) {
-
-            // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
-            kValue = O[ k ];
-
-            // ii. Call the Call internal method of callback with T as the this value and
-            // argument list containing kValue, k, and O.
-            callback.call( T, kValue, k, O );
-          }
-          // d. Increase k by 1.
-          k++;
-        }
-        // 8. return undefined
-    })
-
-    /*
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     *          String
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     */
-
-    /**
-     * @see https://github.com/paulmillr/es6-shim/blob/master/es6-shim.js
-     */
-    shim( String.prototype, {
-            toArray: function() {
-                return this.split( '' );
-            },
-
-            contains: function( str, index ) {
-                if ( arguments.length === 1 ) {
-                    return this.indexOf(str) !== -1;
-                } else if ( arguments.length === 2 ) {
-                    return this.indexOf(str, index) !== -1;
-                } else if ( arguments.length === 0 ) {
-                    throw new Error( "no search string provided" );
-                }
-            },
-
-            // Fast repeat, uses the `Exponentiation by squaring` algorithm.
-            repeat: function(times) {
-              if (times < 1) return '';
-              if (times % 2) return this.repeat(times - 1) + this;
-              var half = this.repeat(times / 2);
-              return half + half;
-            },
-
-            startsWith: function(searchString) {
-              var position = arguments[1];
-
-              // Let searchStr be ToString(searchString).
-              var searchStr = searchString.toString();
-
-              // ReturnIfAbrupt(searchStr).
-
-              // Let S be the result of calling ToString,
-              // giving it the this value as its argument.
-              var s = this.toString();
-
-              // ReturnIfAbrupt(S).
-
-              // Let pos be ToInteger(position).
-              // (If position is undefined, this step produces the value 0).
-              var pos = (position === undefined) ? 0 : Number.toInteger(position);
-              // ReturnIfAbrupt(pos).
-
-              // Let len be the number of elements in S.
-              var len = s.length;
-
-              // Let start be min(max(pos, 0), len).
-              var start = Math.min(Math.max(pos, 0), len);
-
-              // Let searchLength be the number of elements in searchString.
-              var searchLength = searchString.length;
-
-              // If searchLength+start is greater than len, return false.
-              if ((searchLength + start) > len) return false;
-
-              // If the searchLength sequence of elements of S starting at
-              // start is the same as the full element sequence of searchString,
-              // return true.
-              var index = ''.indexOf.call(s, searchString, start);
-              return index === start;
-            },
-
-            endsWith: function(searchString) {
-              var endPosition = arguments[1];
-
-              // ReturnIfAbrupt(CheckObjectCoercible(this value)).
-              // Let S be the result of calling ToString, giving it the this value as its argument.
-              // ReturnIfAbrupt(S).
-              var s = this.toString();
-
-              // Let searchStr be ToString(searchString).
-              // ReturnIfAbrupt(searchStr).
-              var searchStr = searchString.toString();
-
-              // Let len be the number of elements in S.
-              var len = s.length;
-
-              // If endPosition is undefined, let pos be len, else let pos be ToInteger(endPosition).
-              // ReturnIfAbrupt(pos).
-              var pos = (endPosition === undefined) ?
-                len :
-                Number.toInteger(endPosition);
-
-              // Let end be min(max(pos, 0), len).
-              var end = Math.min(Math.max(pos, 0), len);
-
-              // Let searchLength be the number of elements in searchString.
-              var searchLength = searchString.length;
-
-              // Let start be end - searchLength.
-              var start = end - searchLength;
-
-              // If start is less than 0, return false.
-              if (start < 0) return false;
-
-              // If the searchLength sequence of elements of S starting at start is the same as the full element sequence of searchString, return true.
-              // Otherwise, return false.
-              var index = ''.indexOf.call(s, searchString, start);
-              return index === start;
-            }
-    })
-
-    /*
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     *          Function
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     */
-
-    /**
-     * Function.bind
-     *
-     * @see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Function/bind
-     */
-    shim( Function.prototype, 'bind', function(oThis) {
-        if (typeof this !== "function") {
-          // closest thing possible to the ECMAScript 5 internal IsCallable function
-          throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
-        }
-     
-        var aArgs = Array.prototype.slice.call(arguments, 1), 
-            fToBind = this, 
-            fNOP = function () {},
-            fBound = function () {
-              return fToBind.apply(this instanceof fNOP && oThis
-                                     ? this
-                                     : oThis,
-                                   aArgs.concat(Array.prototype.slice.call(arguments)));
-            };
-     
-        fNOP.prototype = this.prototype;
-        fBound.prototype = new fNOP();
-     
-        return fBound;
-    });
-
-    /*
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     *          Element
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     */
-
-    /**
-     *      Element.matchesSelector()
-     *
-     * A new W3C selection tester, for testing if a node
-     * matches a selection. Very new, so it's either browser
-     * specific, or needs a shim.
-     *
-     * @author termi https://gist.github.com/termi
-     * @see https://gist.github.com/termi/2369850/f4022295bf19332ff17e79350ec06c5114d7fbc9
-     */
-    shim( Element.prototype, 'matchesSelector',
-        Element.prototype.matches ||
-        Element.prototype.webkitMatchesSelector ||
-        Element.prototype.mozMatchesSelector ||
-        Element.prototype.msMatchesSelector ||
-        Element.prototype.oMatchesSelector || function(selector) {
-            if(!selector)return false;
-            if(selector === "*")return true;
-            if(this === document.documentElement && selector === ":root")return true;
-            if(this === document.body && selector === "body")return true;
-
-            var thisObj = this,
-                match = false,
-                parent,
-                i,
-                str,
-                tmp;
-
-            if (/^[\w#\.][\w-]*$/.test(selector) || /^(\.[\w-]*)+$/.test(selector)) {
-                switch (selector.charAt(0)) {
-                    case '#':
-                        return thisObj.id === selector.slice(1);
-                        break;
-                    case '.':
-                        match = true;
-                        i = -1;
-                        tmp = selector.slice(1).split(".");
-                        str = " " + thisObj.className + " ";
-                        while(tmp[++i] && match) {
-                            match = !!~str.indexOf(" " + tmp[i] + " ");
-                        }
-                        return match;
-                        break;
-                    default:
-                        return thisObj.tagName && thisObj.tagName.toUpperCase() === selector.toUpperCase();
-                }
-            }
-
-            parent = thisObj.parentNode;
-          
-            if (parent && parent.querySelector) {
-                match = parent.querySelector(selector) === thisObj;
-            }
-
-            if (!match && (parent = thisObj.ownerDocument)) {
-                tmp = parent.querySelectorAll( selector );
-
-                for (i in tmp ) if(_hasOwnProperty(tmp, i)) {
-                    match = tmp[i] === thisObj;
-                    if(match)return true;
-                }
-            }
-
-            return match;
-        }
-    )
-
-    shim( Element.prototype, 'matches', Element.prototype.matchesSelector );
-
-    /*
-     * classList.js: Cross-browser full element.classList implementation.
-     * 2012-11-15
-     *
-     * By Eli Grey, http://eligrey.com
-     * Public Domain.
-     * NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
-     */
-     
-    /*global self, document, DOMException */
-     
-    /*! @source http://purl.eligrey.com/github/classList.js/blob/master/classList.js*/
-     
-    if (typeof document !== "undefined" && !("classList" in document.createElement("a"))) {
-        (function (view) {
-            "use strict";
-             
-            if ( !('HTMLElement' in view) && !('Element' in view) ) {
-                return;
-            }
-             
-            var
-                  classListProp = "classList"
-                , protoProp = "prototype"
-                , elemCtrProto = (view.HTMLElement || view.Element)[protoProp]
-                , objCtr = Object
-                , strTrim = String[protoProp].trim || function () {
-                    return this.replace(/^\s+|\s+$/g, "");
-                }
-                , arrIndexOf = Array[protoProp].indexOf || function (item) {
-                    var
-                          i = 0
-                        , len = this.length
-                    ;
-                    for (; i < len; i++) {
-                        if (i in this && this[i] === item) {
-                            return i;
-                        }
-                    }
-                    return -1;
-                }
-                // Vendors: please allow content code to instantiate DOMExceptions
-                , DOMEx = function (type, message) {
-                    this.name = type;
-                    this.code = DOMException[type];
-                    this.message = message;
-                }
-                , checkTokenAndGetIndex = function (classList, token) {
-                    if (token === "") {
-                        throw new DOMEx(
-                              "SYNTAX_ERR"
-                            , "An invalid or illegal string was specified"
-                        );
-                    }
-                    if (/\s/.test(token)) {
-                        throw new DOMEx(
-                              "INVALID_CHARACTER_ERR"
-                            , "String contains an invalid character"
-                        );
-                    }
-                    return arrIndexOf.call(classList, token);
-                }
-                , ClassList = function (elem) {
-                    var
-                          trimmedClasses = strTrim.call(elem.className)
-                        , classes = trimmedClasses ? trimmedClasses.split(/\s+/) : []
-                        , i = 0
-                        , len = classes.length
-                    ;
-                    for (; i < len; i++) {
-                        this.push(classes[i]);
-                    }
-                    this._updateClassName = function () {
-                        elem.className = this.toString();
-                    };
-                }
-                , classListProto = ClassList[protoProp] = []
-                , classListGetter = function () {
-                    return new ClassList(this);
-                }
-            ;
-            // Most DOMException implementations don't allow calling DOMException's toString()
-            // on non-DOMExceptions. Error's toString() is sufficient here.
-            DOMEx[protoProp] = Error[protoProp];
-            classListProto.item = function (i) {
-                return this[i] || null;
-            };
-            classListProto.contains = function (token) {
-                token += "";
-                return checkTokenAndGetIndex(this, token) !== -1;
-            };
-            classListProto.add = function () {
-                var
-                      tokens = arguments
-                    , i = 0
-                    , l = tokens.length
-                    , token
-                    , updated = false
-                ;
-                do {
-                    token = tokens[i] + "";
-                    if (checkTokenAndGetIndex(this, token) === -1) {
-                        this.push(token);
-                        updated = true;
-                    }
-                }
-                while (++i < l);
-             
-                if (updated) {
-                    this._updateClassName();
-                }
-            };
-
-            classListProto.remove = function () {
-                var
-                      tokens = arguments
-                    , i = 0
-                    , l = tokens.length
-                    , token
-                    , updated = false
-                ;
-                do {
-                    token = tokens[i] + "";
-                    var index = checkTokenAndGetIndex(this, token);
-                    if (index !== -1) {
-                        this.splice(index, 1);
-                        updated = true;
-                    }
-                }
-                while (++i < l);
-             
-                if (updated) {
-                    this._updateClassName();
-                }
-            };
-
-            classListProto.toggle = function (token, forse) {
-                token += "";
-             
-                var
-                      result = this.contains(token)
-                    , method = result ?
-                        forse !== true && "remove"
-                    :
-                        forse !== false && "add"
-                ;
-             
-                if (method) {
-                    this[method](token);
-                }
-             
-                return result;
-            };
-
-            classListProto.toString = function () {
-                return this.join(" ");
-            };
-             
-            if (objCtr.defineProperty) {
-                var classListPropDesc = {
-                      get: classListGetter
-                    , enumerable: true
-                    , configurable: true
-                };
-                try {
-                    objCtr.defineProperty(elemCtrProto, classListProp, classListPropDesc);
-                } catch (ex) { // IE 8 doesn't support enumerable:true
-                    if (ex.number === -0x7FF5EC54) {
-                        classListPropDesc.enumerable = false;
-                        objCtr.defineProperty(elemCtrProto, classListProp, classListPropDesc);
-                    }
-                }
-            } else if (objCtr[protoProp].__defineGetter__) {
-                elemCtrProto.__defineGetter__(classListProp, classListGetter);
-            }
-        }(self));
-    }
-})()
-"use strict";(function() {
- /* 
-# check.js.
-@author Joseph Lenton
-
-This includes
- - assertions
- - object type checks
- */
-
-    var objPrototype   = ({}).__proto__;
-    var objConstructor = objPrototype.constructor;
-    
-    var argsConstructor = (function() {
-        return arguments.constructor;
-    })();
-
- /* -------------------------------------------------------------------------------
-
-## isObject
-
-Tests for a JSON object literal.
-
-```
-    isObject( {} ) // -> true
-    isObject( new FooBar() ) // -> false
-
-Specifically it *only* does object literals, and not regular objects.
-
-For regular objects do ...
-
-```
-    obj instanceof Object
-
-@param obj The object to test.
-@return True if it is an object, false if not.
-
-------------------------------------------------------------------------------- */
-
-    window['isObject'] = function( obj ) {
-        if ( obj !== undefined && obj !== null ) {
-            var proto = obj.__proto__;
-
-            if ( proto !== undefined && proto !== null ) {
-                return proto             === objPrototype   &&
-                       proto.constructor === objConstructor ;
-            }
-        }
-
-        return false;
-    }
-
- /* -------------------------------------------------------------------------------
-
-## isFunction
-
-@param f The value to test.
-@return True if the function is a function primitive, or Function object.
-
-------------------------------------------------------------------------------- */
-
-    window['isFunction'] = function( f ) {
-        return ( typeof f === 'function' ) || ( f instanceof Function );
-    }
-
- /* -------------------------------------------------------------------------------
-
-## isNumber
-
-@param n The value to test.
-@return True if 'n' is a primitive number, or a Number object.
-
-------------------------------------------------------------------------------- */
-
-    window['isNumber'] = function( n ) {
-        return ( typeof n === 'number' ) || ( n instanceof Number );
-    }
-
- /* -------------------------------------------------------------------------------
-
-## isNumeric
-
-Returns true if the value is like a number.
-This is either an actual number, or a string which represents one.
-
-@param str The string to test.
-@return True, if given a number, or if it looks like a number, otherwise false.
-
-------------------------------------------------------------------------------- */
-
-    window['isNumeric'] = function( str ) {
-        return ( typeof str === 'number' ) ||
-               ( str instanceof Number   ) ||
-               ( String(str).search( /^\s*(\+|-)?((\d+(\.\d+)?)|(\.\d+))\s*$/ ) !== -1 )
-    }
-
- /* -------------------------------------------------------------------------------
-
-## isString
-
-@param str The value to test.
-@return True if the given value, is a string primitive or a String object.
-
-------------------------------------------------------------------------------- */
-
-    window['isString'] = function( str ) {
-        return ( typeof str === 'string' ) || ( str instanceof String );
-    }
-
- /* -------------------------------------------------------------------------------
-
-## isLiteral
-
-Returns true or false, if the object given is a primitive value, including
-undefined and null, or one of the objects that can also represent them (such
-as Number or String).
-
-@param obj The value to test.
-@return True if the object is null, undefined, true, false, a string or a number.
-
-------------------------------------------------------------------------------- */
-
-    window['isLiteral'] = function(obj) {
-        return isString(obj) ||
-                isNumber(obj) ||
-                obj === undefined ||
-                obj === null ||
-                obj === true ||
-                obj === false
-    }
-
- /* -------------------------------------------------------------------------------
-
-## isArrayArguments
-
-You cannot be absolutely certain an 'arguments' is an 'arguments', so takes an
-educated guess. That means it may not be 100% correct. However in practice, you
-would have to build an object that looks like an array 'arguments', to fool
-this.
-
-@param arr The object to test, for being an Array or arguments.
-@return True if the object is an array, or believed to be an array arguments.
-
-------------------------------------------------------------------------------- */
-
-    window['isArrayArguments'] = function( arr ) {
-        return ( arr instanceof Array ) ||
-               (
-                       arr !== undefined &&
-                       arr !== null &&
-                       arr.constructor === argsConstructor &&
-                       arr.length !== undefined
-               )
-    }
-
- /* -------------------------------------------------------------------------------
-
-## isArray
-
-This does not include testring for 'arguments'; they will fail this test. To
-include them, use 'isArrayArguments'.
-
-@param arr The value to test.
-@return True, if the object given is an array object.
-
-------------------------------------------------------------------------------- */
-
-    window['isArray'] = function( arr ) {
-        return ( arr instanceof Array );
-    }
-
-
- /* Assertions
-==========
-
-These are a list of assertion checking functions, which ensure that what is
-given matches the definition of the assertion, and if so, nothing will happen.
-
-If they do not, an AssertionError is thrown.
-
-The functions optionally take a message, and will print out any extra arguments
-to console.log.
-
-All of the tests take the form:
-
-```
-    assertionFun( test, errorMessage, ... consoleArguments )
-
-The test is whatever is being checked, and the optional errorMessage is
-displayed if the assertion fails.
-
-The 'consoleArguments', is 1 or more optional values, which will be printed to
-the console. That is useful for adding debugging information on why an
-assertion fails.
-
--------------------------------------------------------------------------------
-
-## Assertion Error
-
-An Error type, specific for assertions.
-
-------------------------------------------------------------------------------- */
-
-    var AssertionError = function( msg ) {
-        if ( ! msg ) {
-            msg = "assertion failed";
-        }
-
-        Error.call( this, msg );
-
-        this.name = "AssertionError";
-        this.message = msg;
-
-        var errStr = '';
-        var scriptLine;
-        try {
-            var thisStack;
-            if ( this.stack ) {
-                thisStack = this.stack;
-
-                scriptLine = thisStack.split( "\n" )[1];
-                if ( scriptLine ) {
-                    scriptLine = scriptLine.replace( /:[0-9]+:[0-9]+$/, '' );
-                    scriptLine = scriptLine.replace( /^.* /, '' );
-                    throw new Error();
-                }
-            }
-        } catch ( err ) {
-            var errStack = err.stack.split("\n");
-
-            for ( var i = 1; i < errStack.length; i++ ) {
-                if ( errStack[i].indexOf( scriptLine ) === -1 ) {
-                    errStr = errStack.slice(i).join( "\n" );
-                    break;
-                }
-            }
-
-            if ( errStr === '' ) {
-                errStr = errStack.join( "\n" );
-            }
-        }
-
-        console.error( 'Assertion Error, ' + msg );
-        for ( var i = 1; i < arguments.length; i++ ) {
-            console.log( arguments[i] );
-        }
-        if ( errStr !== '' ) {
-            console.error( "\n" + errStr );
-        }
-    }
-    AssertionError.prototype = new Error();
-    AssertionError.prototype.constructor = AssertionError;
-
- /* -------------------------------------------------------------------------------
-
-### newAssertion
-
-A helper method, for building the AssertionError object.
-
-It is used, to move the parameters around, from the format the assertion
-functions use, to match that of the AssertionError.
-
-In the error, the msg is the first parameter, and in the functions, it is the
-second.
-
-@param args The arguments for the new AssertionError.
-
-------------------------------------------------------------------------------- */
-
-    var newAssertionError = function( args, altMsg ) {
-        var msg = args[1];
-        args[1] = args[0];
-        args[0] = msg || altMsg;
-
-        var err = Object.create( AssertionError );
-        AssertionError.apply( err, args );
-        return err;
-    }
-
- /* -------------------------------------------------------------------------------
-
-## logError
-
-A shorthand alternative to performing
-
-```
-    throw new Error( "whatever" )
-
-Throws a new Error object,
-which displays the message given.
-
-What is unique about this function,
-is that it will also print out all of the
-arguments given, before it throws the error.
-
-```
-    logError( "some-error", a, b, c )
-    
-    // equivalent to ...
-    
-    console.log( a );
-    console.log( b );
-    console.log( c );
-    throw new Error( "some-error" );
-
-This allows you to have console.log +
-throw new Error, built together, as one.
-
-@param msg The message to display in the error.
-
-------------------------------------------------------------------------------- */
-
-    window["logError"] = function( msg ) {
-        var err = Object.create( AssertionError.prototype );
-        AssertionError.apply( err, arguments );
-        throw err;
-    }
-
- /* -------------------------------------------------------------------------------
-
-## assert
-
-Note that 0 and empty strings, will not cause failure.
-
-@param test
-@param msg
-
-------------------------------------------------------------------------------- */
-
-    window["assert"] = function( test, msg ) {
-        if ( test === undefined || test === null || test === false ) {
-            throw newAssertionError( arguments );
-        }
-    }
-
- /* -------------------------------------------------------------------------------
-
-## assertNot
-
-Throws an assertion error, if what is given if truthy.
-
-Note that 0 and empty strings, will cause failure.
-
-@param test
-@param msg
-
-------------------------------------------------------------------------------- */
-
-    window["assertNot"] = function( test, msg ) {
-        if (
-                test !== false &&
-                test !== null &&
-                test !== undefined
-        ) {
-            throw newAssertionError( arguments, "item is truthy" );
-        }
-    }
-
- /* -------------------------------------------------------------------------------
-
-## assertUnreachable
-
-Displays a generic error message, that the current location in code, is meant
-to be unreachable. So something has gone wrong.
-
-This always throws an assertion error.
-
-------------------------------------------------------------------------------- */
-
-    window["assertUnreachable"] = function( msg ) {
-        assert( false, msg || "this section of code should never be reached" );
-    }
-
- /* -------------------------------------------------------------------------------
-
-## assertObject
-
-Throws an assertion error, if the object given is *not* a JSON Object literal.
-So regular objects, they will throw an assertion. It's only the '{ }' style
-objects that this allows.
-
-------------------------------------------------------------------------------- */
-
-    window["assertObject"] = function( obj, msg ) {
-        if ( ! isObject(obj) ) {
-            throw newAssertionError( arguments, "code expected a JSON object literal" );
-        }
-    }
-
- /* -------------------------------------------------------------------------------
-
-## assertLiteral
-
-Throws an AssertionError if the value given is not
-a literal value.
-
-@param obj
-@param msg
-
-------------------------------------------------------------------------------- */
-
-    window["assertLiteral"] = function( obj, msg ) {
-        if ( ! isLiteral(obj) ) {
-            throw newAssertionError( arguments, "primitive value expected" );
-        }
-    }
-
- /* -------------------------------------------------------------------------------
-
-## assertFunction
-
-@param f A function object to test.
-@param msg The message to display if the test fails.
-
-------------------------------------------------------------------------------- */
-
-    window["assertFunction"] = function( f, msg ) {
-        if ( typeof f !== 'function' && !(f instanceof Function) ) {
-            throw newAssertionError( arguments, "function expected" );
-        }
-    }
-
- /* -------------------------------------------------------------------------------
-
-## assertBool
-
-@param f The boolean value to test.
-@param msg The error message on failure.
-
-------------------------------------------------------------------------------- */
-
-    window["assertBool"] = function( f, msg ) {
-        if ( f !== true && f !== false ) {
-            throw newAssertionError( arguments, "boolean expected" );
-        }
-    }
-
- /* -------------------------------------------------------------------------------
-
-## assertArray
-
-@param arr The array to test.
-@param msg The error message.
-
-------------------------------------------------------------------------------- */
-
-    window["assertArray"] = function( arr, msg ) {
-        if ( ! (arr instanceof Array) && (arr.length === undefined) ) {
-            throw newAssertionError( arguments, "array expected" );
-        }
-    }
-
- /* -------------------------------------------------------------------------------
-
-## assertString
-
-@param str The string to test against.
-@param msg The error message to show.
-
-------------------------------------------------------------------------------- */
-
-    window["assertString"] = function( str, msg ) {
-        if ( typeof str !== 'string' && !(str instanceof String) ) {
-            throw newAssertionError( arguments, "string expected" );
-        }
-    }
-
- /* -------------------------------------------------------------------------------
-
-## assertNumber
-
-This includes both number primitives, and Number objects.
-
-@param n The number to check.
-@param msg An optional error message.
-
-------------------------------------------------------------------------------- */
-
-    window["assertNumber"] = function( n, msg ) {
-        if ( typeof n !== 'number' && !(n instanceof Number) ) {
-            throw newAssertionError( arguments, "number expected" );
-        }
-    }
-
-})();
-"use strict";(function() {
- /* 
-Function.js
-===========
-
-@author Joseph Lenton
-
-A Function utility library. Helps with building classes, with aspects-related
-constructs.
-
-Also includes some helper functions, to make working with functions easier.
-
--------------------------------------------------------------------------------
-    
-# Lazy
-
-A system for describing lazy parameters. When using bind, method, or curry,
-this gives you exact control over *which* parameters can be omitted.
-
-For example
-
-```
-    var f2 = f.curry( a, b, _, c );
-    f2( x );
-
-The above is the same as calling:
-
-```
-    f( a, b, x, c );
-
-In the example, the parameter left out is exactly defined, using the underscore.
-
-------------------------------------------------------------------------------- */
-
-    var Lazy = function() {
-        logError( "evaluating a lazy value" );
-    }
-
-    window['_'] = Lazy;
-
-
-
- /* -------------------------------------------------------------------------------
-
-## Function.create
-
-The equivalent to calling 'new Fun()'.
-
-The reason this exists, is because by oferring it as a function,
-you can then bind and pass it around.
-
-------------------------------------------------------------------------------- */
-
-    Function.create = function() {
-        var argsLen = arguments.length;
-
-        if ( argsLen === 0 ) {
-            return new this();
-        } else if ( argsLen === 1 ) {
-            return new this( arguments[0] );
-        } else if ( argsLen === 2 ) {
-            return new this( arguments[0], arguments[1] );
-        } else if ( argsLen === 3 ) {
-            return new this( arguments[0], arguments[1], arguments[2] );
-        } else if ( argsLen === 4 ) {
-            return new this( arguments[0], arguments[1], arguments[2], arguments[3] );
-        } else if ( argsLen === 5 ) {
-            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4] );
-        } else if ( argsLen === 6 ) {
-            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5] );
-        } else if ( argsLen === 7 ) {
-            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6] );
-        } else if ( argsLen === 8 ) {
-            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7] );
-        } else if ( argsLen === 9 ) {
-            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8] );
-        } else if ( argsLen === 10 ) {
-            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8], arguments[9] );
-        } else {
-            var obj  = Object.create( this.prototype );
-            var obj2 = this.apply( obj, arguments );
-
-            if ( Object(obj2) === obj2 ) {
-                return obj2;
-            } else {
-                return obj;
-            }
-        }
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.bind
-
-The same as the old bound, only it also supports lazy arguments.
-
-On top of lazy, it also adds tracking of the bound target. This is needed for
-other function methods, for adding in extras on top.
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.bind = function( target ) {
-        assert( arguments.length > 0, "not enough arguments" );
-
-        var newFun = newPartial( this, target || undefined, arguments, 1, false );
-        newFun.prototype = this.prototype;
-        newFun.__bound = target;
-
-        return newFun;
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## Function.lazy
-
-This is very similar to 'bind'.
-
-It creates a new function, for which you can add on,
-extra parameters.
-
-Where it differes, is that if those parameters are functions,
-they will be executed in turn.
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.lazy = function(target) {
-        var args = arguments;
-        var self = this;
-
-        return (function() {
-                    /*
-                     * The use of -1 and +1,
-                     * with the 'args' array,
-                     * is to skip out the 'target' parameter.
-                     */
-                    var allArgs = new Array( (arguments.length + args.length)-1 )
-                    var argsLen = args.length-1;
-
-                    for ( var i = 0; i < argsLen; i++ ) {
-                        if ( slate.util.isFunction(args[i]) ) {
-                            allArgs[i] = args[i+1]();
-                        } else {
-                            allArgs[i] = args[i+1];
-                        }
-                    }
-
-                    for ( var i = 0; i < arguments.length; i++ ) {
-                        allArgs[ argsLen + i ] = arguments[i];
-                    }
-
-                    return self.apply( target, allArgs );
-                }).proto( this );
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.eventFields
-
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.eventFields = function( field ) {
-        for ( var i = 0; i < arguments.length; i++ ) {
-            var field = arguments[i];
-
-            assert( this[field] === undefined, "overriding existing field with new event stack" );
-
-            this[field] = Function.eventField( this );
-        }
-
-        return this;
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-### newPrototypeArray
-
-
-------------------------------------------------------------------------------- */
-    
-    var newPrototypeArray = function( src, arr, check ) {
-        var hasCheck = ( arguments.length >= 3 );
-        var proto = src.prototype;
-
-        var obj = {};
-        for ( var k in proto ) {
-            if ( proto.hasOwnProperty(k) ) {
-                obj[k] = proto[k];
-            }
-        }
-
-        for ( var i = 0; i < arr.length; i++ ) {
-            var srcObj = arr[i];
-
-            if ( srcObj instanceof Array ) {
-                for ( var j = 0; j < srcObj.length; j++ ) {
-                    var k = srcObj[j];
-
-                    assert( hasCheck, "Function implementation missing for " + k );
-
-                    var alt = check( obj, k, undefined );
-
-                    assert( alt !== undefined, "Function implementation missing for " + k );
-
-                    obj[k] = alt;
-                }
-            } else {
-                while ( (typeof srcObj === 'function') || (srcObj instanceof Function) ) {
-                    srcObj = srcObj.prototype;
-                }
-
-                for ( var k in srcObj ) {
-                    if ( srcObj.hasOwnProperty(k) ) {
-                        if ( hasCheck ) {
-                            var alt = check( obj, k, srcObj[k] );
-
-                            if ( alt !== undefined ) {
-                                obj[k] = alt;
-                            } else {
-                                obj[k] = srcObj[k];
-                            }
-                        } else {
-                            obj[k] = srcObj[k];
-                        }
-                    }
-                }
-            }
-        }
-
-        obj.constructor = src;
-
-        return obj;
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.proto
-
-Duplicates this function, and sets a new prototype for it.
-
-@param The new prototype.
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.proto = function( newProto ) {
-        if ( (typeof newProto === 'function') || (newProto instanceof Function) ) {
-            for ( var k in newProto ) {
-                if ( newProto.hasOwnProperty(k) && k !== 'prototype' ) {
-                    this[k] = newProto[k];
-                }
-            }
-
-            newProto = newProto.prototype;
-        }
-
-        this.prototype = newProto;
-
-        return this;
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.newPrototype
-
-This creates a new prototype,
-with the methods provided extending it.
-
-it's the same as 'extend', but returns an object for use
-as a prototype instead of a funtion.
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.newPrototype = function() {
-        return newPrototypeArray( this, arguments );
-    }
-
-    /**
-     * Used to generate the Function extension methods.
-     */
-    var newFunctionExtend = function( errMsg, isOkCallback ) {
-        return function() {
-            var errors = null;
-
-            var proto = newPrototypeArray( this, arguments, function(dest, k, val) {
-                if ( k !== 'constructor' ) {
-                    var val = isOkCallback(dest, k, val);
-
-                    if (
-                            val !== undefined &&
-                            val !== null &&
-                            val !== false &&
-                            val !== true
-                    ) {
-                        return val;
-                    } else if ( val !== true ) {
-                        if ( errors === null ) {
-                            errors = [ k ];
-                        } else {
-                            errors.push( k );
-                        }
-                    } else {
-                        return undefined;
-                    }
-                }
-            } )
-             
-            if ( errors !== null ) {
-                throw new Error( errMsg + "\n    " + errors.join(', ') );
-            }
-
-            var self = this;
-            var fun = function() {
-                self.apply( this, arguments );
-            }
-
-            fun.prototype = proto;
-            proto.constructor = fun;
-
-            return fun;
-        }
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.override
-
-Same as append, but the methods it overrides *must* exist.
-
-This allows you to have a sanity check.
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.override = newFunctionExtend(
-            "Methods are overriding, but they do not exist,",
-            function(dest, k, val) {
-                return ( dest[k] !== undefined )
-            }
-    )
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.before
-
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.before = newFunctionExtend(
-            "Pre-Adding method behaviour, but original method not found,",
-            function(dest, k, val) {
-                if ( dest[k] === undefined ) {
-                    return undefined;
-                } else {
-                    return dest[k].preSub( val );
-                }
-            }
-    )
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.after
-
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.after = newFunctionExtend(
-            "Adding method behaviour, but original method not found,",
-            function(dest, k, val) {
-                if ( dest[k] === undefined ) {
-                    return undefined;
-                } else {
-                    return dest[k].sub( val );
-                }
-            }
-    )
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.extend
-
-Adds on extra methods, but none of them are allowed 
-to override any others.
-
-This is used as a sanity check.
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.extend = newFunctionExtend(
-            "Extending methods already exist, ",
-            function(dest, k, val) {
-                return ( dest[k] === undefined )
-            }
-    )
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.require
-
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.require = newFunctionExtend(
-            "Pre-Adding method behaviour, but original method not found,",
-            function(dest, k, val) {
-                if ( dest[k] !== undefined ) {
-                    return dest[k];
-                } else {
-                    return function() {
-                        throw new Error( "Function not implemented " + k );
-                    }
-                }
-            }
-    )
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.params
-
-This is just like curry,
-in that you can add extra parameters to this function.
-
-It differs, in that no more parameters can be added
-when the function is called.
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.params = function() {
-        var self = this,
-            args = arguments;
-
-        return (function() {
-                    return self.apply( this, args );
-                }).proto( this );
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.curry
-
-This is essentially the same as 'bind', but with no target given.
-
-It copies this function, and returns a new one, with the parameters given tacked
-on at the start. You can also use the underscore to leave gaps for parameters
-given.
-
-```
-    var f2 = someFunction.curry( _, 1, 2, 3 );
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.curry = function() {
-        return newPartial( this, undefined, arguments, 0, false ).
-                proto( self );
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.postCurry
-
-postCurry is the same as 'curry',
-only the arguments are appended to the end,
-instead of at the front.
-
-With curry ...
-
-```
-     var f2 = f.curry( 1, 2, 3 )
-
-Here f2 becomes:
-
-```
-     function f2( 1, 2, 3, ... ) { }
-
-With 'postCurry', it is the other way around.
-For example:
-
-```
-    var f2 = f.postCurry( 1, 2, 3 ) { }
-
-Here f2 becomes:
-
-```
-    function f2( ..., 1, 2, 3 )
-
-Another example, given the code:
-
-```
-     var f = function( a1, a2, a3, a4 ) {
-         // do nothing
-     }
-     
-     var fRice = f.rice( 1, 2 )
-     fRice( "a", "b" );
-     
-Variables inside f will be ...
-
-```
-     a1 -> "a"
-     a2 -> "b"
-     a3 ->  1
-     a4 ->  2
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.postCurry = function() {
-        return newPartial( this, undefined, arguments, 0, true ).
-                proto( self );
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-### newPartial
-
-------------------------------------------------------------------------------- */
-
-    var newPartial = function( fun, target, initArgs, initArgsStartI, isPostPend ) {
-        return (function() {
-                    if ( target === undefined ) {
-                        target = this;
-                    }
-
-                    /*
-                     * Concat the old and new arguments together,
-                     * into one.
-                     *
-                     * The first check allows us to skip this process,
-                     * if arguments were not supplied for the second call.
-                     */
-                    var combinedArgs;
-                    if ( arguments.length === 0 ) {
-                        for ( var i = initArgsStartI; i < initArgs.length; i++ ) {
-                            if ( initArgs[i] === Lazy ) {
-                                logError( "value not provided for lazy argument" );
-                            }
-                        }
-
-                        combinedArgs = initArgs;
-                    } else {
-                        var argsLen     = arguments.length;
-                        var initArgsLen =  initArgs.length;
-
-                        // post-pend (our args go last)
-                        if ( isPostPend ) {
-                            /*
-                             * combinedArgs = initArgs + arguments
-                             */
-                            combinedArgs = [];
-
-                            for ( var i = initArgsLen-1; i >= initArgsStartI; i-- ) {
-                                var arg = initArgs[i];
-
-                                if ( arg === Lazy ) {
-                                    argsLen--;
-                                    combinedArgs.unshift( arguments[argsLen] );
-                                } else {
-                                    combinedArgs.unshift( initArgs[i] );
-                                }
-                            }
-
-                            assert( argsLen >= 0, "not enough arguments given" );
-
-                            for ( var i = argsLen-1; i >= 0; i++ ) {
-                                combinedArgs.unshift( arguments[i] );
-                            }
-
-                        // pre-pend (normal curry)
-                        } else {
-                            combinedArgs = [];
-                            var startI = 0;
-
-                            for ( var i = initArgsStartI; i < initArgsLen; i++ ) {
-                                var arg = initArgs[i];
-
-                                if ( arg === Lazy ) {
-                                    combinedArgs.push( arguments[startI] );
-                                    startI++;
-                                } else {
-                                    combinedArgs.push( arg );
-                                }
-                            }
-
-                            assert( startI <= argsLen, "not enough arguments given" );
-
-                            while ( startI < argsLen ) {
-                                combinedArgs.push( arguments[startI++] );
-                            }
-                        }
-                    }
-
-                    return fun.apply( target, combinedArgs );
-                });
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.preSub
-
-Copies this function, tacking on the 'pre' function given.
-
-That is because the after behaviour does *not* modify this function,
-but makes a copy first.
-
-@param pre A function to call.
-@return A new function, with the pre behaviour tacked on, to run before it.
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.preSub = function( pre ) {
-        var self = this;
-        return (function() {
-                    pre.apply( this, arguments );
-                    return self.apply( this, arguments );
-                }).
-                proto( this );
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.wrap
-
-This allows you to wrap around this function,
-with new functionality.
-
-Note that with the given 'wrap' function,
-the first parameter is always the function being wrapped.
-So parameters start from index 1, not 0.
-
-@example
-     foo.wrap( function(fooCaller, param1, param2, param3) {
-         param1 *= 2;
-         var fooResult = fooCaller( param1, param2 );
-         return param3 + fooResult;
-     } );
-
-@param wrap The variable to wrap functionality with.
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.wrap = function( wrap ) {
-        assertFunction( wrap, "function not provided for wrap parameter" );
-
-        var self = this;
-        return (function() {
-                    var args = new Array( arguments.length+1 );
-                    for ( var i = 0; i < arguments.length; i++ ) {
-                        args[i+1] = arguments[i];
-                    }
-
-                    args[0] = self.bind( this );
-
-                    return wrap.call( this, arguments );
-                }).
-                proto( this );
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.sub
-
-Copies this function, tacking on the 'post' function given.
-
-This is intended for sub-classing,
-hence the name, 'sub'.
-
-That is because the after behaviour does *not* modify this function,
-but makes a copy first.
-
-@param post A function to call.
-@return A new function, with the post behaviour tacked on.
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.sub = function( post ) {
-        var self = this;
-
-        return (function() {
-                    self.apply( this, arguments );
-                    return post.apply( this, arguments );
-                }).
-                proto( this );
-    }
-
-    var boundOne = function( self, fun ) {
-        return function() {
-            self.apply( this, arguments );
-            return fun.apply( this, arguments );
-        }
-    }
-
-    var boundArr = function( self, funs ) {
-        return (function() {
-            var funsLen = funs.length;
-
-            for ( var i = 0; i < funs-1; i++ ) {
-                funs[i].apply( this, arguments );
-            }
-
-            return funs[funsLen-1].apply( this, arguments );
-        });
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-### addFun
-
-Used in conjunction with 'Object.method',
-it allows you to chain method calls.
-
-------------------------------------------------------------------------------- */
-
-    var andFun = function( self, args ) {
-        var method = args[0];
-        var bound = self.__bound;
-        assert( bound, self.name + " has not been bound to anything" );
-
-        return this.then(
-                bound.methodApply( method, args, 1 )
-        )
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.then
-
-Mixes the functions given, onto this one, like sub.
-
-The other use is if called on a 'bound' function,
-then this is the same as calling 'method',
-on that object it is bound to,
-if the first parameter is a string.
-
-i.e.
- 
-```
-     var doAB = obj.method( 'doA' ).then( 'doB' );
-
-... is the same as ...
-
-```
-     var doAB = function() {
-         obj.doA();
-         obj.doB();
-     }
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.then = function() {
-        var argsLen = arguments.length,
-            args = arguments;
-
-        if ( argsLen === 0 ) {
-            logError( "not enough parameters" );
-        } else {
-            var arg = arguments[0];
-
-            if ( isFunction(arg) ) {
-                if ( argsLen === 1 ) {
-                    return boundOne( this, arguments[0] );
-                } else {
-                    return boundArr( this, arguments );
-                }
-            } else {
-                return andFun( this, arguments );
-            }
-        }
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.subBefore
-
-When called, a copy of this function is returned,
-with the given 'pre' function tacked on before it.
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.subBefore = function( pre ) {
-        return (function() {
-                    post.call( this, arguments );
-                    return self.call( this, arguments );
-                }).
-                proto( this );
-    }
-
- /* Time Functions
-==============
-
--------------------------------------------------------------------------------
-
-## function.callLater
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.callLater = function( target ) {
-        var argsLen = arguments.length;
-        var self = this;
-
-        if ( argsLen <= 1 ) {
-            return setTimeout( function() {
-                self.call( target );
-            }, 0 );
-        } else if ( argsLen === 2 ) {
-            var param1 = arguments[1];
-
-            return setTimeout( function() {
-                self.call( target, param1 );
-            }, 0 );
-        } else if ( argsLen === 3 ) {
-            var param1 = arguments[1];
-            var param2 = arguments[2];
-
-            return setTimeout( function() {
-                self.call( target, param1, param2 );
-            }, 0 );
-        } else if ( argsLen === 4 ) {
-            var param1 = arguments[1];
-            var param2 = arguments[2];
-            var param3 = arguments[3];
-
-            return setTimeout( function() {
-                self.call( target, param1, param2, param3 );
-            }, 0 );
-        } else {
-            return this.applyLater( target, arguments );
-        }
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.applyLater
-
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.applyLater = function( target, args ) {
-        if ( arguments.length <= 1 ) {
-            args = new Array(0);
-        }
-
-        var self = this;
-
-        return setTimeout( function() {
-            self.apply( target, args );
-        }, 0 );
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-## function.later
-
-Sets this function to be called later.
-If a timeout is given, then that is how long it
-will wait for.
-
-If no timeout is given, it defaults to 0.
-
-Cancelling the timeout can be done using 'clearTimeout'.
-
-@param target Optional, a target object to bind this function to.
-@param timeout Optional, the timeout to wait before calling this function, defaults to 0.
-@return The setTimeout identifier token, allowing you to cancel the timeout.
-
-------------------------------------------------------------------------------- */
-
-    Function.prototype.later = function( timeout ) {
-        var fun = this;
-
-        if ( arguments.length === 0 ) {
-            timeout = 0;
-        } else if ( ! (typeof timeout === 'number') ) {
-            fun = fun.bind( timeout );
-
-            if ( arguments.length > 1 ) {
-                timeout = arguments[1];
-            } else {
-                timeout = 0;
-            }
-        }
-
-        return setTimeout( fun, timeout );
-    }
-
-
-})();
-"use strict";
-
-(function() {
-    var IS_TOUCH = !! ('ontouchstart' in window)  // works on most browsers 
-                || !!('onmsgesturechange' in window); // works on IE 10
-
-    /**
-     * How quickly someone must tap,
-     * for it to be a 'fast click'.
-     *
-     * In milliseconds.
-     */
-    var FAST_CLICK_DURATION = 150,
-        FAST_CLICK_DIST = 20,
-        SLOW_CLICK_DIST = 15;
-
-    var startTouch = function( xy, touch ) {
-        if ( touch ) {
-            xy.finger = touch.identifier;
-            xy.timestart = Date.now();
-
-            updateXY( xy, touch, false );
-
-            return true;
-        } else {
-            return false;
-        }
-    };
-
-    var updateXY = function( xy, ev, updateMove ) {
-        var x,
-            y;
-
-        if ( ev.offsetX !== undefined ) { // Opera
-            x = ev.offsetX;
-            y = ev.offsetY;
-        } else if ( ev.layerX !== undefined ) { // Firefox
-            x = ev.layerX;
-            y = ev.layerY;
-        } else if ( ev.clientX !== undefined ) {
-            x = ev.clientX;
-            y = ev.clientY;
-
-            for (
-                    var tag = ev.target;
-                    tag.offsetParent;
-                    tag = tag.offsetParent
-            ) {
-                x -= tag.offsetLeft;
-                y -= tag.offsetTop;
-            }
-        // fail, so just put no movement in
-        } else {
-            x = 0;
-            y = 0;
-        }
-
-        if ( updateMove ) {
-            xy.moveX += (xy.x - x)
-            xy.moveY += (xy.y - y)
-        } else {
-            xy.moveX = 0;
-            xy.moveY = 0;
-        }
-
-        xy.x = x;
-        xy.y = y;
-    }
-
-    var pressBuilder = function( el, onDown, onMove, onUp ) {
-        if ( ! (el instanceof HTMLElement) ) {
-            throw new Error( "non-html element given" );
-        }
-
-        var xy = {
-                timestart : 0,
-                finger    : 0,
-
-                x: 0,
-                y: 0,
-
-                moveX: 0,
-                moveY: 0
-        };
-
-        if ( IS_TOUCH ) {
-            var touchstart = function( ev ) {
-                var touch = ev.changedTouches[ 0 ];
-        
-                if ( startTouch(xy, touch) ) {
-                    onDown.call( el, ev, touch );
-                }
-            }
-
-            el.addEventListener( 'touchstart', touchstart, false );
-
-            el.addEventListener( 'touchmove', function(ev) {
-                if ( xy.finger === -1 ) {
-                    touchstart( ev );
-                } else {
-                    for ( var i = 0; i < ev.changedTouches.length; i++ ) {
-                        var touch = ev.changedTouches[ i ];
-                    
-                        if ( touch && touch.identifier === xy.finger ) {
-                            onMove.call( el, ev, touch );
-                            return;
-                        }
-                    }
-                }
-            }, false );
-
-            var touchEnd = function(ev) {
-                for ( var i = 0; i < ev.changedTouches.length; i++ ) {
-                    var touch = ev.changedTouches[ i ];
-                
-                    if ( touch && touch.identifier === xy.finger ) {
-                        xy.finger = -1;
-
-                        updateXY( xy, touch, true );
-
-                        var duration = Date.now() - xy.timestart;
-                        var dist = Math.sqrt( xy.moveX*xy.moveX + xy.moveY*xy.moveY )
-
-                        if (
-                                ( dist < FAST_CLICK_DIST && duration < FAST_CLICK_DURATION ) ||
-                                  dist < SLOW_CLICK_DIST
-                        ) {
-                            // true is a click
-                            onUp.call( el, ev, touch, true );
-                        } else {
-                            // false is a hold
-                            onUp.call( el, ev, touch, false );
-                        }
-
-                        return;
-                    }
-                }
-            }
-
-            document.getElementsByTagName('body')[0].
-                    addEventListener( 'touchend', touchEnd );
-            el.addEventListener( 'touchend', touchEnd, false );
-
-            el.addEventListener( 'click', function(ev) {
-                if ( (ev.which || ev.button) === 1 ) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                }
-            } );
-        } else {
-            var isDown = false;
-
-            el.addEventListener( 'mousedown', function(ev) {
-                ev = ev || window.event;
-
-                if ( (ev.which || ev.button) === 1 ) {
-                    isDown = true;
-                    onDown.call( el, ev, ev );
-                }
-            } );
-
-            el.addEventListener( 'mousemove', function(ev) {
-                ev = ev || window.event;
-
-                if ( (ev.which || ev.button) === 1 && isDown ) {
-                    onMove.call( el, ev, ev );
-                }
-            } );
-
-            el.addEventListener( 'mouseup', function(ev) {
-                ev = ev || window.event;
-
-                if ( (ev.which || ev.button) === 1 && isDown ) {
-                    isDown = false;
-                    onUp.call( el, ev, ev );
-                }
-            } );
-        }
-
-        return el;
-    };
-
-    var clickBuilder = function( el, callback ) {
-        if ( ! (el instanceof HTMLElement) ) {
-            throw new Error( "non-html element given" );
-        }
-
-        var xy = { finger: -1, timestart: 0, x: 0, y: 0, moveX: 0, moveY: 0 };
-
-        if ( IS_TOUCH ) {
-            var touchstart = function(ev) {
-                startTouch( xy, ev.changedTouches[0] );
-            };
-
-            el.addEventListener( 'touchstart', touchstart, false );
-
-            el.addEventListener( 'touchmove', function(ev) {
-                if ( xy.finger === -1 ) {
-                    touchstart( ev );
-                } else {
-                    for ( var i = 0; i < ev.changedTouches.length; i++ ) {
-                        var touch = ev.changedTouches[ i ];
-                    
-                        if ( touch && touch.identifier === xy.finger ) {
-                            updateXY( xy, touch, true );
-                            return;
-                        }
-                    }
-                }
-            }, false )
-
-            el.addEventListener( 'touchend', function(ev) {
-                for ( var i = 0; i < ev.changedTouches.length; i++ ) {
-                    var touch = ev.changedTouches[ i ];
-                    
-                    if ( touch && touch.identifier === xy.finger ) {
-                        xy.finger = -1;
-
-                        updateXY( xy, touch, true );
-
-                        var duration = Date.now() - xy.timestart;
-                        var dist = Math.sqrt( xy.moveX*xy.moveX + xy.moveY*xy.moveY )
-
-                        if (
-                                ( dist < FAST_CLICK_DIST && duration < FAST_CLICK_DURATION ) ||
-                                  dist < SLOW_CLICK_DIST
-                        ) {
-                            callback.call( el, ev );
-                            ev.preventDefault();
-                        }
-
-                        return;
-                    }
-                }
-            }, false )
-
-            var killEvent = function(ev) {
-                if ( (ev.which || ev.button) === 1 ) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                }
-            }
-
-            el.addEventListener( 'click'    , killEvent );
-            el.addEventListener( 'mouseup'  , killEvent );
-            el.addEventListener( 'mousedown', killEvent );
-        } else {
-            el.addEventListener( 'click', function(ev) {
-                ev = ev || window.event;
-
-                if ( (ev.which || ev.button) === 1 ) {
-                    ev.preventDefault();
-                
-                    callback.call( el, ev, ev );
-                }
-            } );
-        }
-
-        return el;
-    };
-
-    var holdBuilder = IS_TOUCH ?
-            function( el, fun ) {
-                pressBuilder(
-                        el,
-
-                        // goes down
-                        function(ev) {
-                            fun.call( el, ev, true, false );
-                        },
-
-                        // moves
-                        function(ev) {
-                            // do nothing
-                        },
-
-                        function(ev, touchEv, isClick) {
-                            fun.call( el, ev, false, isClick );
-                        }
-                )
-
-                return el;
-            } :
-            function( el, fun ) {
-                var isDown = false;
-
-                el.addEventListener( 'mousedown', function(ev) {
-                    ev = ev || window.event;
-
-                    if ( (ev.which || ev.button) === 1 ) {
-                        ev.preventDefault();
-                    
-                        isDown = true;
-                        fun.call( el, ev, true );
-                    }
-                } );
-
-                el.addEventListener( 'mouseup', function(ev) {
-                    ev = ev || window.event;
-
-                    if ( (ev.which || ev.button) === 1 && isDown ) {
-                        ev.preventDefault();
-                    
-                        isDown = false;
-                        fun.call( el, ev, false );
-                    }
-                } );
-
-                return el;
-            } ;
-
-    var touchy = window['touchy'] = {
-            click: clickBuilder,
-            press: pressBuilder,
-            hold : holdBuilder
-    }
 })();
