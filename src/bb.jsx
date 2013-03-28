@@ -22,6 +22,14 @@ it will be of this type by default.
 
     var TYPE_NAME_PROPERTY = 'nodeName';
 
+    var STOP_PROPAGATION_FUN = function( ev ) {
+        ev.stopPropagation();
+    }
+
+    var PREVENT_DEFAULT_FUN = function( ev ) {
+        ev.preventDefault();
+    }
+
     var listToMap = function() {
         var elements = {};
 
@@ -330,12 +338,22 @@ in a callback method.
         }
     }
 
+    var setEvent = function( dom, name, fun ) {
+        if ( name instanceof Array ) {
+            for ( var i = 0; i < name.length; i++ ) {
+                setEvent( dom, name[i], fun );
+            }
+        } else {
+            dom.addEventListener( name, fun, false );
+        }
+    }
+
     var setOn = function( events, dom, name, fun, useCapture ) {
         assert( dom, "null or undefined dom given", dom );
 
         if ( name instanceof Array ) {
             for ( var i = 0; i < name.length; i++ ) {
-                setOn( events, dom, name, fun, useCapture );
+                setOn( events, dom, name[i], fun, useCapture );
             }
         } else {
             if ( dom instanceof Element ) {
@@ -831,6 +849,12 @@ in a callback method.
                 dom.value = val
             }
 
+        } else if ( k === 'stopPropagation' ) {
+            setEvent( dom, val, STOP_PROPAGATION_FUN );
+
+        } else if ( k === 'preventDefault' ) {
+            setEvent( dom, val, PREVENT_DEFAULT_FUN );
+
         } else if ( k === 'self' || k === 'this' ) {
             assertFunction( val, "none function given for 'self' attribute" );
 
@@ -839,6 +863,10 @@ in a callback method.
             } else {
                 val.call( dom, dom );
             }
+
+        } else if ( k === 'addTo' ) {
+            assert( dom.parentNode === null, "dom element already has a parent" );
+            createOne( bb, val ).appendChild( dom );
 
         /* Events */
 
@@ -1767,8 +1795,21 @@ to the text values given.
  - className
  - id
  - style
+
  - html
- - text
+ - text     Sets the textContent of this element.
+ - value,   Sets the value within this element. This applies to inputs and
+            textareas.
+
+ - stopPropagation For the events named, they are set, with a function which 
+            will simply stop propagation of that event.
+ - preventDefault  For the events named, this will set a function, which
+            prevents the default action from taking place.
+
+ - addTo,   given an element (or a description of an element), this element
+            is added to the one given.
+
+Anything else is set as an attribute of the object.
 
 -------------------------------------------------------------------------------
 
