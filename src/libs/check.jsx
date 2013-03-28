@@ -36,7 +36,7 @@ For regular objects do ...
 
 -------------------------------------------------------------------------------
 
-    window['isObject'] = function( obj ) {
+    var isObject = window['isObject'] = function( obj ) {
         if ( obj !== undefined && obj !== null ) {
             var proto = obj.__proto__;
 
@@ -49,6 +49,8 @@ For regular objects do ...
         return false;
     }
 
+
+
 -------------------------------------------------------------------------------
 
 ## isFunction
@@ -58,9 +60,11 @@ For regular objects do ...
 
 -------------------------------------------------------------------------------
 
-    window['isFunction'] = function( f ) {
+    var isFunction = window['isFunction'] = function( f ) {
         return ( typeof f === 'function' ) || ( f instanceof Function );
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -71,9 +75,11 @@ For regular objects do ...
 
 -------------------------------------------------------------------------------
 
-    window['isNumber'] = function( n ) {
+    var isNumber = window['isNumber'] = function( n ) {
         return ( typeof n === 'number' ) || ( n instanceof Number );
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -87,11 +93,13 @@ This is either an actual number, or a string which represents one.
 
 -------------------------------------------------------------------------------
 
-    window['isNumeric'] = function( str ) {
+    var isNumeric = window['isNumeric'] = function( str ) {
         return ( typeof str === 'number' ) ||
                ( str instanceof Number   ) ||
                ( String(str).search( /^\s*(\+|-)?((\d+(\.\d+)?)|(\.\d+))\s*$/ ) !== -1 )
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -102,9 +110,11 @@ This is either an actual number, or a string which represents one.
 
 -------------------------------------------------------------------------------
 
-    window['isString'] = function( str ) {
+    var isString = window['isString'] = function( str ) {
         return ( typeof str === 'string' ) || ( str instanceof String );
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -119,7 +129,7 @@ as Number or String).
 
 -------------------------------------------------------------------------------
 
-    window['isLiteral'] = function(obj) {
+    var isLiteral = window['isLiteral'] = function(obj) {
         return isString(obj) ||
                 isNumber(obj) ||
                 obj === undefined ||
@@ -127,6 +137,8 @@ as Number or String).
                 obj === true ||
                 obj === false
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -142,8 +154,8 @@ this.
 
 -------------------------------------------------------------------------------
 
-    window['isArrayArguments'] = function( arr ) {
-        return ( arr instanceof Array ) ||
+    var isArrayArguments = window['isArrayArguments'] = function( arr ) {
+        return isArray(arr) ||
                (
                        arr !== undefined &&
                        arr !== null &&
@@ -151,6 +163,8 @@ this.
                        arr.length !== undefined
                )
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -164,9 +178,11 @@ include them, use 'isArrayArguments'.
 
 -------------------------------------------------------------------------------
 
-    window['isArray'] = function( arr ) {
-        return ( arr instanceof Array );
-    }
+    var isArray = window['isArray'] = Array.isArray ?
+            Array.isArray :
+            function( arr ) {
+                return ( arr instanceof Array );
+            } ;
 
 
 Assertions
@@ -247,8 +263,11 @@ An Error type, specific for assertions.
             console.error( "\n" + errStr );
         }
     }
+
     AssertionError.prototype = new Error();
     AssertionError.prototype.constructor = AssertionError;
+
+
 
 -------------------------------------------------------------------------------
 
@@ -275,6 +294,8 @@ second.
         AssertionError.apply( err, args );
         return err;
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -309,11 +330,13 @@ throw new Error, built together, as one.
 
 -------------------------------------------------------------------------------
 
-    window["logError"] = function( msg ) {
+    var logError = window["logError"] = function( msg ) {
         var err = Object.create( AssertionError.prototype );
         AssertionError.apply( err, arguments );
         throw err;
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -326,11 +349,13 @@ Note that 0 and empty strings, will not cause failure.
 
 -------------------------------------------------------------------------------
 
-    window["assert"] = function( test, msg ) {
+    var assert = window["assert"] = function( test, msg ) {
         if ( test === undefined || test === null || test === false ) {
             throw newAssertionError( arguments );
         }
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -345,7 +370,7 @@ Note that 0 and empty strings, will cause failure.
 
 -------------------------------------------------------------------------------
 
-    window["assertNot"] = function( test, msg ) {
+    var assertNot = window["assertNot"] = function( test, msg ) {
         if (
                 test !== false &&
                 test !== null &&
@@ -354,6 +379,8 @@ Note that 0 and empty strings, will cause failure.
             throw newAssertionError( arguments, "item is truthy" );
         }
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -366,9 +393,11 @@ This always throws an assertion error.
 
 -------------------------------------------------------------------------------
 
-    window["assertUnreachable"] = function( msg ) {
+    var assertUnreachable = window["assertUnreachable"] = function( msg ) {
         assert( false, msg || "this section of code should never be reached" );
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -380,11 +409,13 @@ objects that this allows.
 
 -------------------------------------------------------------------------------
 
-    window["assertObject"] = function( obj, msg ) {
+    var assertObject = window["assertObject"] = function( obj, msg ) {
         if ( ! isObject(obj) ) {
             throw newAssertionError( arguments, "code expected a JSON object literal" );
         }
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -398,11 +429,13 @@ a literal value.
 
 -------------------------------------------------------------------------------
 
-    window["assertLiteral"] = function( obj, msg ) {
+    var assertLiteral = window["assertLiteral"] = function( obj, msg ) {
         if ( ! isLiteral(obj) ) {
             throw newAssertionError( arguments, "primitive value expected" );
         }
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -413,11 +446,13 @@ a literal value.
 
 -------------------------------------------------------------------------------
 
-    window["assertFunction"] = function( f, msg ) {
+    var assertFunction = window["assertFunction"] = function( f, msg ) {
         if ( typeof f !== 'function' && !(f instanceof Function) ) {
             throw newAssertionError( arguments, "function expected" );
         }
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -428,11 +463,13 @@ a literal value.
 
 -------------------------------------------------------------------------------
 
-    window["assertBool"] = function( f, msg ) {
+    var assertBool = window["assertBool"] = function( f, msg ) {
         if ( f !== true && f !== false ) {
             throw newAssertionError( arguments, "boolean expected" );
         }
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -443,11 +480,13 @@ a literal value.
 
 -------------------------------------------------------------------------------
 
-    window["assertArray"] = function( arr, msg ) {
-        if ( ! (arr instanceof Array) && (arr.length === undefined) ) {
+    var assertArray = window["assertArray"] = function( arr, msg ) {
+        if ( ! isArray(arr) && (arr.length === undefined) ) {
             throw newAssertionError( arguments, "array expected" );
         }
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -458,11 +497,13 @@ a literal value.
 
 -------------------------------------------------------------------------------
 
-    window["assertString"] = function( str, msg ) {
+    var assertString = window["assertString"] = function( str, msg ) {
         if ( typeof str !== 'string' && !(str instanceof String) ) {
             throw newAssertionError( arguments, "string expected" );
         }
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -475,8 +516,10 @@ This includes both number primitives, and Number objects.
 
 -------------------------------------------------------------------------------
 
-    window["assertNumber"] = function( n, msg ) {
+    var assertNumber = window["assertNumber"] = function( n, msg ) {
         if ( typeof n !== 'number' && !(n instanceof Number) ) {
             throw newAssertionError( arguments, "number expected" );
         }
     }
+
+

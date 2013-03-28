@@ -9,9 +9,15 @@ constructs.
 
 Also includes some helper functions, to make working with functions easier.
 
+===============================================================================
+
+## Utility Functions
+
+===============================================================================
+
 -------------------------------------------------------------------------------
     
-# Lazy
+### Lazy
 
 A system for describing lazy parameters. When using bind, method, or curry,
 this gives you exact control over *which* parameters can be omitted.
@@ -37,146 +43,28 @@ In the example, the parameter left out is exactly defined, using the underscore.
 
     window['_'] = Lazy;
 
+-------------------------------------------------------------------------------
 
+### extend
 
 -------------------------------------------------------------------------------
 
-## Function.create
-
-The equivalent to calling 'new Fun()'.
-
-The reason this exists, is because by oferring it as a function,
-you can then bind and pass it around.
-
--------------------------------------------------------------------------------
-
-    Function.create = function() {
-        var argsLen = arguments.length;
-
-        if ( argsLen === 0 ) {
-            return new this();
-        } else if ( argsLen === 1 ) {
-            return new this( arguments[0] );
-        } else if ( argsLen === 2 ) {
-            return new this( arguments[0], arguments[1] );
-        } else if ( argsLen === 3 ) {
-            return new this( arguments[0], arguments[1], arguments[2] );
-        } else if ( argsLen === 4 ) {
-            return new this( arguments[0], arguments[1], arguments[2], arguments[3] );
-        } else if ( argsLen === 5 ) {
-            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4] );
-        } else if ( argsLen === 6 ) {
-            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5] );
-        } else if ( argsLen === 7 ) {
-            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6] );
-        } else if ( argsLen === 8 ) {
-            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7] );
-        } else if ( argsLen === 9 ) {
-            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8] );
-        } else if ( argsLen === 10 ) {
-            return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8], arguments[9] );
-        } else {
-            var obj  = Object.create( this.prototype );
-            var obj2 = this.apply( obj, arguments );
-
-            if ( Object(obj2) === obj2 ) {
-                return obj2;
-            } else {
-                return obj;
+    var extend = function( obj, props ) {
+        for ( var k in props ) {
+            if ( props.hasOwnProperty(k) ) {
+                if ( Object.defineProperty !== undefined ) {
+                    Object.defineProperty( obj, k, {
+                            value           : props[k], 
+                            enumerable      : false,
+                            writable        : true,
+                            configurable    : true
+                    } );
+                } else {
+                    obj[k] = props[k];
+                }
             }
         }
     }
-
-
-
--------------------------------------------------------------------------------
-
-## function.bind
-
-The same as the old bound, only it also supports lazy arguments.
-
-On top of lazy, it also adds tracking of the bound target. This is needed for
-other function methods, for adding in extras on top.
-
--------------------------------------------------------------------------------
-
-    Function.prototype.bind = function( target ) {
-        assert( arguments.length > 0, "not enough arguments" );
-
-        var newFun = newPartial( this, target || undefined, arguments, 1, false );
-        newFun.prototype = this.prototype;
-        newFun.__bound = target;
-
-        return newFun;
-    }
-
-
-
--------------------------------------------------------------------------------
-
-## Function.lazy
-
-This is very similar to 'bind'.
-
-It creates a new function, for which you can add on,
-extra parameters.
-
-Where it differes, is that if those parameters are functions,
-they will be executed in turn.
-
--------------------------------------------------------------------------------
-
-    Function.prototype.lazy = function(target) {
-        var args = arguments;
-        var self = this;
-
-        return (function() {
-                    /*
-                     * The use of -1 and +1,
-                     * with the 'args' array,
-                     * is to skip out the 'target' parameter.
-                     */
-                    var allArgs = new Array( (arguments.length + args.length)-1 )
-                    var argsLen = args.length-1;
-
-                    for ( var i = 0; i < argsLen; i++ ) {
-                        if ( slate.util.isFunction(args[i]) ) {
-                            allArgs[i] = args[i+1]();
-                        } else {
-                            allArgs[i] = args[i+1];
-                        }
-                    }
-
-                    for ( var i = 0; i < arguments.length; i++ ) {
-                        allArgs[ argsLen + i ] = arguments[i];
-                    }
-
-                    return self.apply( target, allArgs );
-                }).proto( this );
-    }
-
-
-
--------------------------------------------------------------------------------
-
-## function.eventFields
-
-
--------------------------------------------------------------------------------
-
-    Function.prototype.eventFields = function( field ) {
-        for ( var i = 0; i < arguments.length; i++ ) {
-            var field = arguments[i];
-
-            assert( this[field] === undefined, "overriding existing field with new event stack" );
-
-            this[field] = Function.eventField( this );
-        }
-
-        return this;
-    }
-
-
 
 -------------------------------------------------------------------------------
 
@@ -240,50 +128,11 @@ they will be executed in turn.
     }
 
 
-
 -------------------------------------------------------------------------------
 
-## function.proto
-
-Duplicates this function, and sets a new prototype for it.
-
-@param The new prototype.
+### newFunctionExtend
 
 -------------------------------------------------------------------------------
-
-    Function.prototype.proto = function( newProto ) {
-        if ( (typeof newProto === 'function') || (newProto instanceof Function) ) {
-            for ( var k in newProto ) {
-                if ( newProto.hasOwnProperty(k) && k !== 'prototype' ) {
-                    this[k] = newProto[k];
-                }
-            }
-
-            newProto = newProto.prototype;
-        }
-
-        this.prototype = newProto;
-
-        return this;
-    }
-
-
-
--------------------------------------------------------------------------------
-
-## function.newPrototype
-
-This creates a new prototype,
-with the methods provided extending it.
-
-it's the same as 'extend', but returns an object for use
-as a prototype instead of a funtion.
-
--------------------------------------------------------------------------------
-
-    Function.prototype.newPrototype = function() {
-        return newPrototypeArray( this, arguments );
-    }
 
     /**
      * Used to generate the Function extension methods.
@@ -329,208 +178,6 @@ as a prototype instead of a funtion.
 
             return fun;
         }
-    }
-
-
-
--------------------------------------------------------------------------------
-
-## function.override
-
-Same as append, but the methods it overrides *must* exist.
-
-This allows you to have a sanity check.
-
--------------------------------------------------------------------------------
-
-    Function.prototype.override = newFunctionExtend(
-            "Methods are overriding, but they do not exist,",
-            function(dest, k, val) {
-                return ( dest[k] !== undefined )
-            }
-    )
-
-
-
--------------------------------------------------------------------------------
-
-## function.before
-
-
--------------------------------------------------------------------------------
-
-    Function.prototype.before = newFunctionExtend(
-            "Pre-Adding method behaviour, but original method not found,",
-            function(dest, k, val) {
-                if ( dest[k] === undefined ) {
-                    return undefined;
-                } else {
-                    return dest[k].preSub( val );
-                }
-            }
-    )
-
-
-
--------------------------------------------------------------------------------
-
-## function.after
-
-
--------------------------------------------------------------------------------
-
-    Function.prototype.after = newFunctionExtend(
-            "Adding method behaviour, but original method not found,",
-            function(dest, k, val) {
-                if ( dest[k] === undefined ) {
-                    return undefined;
-                } else {
-                    return dest[k].sub( val );
-                }
-            }
-    )
-
-
-
--------------------------------------------------------------------------------
-
-## function.extend
-
-Adds on extra methods, but none of them are allowed 
-to override any others.
-
-This is used as a sanity check.
-
--------------------------------------------------------------------------------
-
-    Function.prototype.extend = newFunctionExtend(
-            "Extending methods already exist, ",
-            function(dest, k, val) {
-                return ( dest[k] === undefined )
-            }
-    )
-
-
-
--------------------------------------------------------------------------------
-
-## function.require
-
-
--------------------------------------------------------------------------------
-
-    Function.prototype.require = newFunctionExtend(
-            "Pre-Adding method behaviour, but original method not found,",
-            function(dest, k, val) {
-                if ( dest[k] !== undefined ) {
-                    return dest[k];
-                } else {
-                    return function() {
-                        throw new Error( "Function not implemented " + k );
-                    }
-                }
-            }
-    )
-
-
-
--------------------------------------------------------------------------------
-
-## function.params
-
-This is just like curry,
-in that you can add extra parameters to this function.
-
-It differs, in that no more parameters can be added
-when the function is called.
-
--------------------------------------------------------------------------------
-
-    Function.prototype.params = function() {
-        var self = this,
-            args = arguments;
-
-        return (function() {
-                    return self.apply( this, args );
-                }).proto( this );
-    }
-
-
-
--------------------------------------------------------------------------------
-
-## function.curry
-
-This is essentially the same as 'bind', but with no target given.
-
-It copies this function, and returns a new one, with the parameters given tacked
-on at the start. You can also use the underscore to leave gaps for parameters
-given.
-
-```
-    var f2 = someFunction.curry( _, 1, 2, 3 );
-
--------------------------------------------------------------------------------
-
-    Function.prototype.curry = function() {
-        return newPartial( this, undefined, arguments, 0, false ).
-                proto( self );
-    }
-
-
-
--------------------------------------------------------------------------------
-
-## function.postCurry
-
-postCurry is the same as 'curry',
-only the arguments are appended to the end,
-instead of at the front.
-
-With curry ...
-
-```
-     var f2 = f.curry( 1, 2, 3 )
-
-Here f2 becomes:
-
-```
-     function f2( 1, 2, 3, ... ) { }
-
-With 'postCurry', it is the other way around.
-For example:
-
-```
-    var f2 = f.postCurry( 1, 2, 3 ) { }
-
-Here f2 becomes:
-
-```
-    function f2( ..., 1, 2, 3 )
-
-Another example, given the code:
-
-```
-     var f = function( a1, a2, a3, a4 ) {
-         // do nothing
-     }
-     
-     var fRice = f.rice( 1, 2 )
-     fRice( "a", "b" );
-     
-Variables inside f will be ...
-
-```
-     a1 -> "a"
-     a2 -> "b"
-     a3 ->  1
-     a4 ->  2
-
--------------------------------------------------------------------------------
-
-    Function.prototype.postCurry = function() {
-        return newPartial( this, undefined, arguments, 0, true ).
-                proto( self );
     }
 
 
@@ -622,97 +269,7 @@ Variables inside f will be ...
 
 
 -------------------------------------------------------------------------------
-
-## function.preSub
-
-Copies this function, tacking on the 'pre' function given.
-
-That is because the after behaviour does *not* modify this function,
-but makes a copy first.
-
-@param pre A function to call.
-@return A new function, with the pre behaviour tacked on, to run before it.
-
 -------------------------------------------------------------------------------
-
-    Function.prototype.preSub = function( pre ) {
-        var self = this;
-        return (function() {
-                    pre.apply( this, arguments );
-                    return self.apply( this, arguments );
-                }).
-                proto( this );
-    }
-
-
-
--------------------------------------------------------------------------------
-
-## function.wrap
-
-This allows you to wrap around this function,
-with new functionality.
-
-Note that with the given 'wrap' function,
-the first parameter is always the function being wrapped.
-So parameters start from index 1, not 0.
-
-@example
-     foo.wrap( function(fooCaller, param1, param2, param3) {
-         param1 *= 2;
-         var fooResult = fooCaller( param1, param2 );
-         return param3 + fooResult;
-     } );
-
-@param wrap The variable to wrap functionality with.
-
--------------------------------------------------------------------------------
-
-    Function.prototype.wrap = function( wrap ) {
-        assertFunction( wrap, "function not provided for wrap parameter" );
-
-        var self = this;
-        return (function() {
-                    var args = new Array( arguments.length+1 );
-                    for ( var i = 0; i < arguments.length; i++ ) {
-                        args[i+1] = arguments[i];
-                    }
-
-                    args[0] = self.bind( this );
-
-                    return wrap.call( this, arguments );
-                }).
-                proto( this );
-    }
-
-
-
--------------------------------------------------------------------------------
-
-## function.sub
-
-Copies this function, tacking on the 'post' function given.
-
-This is intended for sub-classing,
-hence the name, 'sub'.
-
-That is because the after behaviour does *not* modify this function,
-but makes a copy first.
-
-@param post A function to call.
-@return A new function, with the post behaviour tacked on.
-
--------------------------------------------------------------------------------
-
-    Function.prototype.sub = function( post ) {
-        var self = this;
-
-        return (function() {
-                    self.apply( this, arguments );
-                    return post.apply( this, arguments );
-                }).
-                proto( this );
-    }
 
     var boundOne = function( self, fun ) {
         return function() {
@@ -720,6 +277,11 @@ but makes a copy first.
             return fun.apply( this, arguments );
         }
     }
+
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
     var boundArr = function( self, funs ) {
         return (function() {
@@ -756,9 +318,504 @@ it allows you to chain method calls.
 
 
 
+===============================================================================
+
+## Function Methods
+
+===============================================================================
+
 -------------------------------------------------------------------------------
 
-## function.then
+### Function.create
+
+The equivalent to calling 'new Fun()'.
+
+The reason this exists, is because by oferring it as a function,
+you can then bind and pass it around.
+
+-------------------------------------------------------------------------------
+
+    extend( Function, {
+        create: function() {
+            var argsLen = arguments.length;
+
+            if ( argsLen === 0 ) {
+                return new this();
+            } else if ( argsLen === 1 ) {
+                return new this( arguments[0] );
+            } else if ( argsLen === 2 ) {
+                return new this( arguments[0], arguments[1] );
+            } else if ( argsLen === 3 ) {
+                return new this( arguments[0], arguments[1], arguments[2] );
+            } else if ( argsLen === 4 ) {
+                return new this( arguments[0], arguments[1], arguments[2], arguments[3] );
+            } else if ( argsLen === 5 ) {
+                return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4] );
+            } else if ( argsLen === 6 ) {
+                return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5] );
+            } else if ( argsLen === 7 ) {
+                return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6] );
+            } else if ( argsLen === 8 ) {
+                return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7] );
+            } else if ( argsLen === 9 ) {
+                return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8] );
+            } else if ( argsLen === 10 ) {
+                return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8], arguments[9] );
+            } else {
+                var obj  = Object.create( this.prototype );
+                var obj2 = this.apply( obj, arguments );
+
+                if ( Object(obj2) === obj2 ) {
+                    return obj2;
+                } else {
+                    return obj;
+                }
+            }
+        }
+    });
+
+===============================================================================
+
+## Function.protototype extensions
+
+Methods for function objects.
+
+===============================================================================
+
+    extend( Function.prototype, {
+
+-------------------------------------------------------------------------------
+
+### function.bind
+
+The same as the old bound, only it also supports lazy arguments.
+
+On top of lazy, it also adds tracking of the bound target. This is needed for
+other function methods, for adding in extras on top.
+
+-------------------------------------------------------------------------------
+
+        bind: function( target ) {
+            assert( arguments.length > 0, "not enough arguments" );
+
+            var newFun = newPartial( this, target || undefined, arguments, 1, false );
+            newFun.prototype = this.prototype;
+            newFun.__bound = target;
+
+            return newFun;
+        },
+
+
+
+-------------------------------------------------------------------------------
+
+### Function.lazy
+
+This is very similar to 'bind'.
+
+It creates a new function, for which you can add on,
+extra parameters.
+
+Where it differes, is that if those parameters are functions,
+they will be executed in turn.
+
+-------------------------------------------------------------------------------
+
+        lazy: function(target) {
+            var args = arguments;
+            var self = this;
+
+            return (function() {
+                        /*
+                         * The use of -1 and +1,
+                         * with the 'args' array,
+                         * is to skip out the 'target' parameter.
+                         */
+                        var allArgs = new Array( (arguments.length + args.length)-1 )
+                        var argsLen = args.length-1;
+
+                        for ( var i = 0; i < argsLen; i++ ) {
+                            if ( slate.util.isFunction(args[i]) ) {
+                                allArgs[i] = args[i+1]();
+                            } else {
+                                allArgs[i] = args[i+1];
+                            }
+                        }
+
+                        for ( var i = 0; i < arguments.length; i++ ) {
+                            allArgs[ argsLen + i ] = arguments[i];
+                        }
+
+                        return self.apply( target, allArgs );
+                    }).proto( this );
+        },
+
+
+
+-------------------------------------------------------------------------------
+
+### function.eventFields
+
+
+-------------------------------------------------------------------------------
+
+        eventFields: function( field ) {
+            for ( var i = 0; i < arguments.length; i++ ) {
+                var field = arguments[i];
+
+                assert( this[field] === undefined, "overriding existing field with new event stack" );
+
+                this[field] = Function.eventField( this );
+            }
+
+            return this;
+        },
+
+-------------------------------------------------------------------------------
+
+### function.proto
+
+Duplicates this function, and sets a new prototype for it.
+
+@param The new prototype.
+
+-------------------------------------------------------------------------------
+
+        proto: function( newProto ) {
+            if ( (typeof newProto === 'function') || (newProto instanceof Function) ) {
+                for ( var k in newProto ) {
+                    if ( newProto.hasOwnProperty(k) && k !== 'prototype' ) {
+                        this[k] = newProto[k];
+                    }
+                }
+
+                newProto = newProto.prototype;
+            }
+
+            this.prototype = newProto;
+
+            return this;
+        },
+
+
+
+-------------------------------------------------------------------------------
+
+### function.newPrototype
+
+This creates a new prototype,
+with the methods provided extending it.
+
+it's the same as 'extend', but returns an object for use
+as a prototype instead of a funtion.
+
+-------------------------------------------------------------------------------
+
+        newPrototype: function() {
+            return newPrototypeArray( this, arguments );
+        },
+
+
+-------------------------------------------------------------------------------
+
+### function.override
+
+Same as append, but the methods it overrides *must* exist.
+
+This allows you to have a sanity check.
+
+-------------------------------------------------------------------------------
+
+        override: newFunctionExtend(
+                "Methods are overriding, but they do not exist,",
+                function(dest, k, val) {
+                    return ( dest[k] !== undefined )
+                }
+        ),
+
+
+
+-------------------------------------------------------------------------------
+
+### function.before
+
+
+-------------------------------------------------------------------------------
+
+        before: newFunctionExtend(
+                "Pre-Adding method behaviour, but original method not found,",
+                function(dest, k, val) {
+                    if ( dest[k] === undefined ) {
+                        return undefined;
+                    } else {
+                        return dest[k].preSub( val );
+                    }
+                }
+        ),
+
+
+
+-------------------------------------------------------------------------------
+
+### function.after
+
+
+-------------------------------------------------------------------------------
+
+        after: newFunctionExtend(
+                "Adding method behaviour, but original method not found,",
+                function(dest, k, val) {
+                    if ( dest[k] === undefined ) {
+                        return undefined;
+                    } else {
+                        return dest[k].sub( val );
+                    }
+                }
+        ),
+
+
+
+-------------------------------------------------------------------------------
+
+### function.extend
+
+Adds on extra methods, but none of them are allowed 
+to override any others.
+
+This is used as a sanity check.
+
+-------------------------------------------------------------------------------
+
+        extend: newFunctionExtend(
+                "Extending methods already exist, ",
+                function(dest, k, val) {
+                    return ( dest[k] === undefined )
+                }
+        ),
+
+
+
+-------------------------------------------------------------------------------
+
+### function.require
+
+
+-------------------------------------------------------------------------------
+
+        require: newFunctionExtend(
+                "Pre-Adding method behaviour, but original method not found,",
+                function(dest, k, val) {
+                    if ( dest[k] !== undefined ) {
+                        return dest[k];
+                    } else {
+                        return function() {
+                            throw new Error( "Function not implemented " + k );
+                        }
+                    }
+                }
+        ),
+
+
+
+-------------------------------------------------------------------------------
+
+### function.params
+
+This is just like curry,
+in that you can add extra parameters to this function.
+
+It differs, in that no more parameters can be added
+when the function is called.
+
+-------------------------------------------------------------------------------
+
+        params: function() {
+            var self = this,
+                args = arguments;
+
+            return (function() {
+                        return self.apply( this, args );
+                    }).proto( this );
+        },
+
+
+
+-------------------------------------------------------------------------------
+
+### function.curry
+
+This is essentially the same as 'bind', but with no target given.
+
+It copies this function, and returns a new one, with the parameters given tacked
+on at the start. You can also use the underscore to leave gaps for parameters
+given.
+
+```
+    var f2 = someFunction.curry( _, 1, 2, 3 );
+
+-------------------------------------------------------------------------------
+
+        curry: function() {
+            return newPartial( this, undefined, arguments, 0, false ).
+                    proto( self );
+        },
+
+
+
+-------------------------------------------------------------------------------
+
+### function.postCurry
+
+postCurry is the same as 'curry',
+only the arguments are appended to the end,
+instead of at the front.
+
+With curry ...
+
+```
+     var f2 = f.curry( 1, 2, 3 )
+
+Here f2 becomes:
+
+```
+     function f2( 1, 2, 3, ... ) { }
+
+With 'postCurry', it is the other way around.
+For example:
+
+```
+    var f2 = f.postCurry( 1, 2, 3 ) { }
+
+Here f2 becomes:
+
+```
+    function f2( ..., 1, 2, 3 )
+
+Another example, given the code:
+
+```
+     var f = function( a1, a2, a3, a4 ) {
+         // do nothing
+     }
+     
+     var fRice = f.rice( 1, 2 )
+     fRice( "a", "b" );
+     
+Variables inside f will be ...
+
+```
+     a1 -> "a"
+     a2 -> "b"
+     a3 ->  1
+     a4 ->  2
+
+-------------------------------------------------------------------------------
+
+        postCurry: function() {
+            return newPartial( this, undefined, arguments, 0, true ).
+                    proto( self );
+        },
+
+
+
+-------------------------------------------------------------------------------
+
+### function.preSub
+
+Copies this function, tacking on the 'pre' function given.
+
+That is because the after behaviour does *not* modify this function,
+but makes a copy first.
+
+@param pre A function to call.
+@return A new function, with the pre behaviour tacked on, to run before it.
+
+-------------------------------------------------------------------------------
+
+        preSub: function( pre ) {
+            var self = this;
+            return (function() {
+                        pre.apply( this, arguments );
+                        return self.apply( this, arguments );
+                    }).
+                    proto( this );
+        },
+
+
+
+-------------------------------------------------------------------------------
+
+### function.wrap
+
+This allows you to wrap around this function,
+with new functionality.
+
+Note that with the given 'wrap' function,
+the first parameter is always the function being wrapped.
+So parameters start from index 1, not 0.
+
+@example
+     foo.wrap( function(fooCaller, param1, param2, param3) {
+         param1 *= 2;
+         var fooResult = fooCaller( param1, param2 );
+         return param3 + fooResult;
+     } );
+
+@param wrap The variable to wrap functionality with.
+
+-------------------------------------------------------------------------------
+
+        wrap: function( wrap ) {
+            assertFunction( wrap, "function not provided for wrap parameter" );
+
+            var self = this;
+            return (function() {
+                        var args = new Array( arguments.length+1 );
+                        for ( var i = 0; i < arguments.length; i++ ) {
+                            args[i+1] = arguments[i];
+                        }
+
+                        args[0] = self.bind( this );
+
+                        return wrap.call( this, arguments );
+                    }).
+                    proto( this );
+        },
+
+
+
+-------------------------------------------------------------------------------
+
+### function.sub
+
+Copies this function, tacking on the 'post' function given.
+
+This is intended for sub-classing,
+hence the name, 'sub'.
+
+That is because the after behaviour does *not* modify this function,
+but makes a copy first.
+
+@param post A function to call.
+@return A new function, with the post behaviour tacked on.
+
+-------------------------------------------------------------------------------
+
+        sub: function( post ) {
+            var self = this;
+
+            return (function() {
+                        self.apply( this, arguments );
+                        return post.apply( this, arguments );
+                    }).
+                    proto( this );
+        },
+
+
+
+-------------------------------------------------------------------------------
+
+### function.then
 
 Mixes the functions given, onto this one, like sub.
 
@@ -782,115 +839,112 @@ i.e.
 
 -------------------------------------------------------------------------------
 
-    Function.prototype.then = function() {
-        var argsLen = arguments.length,
-            args = arguments;
+        then: function() {
+            var argsLen = arguments.length,
+                args = arguments;
 
-        if ( argsLen === 0 ) {
-            logError( "not enough parameters" );
-        } else {
-            var arg = arguments[0];
-
-            if ( isFunction(arg) ) {
-                if ( argsLen === 1 ) {
-                    return boundOne( this, arguments[0] );
-                } else {
-                    return boundArr( this, arguments );
-                }
+            if ( argsLen === 0 ) {
+                logError( "not enough parameters" );
             } else {
-                return andFun( this, arguments );
+                var arg = arguments[0];
+
+                if ( isFunction(arg) ) {
+                    if ( argsLen === 1 ) {
+                        return boundOne( this, arguments[0] );
+                    } else {
+                        return boundArr( this, arguments );
+                    }
+                } else {
+                    return andFun( this, arguments );
+                }
             }
-        }
-    }
+        },
 
 
 
 -------------------------------------------------------------------------------
 
-## function.subBefore
+### function.subBefore
 
 When called, a copy of this function is returned,
 with the given 'pre' function tacked on before it.
 
 -------------------------------------------------------------------------------
 
-    Function.prototype.subBefore = function( pre ) {
-        return (function() {
-                    post.call( this, arguments );
-                    return self.call( this, arguments );
-                }).
-                proto( this );
-    }
-
-Time Functions
-==============
+        subBefore: function( pre ) {
+            return (function() {
+                        post.call( this, arguments );
+                        return self.call( this, arguments );
+                    }).
+                    proto( this );
+        },
 
 -------------------------------------------------------------------------------
 
-## function.callLater
+### function.callLater
 
 -------------------------------------------------------------------------------
 
-    Function.prototype.callLater = function( target ) {
-        var argsLen = arguments.length;
-        var self = this;
+        callLater: function( target ) {
+            var argsLen = arguments.length;
+            var self = this;
 
-        if ( argsLen <= 1 ) {
+            if ( argsLen <= 1 ) {
+                return setTimeout( function() {
+                    self.call( target );
+                }, 0 );
+            } else if ( argsLen === 2 ) {
+                var param1 = arguments[1];
+
+                return setTimeout( function() {
+                    self.call( target, param1 );
+                }, 0 );
+            } else if ( argsLen === 3 ) {
+                var param1 = arguments[1];
+                var param2 = arguments[2];
+
+                return setTimeout( function() {
+                    self.call( target, param1, param2 );
+                }, 0 );
+            } else if ( argsLen === 4 ) {
+                var param1 = arguments[1];
+                var param2 = arguments[2];
+                var param3 = arguments[3];
+
+                return setTimeout( function() {
+                    self.call( target, param1, param2, param3 );
+                }, 0 );
+            } else {
+                return this.applyLater( target, arguments );
+            }
+        },
+
+
+
+-------------------------------------------------------------------------------
+
+### function.applyLater
+
+
+-------------------------------------------------------------------------------
+
+        applyLater: function( target, args ) {
+            if ( arguments.length <= 1 ) {
+                args = new Array(0);
+            }
+
+            var self = this;
+
             return setTimeout( function() {
-                self.call( target );
+                self.apply( target, args );
             }, 0 );
-        } else if ( argsLen === 2 ) {
-            var param1 = arguments[1];
-
-            return setTimeout( function() {
-                self.call( target, param1 );
-            }, 0 );
-        } else if ( argsLen === 3 ) {
-            var param1 = arguments[1];
-            var param2 = arguments[2];
-
-            return setTimeout( function() {
-                self.call( target, param1, param2 );
-            }, 0 );
-        } else if ( argsLen === 4 ) {
-            var param1 = arguments[1];
-            var param2 = arguments[2];
-            var param3 = arguments[3];
-
-            return setTimeout( function() {
-                self.call( target, param1, param2, param3 );
-            }, 0 );
-        } else {
-            return this.applyLater( target, arguments );
-        }
-    }
+        },
 
 
 
 -------------------------------------------------------------------------------
 
-## function.applyLater
-
-
--------------------------------------------------------------------------------
-
-    Function.prototype.applyLater = function( target, args ) {
-        if ( arguments.length <= 1 ) {
-            args = new Array(0);
-        }
-
-        var self = this;
-
-        return setTimeout( function() {
-            self.apply( target, args );
-        }, 0 );
-    }
-
-
-
--------------------------------------------------------------------------------
-
-## function.later
+### function.later
 
 Sets this function to be called later.
 If a timeout is given, then that is how long it
@@ -906,21 +960,22 @@ Cancelling the timeout can be done using 'clearTimeout'.
 
 -------------------------------------------------------------------------------
 
-    Function.prototype.later = function( timeout ) {
-        var fun = this;
+        later: function( timeout ) {
+            var fun = this;
 
-        if ( arguments.length === 0 ) {
-            timeout = 0;
-        } else if ( ! (typeof timeout === 'number') ) {
-            fun = fun.bind( timeout );
-
-            if ( arguments.length > 1 ) {
-                timeout = arguments[1];
-            } else {
+            if ( arguments.length === 0 ) {
                 timeout = 0;
-            }
-        }
+            } else if ( ! (typeof timeout === 'number') ) {
+                fun = fun.bind( timeout );
 
-        return setTimeout( fun, timeout );
-    }
+                if ( arguments.length > 1 ) {
+                    timeout = arguments[1];
+                } else {
+                    timeout = 0;
+                }
+            }
+
+            return setTimeout( fun, timeout );
+        },
+    });
 

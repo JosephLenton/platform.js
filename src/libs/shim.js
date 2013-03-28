@@ -14,19 +14,20 @@
  */
 
 (function() {
-    var shim = function( obj, index, fun ) {
-        if ( arguments.length === 2 ) {
-            for ( var k in index ) {
-                if ( ! obj.hasOwnProperty(k) ) {
-                    obj[k] = index[k];
+    var shim = function( obj, props ) {
+        for ( var k in props ) {
+            if ( props.hasOwnProperty(k) && !obj.hasOwnProperty(k) ) {
+                if ( Object.defineProperty !== undefined ) {
+                    Object.defineProperty( obj, k, {
+                            value           : props[k], 
+                            enumerable      : false,
+                            writable        : true,
+                            configurable    : true
+                    } );
+                } else {
+                    obj[k] = props[k];
                 }
             }
-        } else if ( arguments.length === 3 ) {
-            if ( ! obj.hasOwnProperty(index) ) {
-                obj[index] = fun;
-            }
-        } else {
-            throw new Error( 'incorrect number of arguments' );
         }
     }
 
@@ -35,15 +36,17 @@
      *
      * @see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Object/create
      */
-    shim( Object, 'create', function(o) {
-        if (arguments.length > 1) {
-            throw new Error('Object.create implementation only accepts the first parameter.');
+    shim( Object, {
+        create: function(o) {
+            if (arguments.length > 1) {
+                throw new Error('Object.create implementation only accepts the first parameter.');
+            }
+
+            function F() {}
+            F.prototype = o;
+
+            return new F();
         }
-
-        function F() {}
-        F.prototype = o;
-
-        return new F();
     })
 
     /*
@@ -54,57 +57,64 @@
 
     // Production steps of ECMA-262, Edition 5, 15.4.4.18
     // Reference: http://es5.github.com/#x15.4.4.18
-    shim( Array.prototype, 'forEach', function( callback, thisArg ) {
-        var T, k;
+    
+    /*
+     * Note that 'map' is missing, because it is dealt with
+     * in the 'extras' file.
+     */
+    shim( Array.prototype, {
+        forEach: function( callback, thisArg ) {
+            var T, k;
 
-        if ( this == null ) {
-          throw new TypeError( "this is null or not defined" );
+            if ( this == null ) {
+              throw new TypeError( "this is null or not defined" );
+            }
+
+            // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
+            var O = Object(this);
+
+            // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
+            // 3. Let len be ToUint32(lenValue).
+            var len = O.length >>> 0; // Hack to convert O.length to a UInt32
+
+            // 4. If IsCallable(callback) is false, throw a TypeError exception.
+            // See: http://es5.github.com/#x9.11
+            if ( {}.toString.call(callback) !== "[object Function]" ) {
+              throw new TypeError( callback + " is not a function" );
+            }
+
+            // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
+            if ( thisArg ) {
+              T = thisArg;
+            }
+
+            // 6. Let k be 0
+            k = 0;
+
+            // 7. Repeat, while k < len
+            while( k < len ) {
+
+              var kValue;
+
+              // a. Let Pk be ToString(k).
+              //   This is implicit for LHS operands of the in operator
+              // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
+              //   This step can be combined with c
+              // c. If kPresent is true, then
+              if ( Object.prototype.hasOwnProperty.call(O, k) ) {
+
+                // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
+                kValue = O[ k ];
+
+                // ii. Call the Call internal method of callback with T as the this value and
+                // argument list containing kValue, k, and O.
+                callback.call( T, kValue, k, O );
+              }
+              // d. Increase k by 1.
+              k++;
+            }
+            // 8. return undefined
         }
-
-        // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
-        var O = Object(this);
-
-        // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
-        // 3. Let len be ToUint32(lenValue).
-        var len = O.length >>> 0; // Hack to convert O.length to a UInt32
-
-        // 4. If IsCallable(callback) is false, throw a TypeError exception.
-        // See: http://es5.github.com/#x9.11
-        if ( {}.toString.call(callback) !== "[object Function]" ) {
-          throw new TypeError( callback + " is not a function" );
-        }
-
-        // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
-        if ( thisArg ) {
-          T = thisArg;
-        }
-
-        // 6. Let k be 0
-        k = 0;
-
-        // 7. Repeat, while k < len
-        while( k < len ) {
-
-          var kValue;
-
-          // a. Let Pk be ToString(k).
-          //   This is implicit for LHS operands of the in operator
-          // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
-          //   This step can be combined with c
-          // c. If kPresent is true, then
-          if ( Object.prototype.hasOwnProperty.call(O, k) ) {
-
-            // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
-            kValue = O[ k ];
-
-            // ii. Call the Call internal method of callback with T as the this value and
-            // argument list containing kValue, k, and O.
-            callback.call( T, kValue, k, O );
-          }
-          // d. Increase k by 1.
-          k++;
-        }
-        // 8. return undefined
     })
 
     /*
@@ -219,39 +229,6 @@
 
     /*
      * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     *          Function
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     */
-
-    /**
-     * Function.bind
-     *
-     * @see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Function/bind
-     */
-    shim( Function.prototype, 'bind', function(oThis) {
-        if (typeof this !== "function") {
-          // closest thing possible to the ECMAScript 5 internal IsCallable function
-          throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
-        }
-     
-        var aArgs = Array.prototype.slice.call(arguments, 1), 
-            fToBind = this, 
-            fNOP = function () {},
-            fBound = function () {
-              return fToBind.apply(this instanceof fNOP && oThis
-                                     ? this
-                                     : oThis,
-                                   aArgs.concat(Array.prototype.slice.call(arguments)));
-            };
-     
-        fNOP.prototype = this.prototype;
-        fBound.prototype = new fNOP();
-     
-        return fBound;
-    });
-
-    /*
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
      *          Element
      * ### ### ### ### ### ### ### ### ### ### ### ### ### 
      */
@@ -266,64 +243,68 @@
      * @author termi https://gist.github.com/termi
      * @see https://gist.github.com/termi/2369850/f4022295bf19332ff17e79350ec06c5114d7fbc9
      */
-    shim( Element.prototype, 'matchesSelector',
-        Element.prototype.matches ||
-        Element.prototype.webkitMatchesSelector ||
-        Element.prototype.mozMatchesSelector ||
-        Element.prototype.msMatchesSelector ||
-        Element.prototype.oMatchesSelector || function(selector) {
-            if(!selector)return false;
-            if(selector === "*")return true;
-            if(this === document.documentElement && selector === ":root")return true;
-            if(this === document.body && selector === "body")return true;
+    shim( Element.prototype, {
+        matchesSelector: 
+                Element.prototype.matches ||
+                Element.prototype.webkitMatchesSelector ||
+                Element.prototype.mozMatchesSelector ||
+                Element.prototype.msMatchesSelector ||
+                Element.prototype.oMatchesSelector || 
+                function(selector) {
+                    if(!selector)return false;
+                    if(selector === "*")return true;
+                    if(this === document.documentElement && selector === ":root")return true;
+                    if(this === document.body && selector === "body")return true;
 
-            var thisObj = this,
-                match = false,
-                parent,
-                i,
-                str,
-                tmp;
+                    var thisObj = this,
+                        match = false,
+                        parent,
+                        i,
+                        str,
+                        tmp;
 
-            if (/^[\w#\.][\w-]*$/.test(selector) || /^(\.[\w-]*)+$/.test(selector)) {
-                switch (selector.charAt(0)) {
-                    case '#':
-                        return thisObj.id === selector.slice(1);
-                        break;
-                    case '.':
-                        match = true;
-                        i = -1;
-                        tmp = selector.slice(1).split(".");
-                        str = " " + thisObj.className + " ";
-                        while(tmp[++i] && match) {
-                            match = !!~str.indexOf(" " + tmp[i] + " ");
+                    if (/^[\w#\.][\w-]*$/.test(selector) || /^(\.[\w-]*)+$/.test(selector)) {
+                        switch (selector.charAt(0)) {
+                            case '#':
+                                return thisObj.id === selector.slice(1);
+                                break;
+                            case '.':
+                                match = true;
+                                i = -1;
+                                tmp = selector.slice(1).split(".");
+                                str = " " + thisObj.className + " ";
+                                while(tmp[++i] && match) {
+                                    match = !!~str.indexOf(" " + tmp[i] + " ");
+                                }
+                                return match;
+                                break;
+                            default:
+                                return thisObj.tagName && thisObj.tagName.toUpperCase() === selector.toUpperCase();
                         }
-                        return match;
-                        break;
-                    default:
-                        return thisObj.tagName && thisObj.tagName.toUpperCase() === selector.toUpperCase();
+                    }
+
+                    parent = thisObj.parentNode;
+                  
+                    if (parent && parent.querySelector) {
+                        match = parent.querySelector(selector) === thisObj;
+                    }
+
+                    if (!match && (parent = thisObj.ownerDocument)) {
+                        tmp = parent.querySelectorAll( selector );
+
+                        for (i in tmp ) if(_hasOwnProperty(tmp, i)) {
+                            match = tmp[i] === thisObj;
+                            if(match)return true;
+                        }
+                    }
+
+                    return match;
                 }
-            }
+    })
 
-            parent = thisObj.parentNode;
-          
-            if (parent && parent.querySelector) {
-                match = parent.querySelector(selector) === thisObj;
-            }
-
-            if (!match && (parent = thisObj.ownerDocument)) {
-                tmp = parent.querySelectorAll( selector );
-
-                for (i in tmp ) if(_hasOwnProperty(tmp, i)) {
-                    match = tmp[i] === thisObj;
-                    if(match)return true;
-                }
-            }
-
-            return match;
-        }
-    )
-
-    shim( Element.prototype, 'matches', Element.prototype.matchesSelector );
+    shim( Element.prototype, {
+        matches: Element.prototype.matchesSelector
+    });
 
     /*
      * classList.js: Cross-browser full element.classList implementation.
