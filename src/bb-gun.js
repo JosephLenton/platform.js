@@ -173,7 +173,7 @@ window['BBGun'] = (function() {
                 }
 
                 removeDomCycle( node, args );
-            } else if ( node instanceof Element ) {
+            } else if ( node.nodeType !== undefined ) {
                 if ( node.parentNode !== selfDom ) {
                     logError( "removing Element which is not a child of this node", node );
                 } else {
@@ -195,7 +195,7 @@ window['BBGun'] = (function() {
 
                     assert( arg, "falsy parameter given" );
 
-                    assertNot( (arg instanceof Element) && (arg.parentNode !== null), "HTML Element given already has a parent" );
+                    assertNot( (arg.nodeType !== undefined) && (arg.parentNode !== null), "HTML Element given already has a parent" );
                     assertNot( (arg.__isBBGun) && (arg.parent() !== null), "BBGun element given already has a parent" );
                 }
 
@@ -270,7 +270,7 @@ window['BBGun'] = (function() {
             var parentDom = oldNode.__xeDom.parentNode;
             var newDom;
 
-            if ( newNode instanceof Element ) {
+            if ( newNode.nodeType !== undefined ) {
                 newNode = bb( newNode );
             } else if ( ! newNode.__isBBGun ) {
                 newNode = bb( newNode );
@@ -574,7 +574,7 @@ window['BBGun'] = (function() {
                         if ( obj.parent() === this ) {
                             return obj;
                         }
-                    } else if ( obj instanceof Element ) {
+                    } else if ( obj.nodeType !== undefined ) {
                         var children = this.dom().childNodes;
                         for ( var i = 0; i < children.length; i++ ) {
                             if ( children[i] === obj ) {
@@ -730,7 +730,7 @@ window['BBGun'] = (function() {
                         assert( newNode, "falsy newNode given" );
 
                         var oldDom, newDom;
-                        if ( oldNode instanceof Element ) {
+                        if ( oldNode.nodeType !== undefined ) {
                             oldDom = oldNode;
                         } else if ( oldNode.__isBBGun ) {
                             oldDom = oldNode.dom();

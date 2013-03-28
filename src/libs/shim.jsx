@@ -127,6 +127,32 @@ Reference: http://es5.github.com/#x15.4.4.18
 
 -------------------------------------------------------------------------------
 
+    var leftTrimRegex = /^\s\s*/;
+    var spaceRegex = /\s/;
+
+    __shim__( String.prototype,
+            'trim', function(str) {
+                var	str = this.replace(leftTrimRegex, ''),
+                    i = str.length;
+                while (spaceRegex.test(str.charAt(--i)));
+                return str.slice(0, i + 1);
+            }
+    );
+
+    __shim__( String.prototype,
+            'trimLeft', function(str) {
+                return this.replace( leftTrimRegex, '' );
+            }
+    );
+
+    __shim__( String.prototype,
+            'trimRight', function(str) {
+                var	i = this.length;
+                while ( spaceRegex.test(this.charAt(--i)) );
+                return this.slice( 0, i + 1 );
+            }
+    );
+
     __shim__( String.prototype,
             'toArray', function() {
                 return this.split( '' );
@@ -236,6 +262,119 @@ Reference: http://es5.github.com/#x15.4.4.18
             }
     );
 
+-------------------------------------------------------------------------------
+
+## document.getElementsByClassName( name )
+
+-------------------------------------------------------------------------------
+
+    if ( document.getElementsByClassName === undefined ) {
+        document.getElementsByClassName = function( klass ) {
+            return document.querySelectorAll( '.' + klass );
+        }
+    };
+
+===============================================================================
+
+## textContent shim
+
+===============================================================================
+
+    var div = document.createElement('div');
+    if ( 
+            div.textContent === undefined &&
+            div.innerText !== undefined
+    ) {
+        // handles innerHTML
+        var onPropertyChange = function (e) {
+            if (event.propertyName === 'innerHTML') {
+                var div = (event.currentTarget) ? event.currentTarget : event.srcElement;
+                var children = div.childNodes;
+
+                for ( var i = 0; i < children.length; i++ ) {
+                    addProps( children[i] );
+                }
+            }
+        }; 
+
+        var textDesc = {
+                get: function() {
+                    return this.innerText;
+                },
+
+                set: function( text ) {
+                    this.innerText = text;
+                    return text;
+                }
+        };
+
+        var addProps = function( dom ) {
+            // these only work on non-text nodes
+            if ( dom.nodeType !== 3 ) {
+                Object.defineProperty( dom, 'textContent', textDesc );
+                Object.defineProperty( dom, 'insertAdjacentHTML', insertAdjacentHTMLDesc );
+
+                // just in case it's been attached once already
+                dom.detachEvent("onpropertychange", onPropertyChange);
+                dom.attachEvent("onpropertychange", onPropertyChange);
+            }
+
+            return dom;
+        }
+
+        /*
+         * Wrap insertAdjacentHTML.
+         */
+        var insertAdjacentHTMLDesc = function(pos, html) {
+            div.innerHTML = html;
+            var children = div.children;
+
+            var p = this.parentNode;
+            var first = undefined;
+
+            if ( pos === "afterend" ) {
+                first = children[0];
+            } else if ( pos === "afterbegin" ) {
+                first = this.firstChild;
+            } else if (
+                    pos !== 'beforebegin' ||
+                    pos !== 'beforeend'
+            ) {
+                logError("invalid position given " + pos);
+            }
+
+            while ( children.length > 0 ) {
+                var child = addProps( children[0] );
+
+                if ( pos === "beforebegin" || pos === 'afterend' ) {
+                    p.insertBefore( child, this );
+                } else if ( pos === "afterbegin" ) {
+                    this.insertBefore( child, first );
+                } else if ( pos === 'beforeend' ) {
+                    this.appendChild( child );
+                }
+            }
+
+            if ( pos === 'afterend' ) {
+                p.removeChild( this );
+                p.insertBefore( this, first );
+            }
+        };
+
+        // wrap createElement
+        var oldCreate = document.createElement;
+        document.createElement = function( name ) {
+            return addProps( oldCreate(name) );
+        }
+
+        // add properties to any existing elements 
+        var doms = document.querySelectorAll('*');
+        for ( var i = 0; i < doms.length; i++ ) {
+            addProps( doms[i] );
+        }
+    }
+
+
 ===============================================================================
 
 ## Element
@@ -243,6 +382,34 @@ Reference: http://es5.github.com/#x15.4.4.18
 These do *not* use __shim__, as it breaks in IE 8!
 
 ===============================================================================
+
+-------------------------------------------------------------------------------
+
+### element.addEventListener
+
+-------------------------------------------------------------------------------
+
+    if ( ! Element.prototype.addEventListener ) {
+        Element.prototype.addEventListener = function( name, listener ) {
+            return this.attachEvent( name, listener );
+        }
+    }
+
+
+
+-------------------------------------------------------------------------------
+
+### element.removeEventListener
+
+-------------------------------------------------------------------------------
+
+    if ( ! Element.prototype.removeEventListener ) {
+        Element.prototype.removeEventListener = function( name, listener ) {
+            return this.detachEvent( name, listener );
+        }
+    }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -257,7 +424,7 @@ specific, or needs a shim.
 
 -------------------------------------------------------------------------------
 
-    if ( Element.prototype.matchesSelector === undefined ) {
+    if ( ! Element.prototype.matchesSelector ) {
         Element.prototype.matchesSelector =
                 Element.prototype.matches ||
                 Element.prototype.webkitMatchesSelector ||
@@ -322,7 +489,7 @@ specific, or needs a shim.
 
 -------------------------------------------------------------------------------
 
-    if ( Element.prototype.matches === undefined ) {
+    if ( ! Element.prototype.matches ) {
         Element.prototype.matches =
             Element.prototype.matchesSelector
     };

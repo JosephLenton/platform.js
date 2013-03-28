@@ -1749,6 +1749,32 @@ Reference: http://es5.github.com/#x15.4.4.18
 
 ------------------------------------------------------------------------------- */
 
+    var leftTrimRegex = /^\s\s*/;
+    var spaceRegex = /\s/;
+
+    __shim__( String.prototype,
+            'trim', function(str) {
+                var	str = this.replace(leftTrimRegex, ''),
+                    i = str.length;
+                while (spaceRegex.test(str.charAt(--i)));
+                return str.slice(0, i + 1);
+            }
+    );
+
+    __shim__( String.prototype,
+            'trimLeft', function(str) {
+                return this.replace( leftTrimRegex, '' );
+            }
+    );
+
+    __shim__( String.prototype,
+            'trimRight', function(str) {
+                var	i = this.length;
+                while ( spaceRegex.test(this.charAt(--i)) );
+                return this.slice( 0, i + 1 );
+            }
+    );
+
     __shim__( String.prototype,
             'toArray', function() {
                 return this.split( '' );
@@ -1858,6 +1884,119 @@ Reference: http://es5.github.com/#x15.4.4.18
             }
     );
 
+ /* -------------------------------------------------------------------------------
+
+## document.getElementsByClassName( name )
+
+------------------------------------------------------------------------------- */
+
+    if ( document.getElementsByClassName === undefined ) {
+        document.getElementsByClassName = function( klass ) {
+            return document.querySelectorAll( '.' + klass );
+        }
+    };
+
+ /* ===============================================================================
+
+## textContent shim
+
+=============================================================================== */
+
+    var div = document.createElement('div');
+    if ( 
+            div.textContent === undefined &&
+            div.innerText !== undefined
+    ) {
+        // handles innerHTML
+        var onPropertyChange = function (e) {
+            if (event.propertyName === 'innerHTML') {
+                var div = (event.currentTarget) ? event.currentTarget : event.srcElement;
+                var children = div.childNodes;
+
+                for ( var i = 0; i < children.length; i++ ) {
+                    addProps( children[i] );
+                }
+            }
+        }; 
+
+        var textDesc = {
+                get: function() {
+                    return this.innerText;
+                },
+
+                set: function( text ) {
+                    this.innerText = text;
+                    return text;
+                }
+        };
+
+        var addProps = function( dom ) {
+            // these only work on non-text nodes
+            if ( dom.nodeType !== 3 ) {
+                Object.defineProperty( dom, 'textContent', textDesc );
+                Object.defineProperty( dom, 'insertAdjacentHTML', insertAdjacentHTMLDesc );
+
+                // just in case it's been attached once already
+                dom.detachEvent("onpropertychange", onPropertyChange);
+                dom.attachEvent("onpropertychange", onPropertyChange);
+            }
+
+            return dom;
+        }
+
+        /*
+         * Wrap insertAdjacentHTML.
+         */
+        var insertAdjacentHTMLDesc = function(pos, html) {
+            div.innerHTML = html;
+            var children = div.children;
+
+            var p = this.parentNode;
+            var first = undefined;
+
+            if ( pos === "afterend" ) {
+                first = children[0];
+            } else if ( pos === "afterbegin" ) {
+                first = this.firstChild;
+            } else if (
+                    pos !== 'beforebegin' ||
+                    pos !== 'beforeend'
+            ) {
+                logError("invalid position given " + pos);
+            }
+
+            while ( children.length > 0 ) {
+                var child = addProps( children[0] );
+
+                if ( pos === "beforebegin" || pos === 'afterend' ) {
+                    p.insertBefore( child, this );
+                } else if ( pos === "afterbegin" ) {
+                    this.insertBefore( child, first );
+                } else if ( pos === 'beforeend' ) {
+                    this.appendChild( child );
+                }
+            }
+
+            if ( pos === 'afterend' ) {
+                p.removeChild( this );
+                p.insertBefore( this, first );
+            }
+        };
+
+        // wrap createElement
+        var oldCreate = document.createElement;
+        document.createElement = function( name ) {
+            return addProps( oldCreate(name) );
+        }
+
+        // add properties to any existing elements 
+        var doms = document.querySelectorAll('*');
+        for ( var i = 0; i < doms.length; i++ ) {
+            addProps( doms[i] );
+        }
+    }
+
+
  /* ===============================================================================
 
 ## Element
@@ -1867,6 +2006,34 @@ These do *not* use __shim__, as it breaks in IE 8!
 ===============================================================================
 
 -------------------------------------------------------------------------------
+
+### element.addEventListener
+
+------------------------------------------------------------------------------- */
+
+    if ( ! Element.prototype.addEventListener ) {
+        Element.prototype.addEventListener = function( name, listener ) {
+            return this.attachEvent( name, listener );
+        }
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+### element.removeEventListener
+
+------------------------------------------------------------------------------- */
+
+    if ( ! Element.prototype.removeEventListener ) {
+        Element.prototype.removeEventListener = function( name, listener ) {
+            return this.detachEvent( name, listener );
+        }
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
 
 ### element.matchesSelector()
 
@@ -1879,7 +2046,7 @@ specific, or needs a shim.
 
 ------------------------------------------------------------------------------- */
 
-    if ( Element.prototype.matchesSelector === undefined ) {
+    if ( ! Element.prototype.matchesSelector ) {
         Element.prototype.matchesSelector =
                 Element.prototype.matches ||
                 Element.prototype.webkitMatchesSelector ||
@@ -1944,7 +2111,7 @@ specific, or needs a shim.
 
 ------------------------------------------------------------------------------- */
 
-    if ( Element.prototype.matches === undefined ) {
+    if ( ! Element.prototype.matches ) {
         Element.prototype.matches =
             Element.prototype.matchesSelector
     };
@@ -2132,16 +2299,21 @@ NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
 })();
 "use strict";(function() {
  /* 
-# check.js.
+===============================================================================
+
+check.js
+========
+
 @author Joseph Lenton
 
 This includes
  - assertions
  - object type checks
- */
 
-    var objPrototype   = ({}).__proto__;
-    var objConstructor = objPrototype.constructor;
+=============================================================================== */
+
+    var objConstructor = ({}).constructor;
+    var objPrototype   = objConstructor.prototype;
     
     var argsConstructor = (function() {
         return arguments.constructor;
@@ -2170,16 +2342,14 @@ For regular objects do ...
 ------------------------------------------------------------------------------- */
 
     var isObject = window['isObject'] = function( obj ) {
-        if ( obj !== undefined && obj !== null ) {
-            var proto = obj.__proto__;
+        if ( obj !== undefined || obj !== null ) {
+            var proto = obj.constructor.prototype;
 
             if ( proto !== undefined && proto !== null ) {
                 return proto             === objPrototype   &&
                        proto.constructor === objConstructor ;
             }
         }
-
-        return false;
     }
 
 
@@ -2275,6 +2445,18 @@ as Number or String).
 
  /* -------------------------------------------------------------------------------
 
+## isHTMLElement
+
+------------------------------------------------------------------------------- */
+
+    var isHTMLElement = window['isHTMLElement'] = function(obj) {
+        return obj.nodeType !== undefined;
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
 ## isArrayArguments
 
 You cannot be absolutely certain an 'arguments' is an 'arguments', so takes an
@@ -2316,6 +2498,7 @@ include them, use 'isArrayArguments'.
             function( arr ) {
                 return ( arr instanceof Array );
             } ;
+
 
 
  /* Assertions
@@ -2400,7 +2583,66 @@ An Error type, specific for assertions.
     AssertionError.prototype = new Error();
     AssertionError.prototype.constructor = AssertionError;
 
+ /* -------------------------------------------------------------------------------
 
+------------------------------------------------------------------------------- */
+
+    var getStackTrace = function() {
+      var callstack = [];
+      var isCallstackPopulated = false;
+
+      try {
+        i.dont.exist+=0; //doesn't exist- that's the point
+      } catch(e) {
+        if (e.stack) { //Firefox
+          var lines = e.stack.split('\n');
+          for (var i=0, len=lines.length; i < len; i++) {
+            if (lines[i].match(/^\s*[A-Za-z0-9\-_\$]+\(/)) {
+              callstack.push(lines[i]);
+            }
+          }
+          //Remove call to printStackTrace()
+          callstack.shift();
+          isCallstackPopulated = true;
+        }
+        else if (window.opera && e.message) { //Opera
+          var lines = e.message.split('\n');
+          for (var i=0, len=lines.length; i < len; i++) {
+            if (lines[i].match(/^\s*[A-Za-z0-9\-_\$]+\(/)) {
+              var entry = lines[i];
+              //Append next line also since it has the file info
+              if (lines[i+1]) {
+                entry += ' at ' + lines[i+1];
+                i++;
+              }
+              callstack.push(entry);
+            }
+          }
+          //Remove call to printStackTrace()
+          callstack.shift();
+          isCallstackPopulated = true;
+        }
+      }
+      if (!isCallstackPopulated) { //IE and Safari
+        var currentFunction = arguments.callee.caller;
+        while (currentFunction) {
+          var fn = currentFunction.toString();
+          var fname = fn.substring(fn.indexOf('function') + 8, fn.indexOf('')) || 'anonymous';
+          callstack.push(fn);
+          currentFunction = currentFunction.caller;
+        }
+      }
+
+      return callstack;
+    }
+
+    var printStackTrace = function() {
+        var stack = getStackTrace();
+
+        for ( var i = stack.length-1; i >= 0; i-- ) {
+            alert( stack[i] );
+        }
+    }
 
  /* -------------------------------------------------------------------------------
 
@@ -2419,6 +2661,8 @@ second.
 ------------------------------------------------------------------------------- */
 
     var newAssertionError = function( args, altMsg ) {
+        printStackTrace();
+
         var msg = args[1];
         args[1] = args[0];
         args[0] = msg || altMsg;
@@ -2464,6 +2708,8 @@ throw new Error, built together, as one.
 ------------------------------------------------------------------------------- */
 
     var logError = window["logError"] = function( msg ) {
+        printStackTrace();
+
         var err = Object.create( AssertionError.prototype );
         AssertionError.apply( err, arguments );
         throw err;
@@ -2728,7 +2974,7 @@ This includes both number primitives, and Number objects.
     }
 
     var pressBuilder = function( el, onDown, onMove, onUp ) {
-        if ( ! (el instanceof HTMLElement) ) {
+        if ( ! isHTMLElement(el) ) {
             throw new Error( "non-html element given" );
         }
 
@@ -2841,7 +3087,7 @@ This includes both number primitives, and Number objects.
     };
 
     var clickBuilder = function( el, callback ) {
-        if ( ! (el instanceof HTMLElement) ) {
+        if ( ! isHTMLElement(el) ) {
             throw new Error( "non-html element given" );
         }
 
@@ -2977,6 +3223,8 @@ This includes both number primitives, and Number objects.
 })();
 "use strict";(function() {
  /* 
+===============================================================================
+
 abc.js
 ======
 
@@ -3029,36 +3277,9 @@ of your program.
 
 when you ask to mark, but don't specify it.
 
+=============================================================================== */
 
--------------------------------------------------------------------------------
-
-### shim
-
-Used to set the properties to the object. This tries to make the properties not
-show up when enumerated, but this only works in IE 8 and above.
-
-------------------------------------------------------------------------------- */
-
-    var shim = function( obj, props ) {
-        for ( var k in props ) {
-            if ( props.hasOwnProperty(k) && !obj.hasOwnProperty(k) ) {
-                if ( Object.defineProperty !== undefined ) {
-                    Object.defineProperty( obj, k, {
-                            value           : props[k], 
-                            enumerable      : false,
-                            writable        : true,
-                            configurable    : true
-                    } );
-                } else {
-                    obj[k] = props[k];
-                }
-            }
-        }
-    }
-    
-
-
-    shim( Object.prototype, {
+    var __shim__ = window['__shim__'];
 
  /* -------------------------------------------------------------------------------
 
@@ -3076,7 +3297,8 @@ show up when enumerated, but this only works in IE 8 and above.
 
 ------------------------------------------------------------------------------- */
 
-        a: function( block, msg ) {
+    __shim__( Object.prototype,
+        'a', function( block, msg ) {
             if ( arguments.length === 1 ) {
                 if (
                         !(typeof block === 'function') &&
@@ -3120,7 +3342,8 @@ show up when enumerated, but this only works in IE 8 and above.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -3167,11 +3390,13 @@ The return value is ignored.
 
 ------------------------------------------------------------------------------- */
 
-        b: function( cmd ) {
+    __shim__( Object.prototype,
+        'b', function( cmd ) {
             cmd.call( this, this, this.____mark____ );
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -3186,7 +3411,8 @@ Calls the command given, on this object.
 
 ------------------------------------------------------------------------------- */
 
-        c: function( method ) {
+    __shim__( Object.prototype,
+        'c', function( method ) {
             var args = new Array( arguments.length-1 );
             for ( var i = 1; i < arguments.length; i++ ) {
                 args[i-1] = arguments[i];
@@ -3195,7 +3421,8 @@ Calls the command given, on this object.
             this[method].apply( this, args );
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -3213,7 +3440,8 @@ just pass in true.
 
 ------------------------------------------------------------------------------- */
 
-        d: function( mark ) {
+    __shim__( Object.prototype,
+        'd', function( mark ) {
             if ( arguments.length === 0 ) {
                 debugger;
             } else if ( mark === true || this.___mark___ === mark ) {
@@ -3221,7 +3449,8 @@ just pass in true.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -3235,7 +3464,8 @@ Asserts this is empty.
 
 ------------------------------------------------------------------------------- */
 
-        e: function() {
+    __shim__( Object.prototype,
+        'e', function() {
             var isInvalid = false;
 
             if ( this.length !== undefined ) {
@@ -3256,15 +3486,18 @@ Asserts this is empty.
             }
                 
             return this;
-        },
+        }
+    );
 
 
 
-        f: function( field ) {
+    __shim__( Object.prototype,
+        'f', function( field ) {
             console.log( this[field] );
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -3286,7 +3519,8 @@ of being outputted to the console.
 
 ------------------------------------------------------------------------------- */
 
-        k: function( block ) {
+    __shim__( Object.prototype,
+        'k', function( block ) {
             for ( var k in this ) {
                 if ( this.hasOwnProperty(k) ) {
                     if ( block ) {
@@ -3298,7 +3532,8 @@ of being outputted to the console.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -3315,11 +3550,13 @@ and otherwise this object is printed.
 
 ------------------------------------------------------------------------------- */
 
-        l: function( msg ) {
+    __shim__( Object.prototype,
+        'l', function( msg ) {
             console.log( msg || this );
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -3363,7 +3600,8 @@ retrieve them again later.
 
 ------------------------------------------------------------------------------- */
 
-        m: function( block ) {
+    __shim__( Object.prototype,
+        'm', function( block ) {
             if ( block !== undefined ) {
                 if ( typeof block === 'function' || (block instanceof Function) ) {
                     var mark = block.call( this, this );
@@ -3381,7 +3619,8 @@ retrieve them again later.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -3398,7 +3637,8 @@ allows you to filter unmarking objects.
 
 ------------------------------------------------------------------------------- */
 
-        n: function( block ) {
+    __shim__( Object.prototype,
+        'n', function( block ) {
             if ( this.____mark____ !== undefined ) {
                 if ( block !== undefined ) {
                     if ( block.call(this, this, this.____mark____) ) {
@@ -3410,7 +3650,8 @@ allows you to filter unmarking objects.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -3425,7 +3666,8 @@ Prints this object to `console.log`.
 
 ------------------------------------------------------------------------------- */
 
-        p: function( msg ) {
+    __shim__( Object.prototype,
+        'p', function( msg ) {
             if ( arguments.length === 0 ) {
                 console.log( this );
             } else {
@@ -3433,7 +3675,8 @@ Prints this object to `console.log`.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -3447,7 +3690,8 @@ Prints a stack trace to the console.
 
 ------------------------------------------------------------------------------- */
 
-        s: function() {
+    __shim__( Object.prototype,
+        's', function() {
             var err = new Error();
 
             if ( err.stack ) {
@@ -3455,7 +3699,8 @@ Prints a stack trace to the console.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -3469,11 +3714,13 @@ A timestamp is dumped to the console.
 
 ------------------------------------------------------------------------------- */
 
-        t: function() {
+    __shim__( Object.prototype,
+        't', function() {
             console.log( Date.now() );
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -3488,7 +3735,8 @@ Shows an alert to the user.
    
 ------------------------------------------------------------------------------- */
 
-        u: function( msg ) {
+    __shim__( Object.prototype,
+        'u', function( msg ) {
             if ( arguments.length > 0 ) {
                 alert( msg );
             } else {
@@ -3496,7 +3744,8 @@ Shows an alert to the user.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -3522,7 +3771,8 @@ in turn.
 
 ------------------------------------------------------------------------------- */
 
-        v: function( block ) {
+    __shim__( Object.prototype,
+        'v', function( block ) {
             for ( var k in this ) {
                 if ( this.hasOwnProperty(k) ) {
                     if ( block ) {
@@ -3535,11 +3785,7 @@ in turn.
 
             return this;
         }
-
-
-
-    });
-
+    );
 
 
 })();
@@ -3902,7 +4148,7 @@ in a callback method.
                 setOn( events, dom, name[i], fun, useCapture );
             }
         } else {
-            if ( dom instanceof Element ) {
+            if ( dom.nodeType !== undefined ) {
                 if ( events.hasOwnProperty(name) ) {
                     events[name](dom, fun, useCapture);
                 } else {
@@ -4008,7 +4254,7 @@ in a callback method.
     var applyOne = function(bb, bbGun, dom, arg, stringsAreContent) {
         if (arg instanceof Array) {
             applyArray( bb, bbGun, dom, arg, 0 );
-        } else if ( arg instanceof Element ) {
+        } else if ( arg.nodeType !== undefined ) {
             dom.appendChild( arg );
         } else if ( arg.__isBBGun ) {
             dom.appendChild( arg.dom() );
@@ -4067,7 +4313,7 @@ in a callback method.
             } else {
                 return bb.createElement();
             }
-        } else if ( obj instanceof Element ) {
+        } else if ( obj.nodeType !== undefined ) {
             return obj;
         } else if ( obj.__isBBGun ) {
             return obj;
@@ -4225,7 +4471,7 @@ in a callback method.
                 for ( var i = 0; i < arg.length; i++ ) {
                     beforeOne( bb, parentDom, dom, arg[i] );
                 }
-            } else if ( arg instanceof Element ) {
+            } else if ( arg.nodeType !== undefined ) {
                 parentDom.insertBefore( arg, dom );
             } else if ( arg.__isBBGun ) {
                 parentDom.insertBefore( arg.dom(), dom );
@@ -4247,7 +4493,7 @@ in a callback method.
                 for ( var i = 0; i < arg.length; i++ ) {
                     afterOne( bb, parentDom, dom, arg[i] );
                 }
-            } else if ( arg instanceof Element ) {
+            } else if ( arg.nodeType !== undefined ) {
                 parentDom.insertAfter( arg, dom );
             } else if ( arg.__isBBGun ) {
                 parentDom.insertAfter( arg.dom(), dom );
@@ -4269,7 +4515,7 @@ in a callback method.
                 for ( var i = 0; i < arg.length; i++ ) {
                     addOne( bb, dom, arg[i] );
                 }
-            } else if ( arg instanceof Element ) {
+            } else if ( arg.nodeType !== undefined ) {
                 assert( arg.parentNode === null, "adding element, which already has a parent" );
                 dom.appendChild( arg );
             } else if ( arg.__isBBGun ) {
@@ -4333,7 +4579,7 @@ in a callback method.
         } else {
             newDom = bb.createElement( domType );
 
-            if ( val instanceof Element ) {
+            if ( val.nodeType !== undefined ) {
                 newDom.appendChild( val );
             } else if ( val.__isBBGun ) {
                 newDom.appendChild( val.dom() );
@@ -4898,7 +5144,7 @@ the input with type button.
                 if ( dom.__isBBGun ) {
                     return dom.dom();
                 }  else {
-                    assert( dom instanceof Element, "html element event, must return a HTML Element, or BBGun", dom );
+                    assert( dom && dom.nodeType !== undefined, "html element event, must return a HTML Element, or BBGun", dom );
 
                     return dom;
                 }
@@ -5036,7 +5282,7 @@ false for the removed fun.
 
         bb.addClassOne = function(dom, klass) {
             dom = this.get(dom, false);
-            assert(dom instanceof Element, "falsy dom given");
+            assert(dom && dom.nodeType !== undefined, "falsy dom given");
 
             klass = klass.trim();
             if ( klass.length > 0 ) {
@@ -5115,13 +5361,15 @@ false for the removed fun.
         }
 
         bb.get = function(dom, performQuery) {
+            assert( dom, "falsy dom given" );
+
             if (performQuery !== false && isString(dom)) {
                 return document.querySelector(dom) || null;
-            } else if ( dom instanceof Element ) {
+            } else if ( dom.nodeType !== undefined ) {
                 return dom;
             } else if ( isObject(dom) ) {
                 return createObj( this, null, dom );
-            } else if ( dom && dom.__isBBGun ) {
+            } else if ( dom.__isBBGun ) {
                 return dom.dom()
             } else {
                 logError( "unknown object given", dom );
@@ -5222,7 +5470,7 @@ Sets the HTML content within this element.
 
             if ( isString(el) ) {
                 dom.innerHTML = el;
-            } else if ( el instanceof Element ) {
+            } else if ( el.nodeType !== undefined ) {
                 dom.appendChild( el );
             } else if ( el.__isBBGun ) {
                 dom.appendChild( el.dom() )
@@ -5263,7 +5511,7 @@ Sets the HTML content within this element.
                         content = '';
                     }
 
-                    if ( el instanceof Element ) {
+                    if ( el.nodeType !== undefined ) {
                         dom.appendChild( el );
                     } else if ( el.__isBBGun ) {
                         dom.appendChild( el.dom() );
@@ -5609,7 +5857,7 @@ window['BBGun'] = (function() {
                 }
 
                 removeDomCycle( node, args );
-            } else if ( node instanceof Element ) {
+            } else if ( node.nodeType !== undefined ) {
                 if ( node.parentNode !== selfDom ) {
                     logError( "removing Element which is not a child of this node", node );
                 } else {
@@ -5631,7 +5879,7 @@ window['BBGun'] = (function() {
 
                     assert( arg, "falsy parameter given" );
 
-                    assertNot( (arg instanceof Element) && (arg.parentNode !== null), "HTML Element given already has a parent" );
+                    assertNot( (arg.nodeType !== undefined) && (arg.parentNode !== null), "HTML Element given already has a parent" );
                     assertNot( (arg.__isBBGun) && (arg.parent() !== null), "BBGun element given already has a parent" );
                 }
 
@@ -5706,7 +5954,7 @@ window['BBGun'] = (function() {
             var parentDom = oldNode.__xeDom.parentNode;
             var newDom;
 
-            if ( newNode instanceof Element ) {
+            if ( newNode.nodeType !== undefined ) {
                 newNode = bb( newNode );
             } else if ( ! newNode.__isBBGun ) {
                 newNode = bb( newNode );
@@ -6010,7 +6258,7 @@ window['BBGun'] = (function() {
                         if ( obj.parent() === this ) {
                             return obj;
                         }
-                    } else if ( obj instanceof Element ) {
+                    } else if ( obj.nodeType !== undefined ) {
                         var children = this.dom().childNodes;
                         for ( var i = 0; i < children.length; i++ ) {
                             if ( children[i] === obj ) {
@@ -6166,7 +6414,7 @@ window['BBGun'] = (function() {
                         assert( newNode, "falsy newNode given" );
 
                         var oldDom, newDom;
-                        if ( oldNode instanceof Element ) {
+                        if ( oldNode.nodeType !== undefined ) {
                             oldDom = oldNode;
                         } else if ( oldNode.__isBBGun ) {
                             oldDom = oldNode.dom();

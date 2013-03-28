@@ -1,14 +1,19 @@
 
-# check.js.
+===============================================================================
+
+check.js
+========
+
 @author Joseph Lenton
 
 This includes
  - assertions
  - object type checks
 
+===============================================================================
 
-    var objPrototype   = ({}).__proto__;
-    var objConstructor = objPrototype.constructor;
+    var objConstructor = ({}).constructor;
+    var objPrototype   = objConstructor.prototype;
     
     var argsConstructor = (function() {
         return arguments.constructor;
@@ -37,16 +42,14 @@ For regular objects do ...
 -------------------------------------------------------------------------------
 
     var isObject = window['isObject'] = function( obj ) {
-        if ( obj !== undefined && obj !== null ) {
-            var proto = obj.__proto__;
+        if ( obj !== undefined || obj !== null ) {
+            var proto = obj.constructor.prototype;
 
             if ( proto !== undefined && proto !== null ) {
                 return proto             === objPrototype   &&
                        proto.constructor === objConstructor ;
             }
         }
-
-        return false;
     }
 
 
@@ -142,6 +145,18 @@ as Number or String).
 
 -------------------------------------------------------------------------------
 
+## isHTMLElement
+
+-------------------------------------------------------------------------------
+
+    var isHTMLElement = window['isHTMLElement'] = function(obj) {
+        return obj.nodeType !== undefined;
+    }
+
+
+
+-------------------------------------------------------------------------------
+
 ## isArrayArguments
 
 You cannot be absolutely certain an 'arguments' is an 'arguments', so takes an
@@ -183,6 +198,7 @@ include them, use 'isArrayArguments'.
             function( arr ) {
                 return ( arr instanceof Array );
             } ;
+
 
 
 Assertions
@@ -267,7 +283,66 @@ An Error type, specific for assertions.
     AssertionError.prototype = new Error();
     AssertionError.prototype.constructor = AssertionError;
 
+-------------------------------------------------------------------------------
 
+-------------------------------------------------------------------------------
+
+    var getStackTrace = function() {
+      var callstack = [];
+      var isCallstackPopulated = false;
+
+      try {
+        i.dont.exist+=0; //doesn't exist- that's the point
+      } catch(e) {
+        if (e.stack) { //Firefox
+          var lines = e.stack.split('\n');
+          for (var i=0, len=lines.length; i < len; i++) {
+            if (lines[i].match(/^\s*[A-Za-z0-9\-_\$]+\(/)) {
+              callstack.push(lines[i]);
+            }
+          }
+          //Remove call to printStackTrace()
+          callstack.shift();
+          isCallstackPopulated = true;
+        }
+        else if (window.opera && e.message) { //Opera
+          var lines = e.message.split('\n');
+          for (var i=0, len=lines.length; i < len; i++) {
+            if (lines[i].match(/^\s*[A-Za-z0-9\-_\$]+\(/)) {
+              var entry = lines[i];
+              //Append next line also since it has the file info
+              if (lines[i+1]) {
+                entry += ' at ' + lines[i+1];
+                i++;
+              }
+              callstack.push(entry);
+            }
+          }
+          //Remove call to printStackTrace()
+          callstack.shift();
+          isCallstackPopulated = true;
+        }
+      }
+      if (!isCallstackPopulated) { //IE and Safari
+        var currentFunction = arguments.callee.caller;
+        while (currentFunction) {
+          var fn = currentFunction.toString();
+          var fname = fn.substring(fn.indexOf('function') + 8, fn.indexOf('')) || 'anonymous';
+          callstack.push(fn);
+          currentFunction = currentFunction.caller;
+        }
+      }
+
+      return callstack;
+    }
+
+    var printStackTrace = function() {
+        var stack = getStackTrace();
+
+        for ( var i = stack.length-1; i >= 0; i-- ) {
+            alert( stack[i] );
+        }
+    }
 
 -------------------------------------------------------------------------------
 
@@ -286,6 +361,8 @@ second.
 -------------------------------------------------------------------------------
 
     var newAssertionError = function( args, altMsg ) {
+        printStackTrace();
+
         var msg = args[1];
         args[1] = args[0];
         args[0] = msg || altMsg;
@@ -331,6 +408,8 @@ throw new Error, built together, as one.
 -------------------------------------------------------------------------------
 
     var logError = window["logError"] = function( msg ) {
+        printStackTrace();
+
         var err = Object.create( AssertionError.prototype );
         AssertionError.apply( err, arguments );
         throw err;

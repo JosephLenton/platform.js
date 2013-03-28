@@ -1,4 +1,6 @@
 
+===============================================================================
+
 abc.js
 ======
 
@@ -51,36 +53,9 @@ of your program.
 
 when you ask to mark, but don't specify it.
 
+===============================================================================
 
--------------------------------------------------------------------------------
-
-### shim
-
-Used to set the properties to the object. This tries to make the properties not
-show up when enumerated, but this only works in IE 8 and above.
-
--------------------------------------------------------------------------------
-
-    var shim = function( obj, props ) {
-        for ( var k in props ) {
-            if ( props.hasOwnProperty(k) && !obj.hasOwnProperty(k) ) {
-                if ( Object.defineProperty !== undefined ) {
-                    Object.defineProperty( obj, k, {
-                            value           : props[k], 
-                            enumerable      : false,
-                            writable        : true,
-                            configurable    : true
-                    } );
-                } else {
-                    obj[k] = props[k];
-                }
-            }
-        }
-    }
-    
-
-
-    shim( Object.prototype, {
+    var __shim__ = window['__shim__'];
 
 -------------------------------------------------------------------------------
 
@@ -98,7 +73,8 @@ show up when enumerated, but this only works in IE 8 and above.
 
 -------------------------------------------------------------------------------
 
-        a: function( block, msg ) {
+    __shim__( Object.prototype,
+        'a', function( block, msg ) {
             if ( arguments.length === 1 ) {
                 if (
                         !(typeof block === 'function') &&
@@ -142,7 +118,8 @@ show up when enumerated, but this only works in IE 8 and above.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -189,11 +166,13 @@ The return value is ignored.
 
 -------------------------------------------------------------------------------
 
-        b: function( cmd ) {
+    __shim__( Object.prototype,
+        'b', function( cmd ) {
             cmd.call( this, this, this.____mark____ );
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -208,7 +187,8 @@ Calls the command given, on this object.
 
 -------------------------------------------------------------------------------
 
-        c: function( method ) {
+    __shim__( Object.prototype,
+        'c', function( method ) {
             var args = new Array( arguments.length-1 );
             for ( var i = 1; i < arguments.length; i++ ) {
                 args[i-1] = arguments[i];
@@ -217,7 +197,8 @@ Calls the command given, on this object.
             this[method].apply( this, args );
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -235,7 +216,8 @@ just pass in true.
 
 -------------------------------------------------------------------------------
 
-        d: function( mark ) {
+    __shim__( Object.prototype,
+        'd', function( mark ) {
             if ( arguments.length === 0 ) {
                 debugger;
             } else if ( mark === true || this.___mark___ === mark ) {
@@ -243,7 +225,8 @@ just pass in true.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -257,7 +240,8 @@ Asserts this is empty.
 
 -------------------------------------------------------------------------------
 
-        e: function() {
+    __shim__( Object.prototype,
+        'e', function() {
             var isInvalid = false;
 
             if ( this.length !== undefined ) {
@@ -278,15 +262,18 @@ Asserts this is empty.
             }
                 
             return this;
-        },
+        }
+    );
 
 
 
-        f: function( field ) {
+    __shim__( Object.prototype,
+        'f', function( field ) {
             console.log( this[field] );
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -308,7 +295,8 @@ of being outputted to the console.
 
 -------------------------------------------------------------------------------
 
-        k: function( block ) {
+    __shim__( Object.prototype,
+        'k', function( block ) {
             for ( var k in this ) {
                 if ( this.hasOwnProperty(k) ) {
                     if ( block ) {
@@ -320,7 +308,8 @@ of being outputted to the console.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -337,11 +326,13 @@ and otherwise this object is printed.
 
 -------------------------------------------------------------------------------
 
-        l: function( msg ) {
+    __shim__( Object.prototype,
+        'l', function( msg ) {
             console.log( msg || this );
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -385,7 +376,8 @@ retrieve them again later.
 
 -------------------------------------------------------------------------------
 
-        m: function( block ) {
+    __shim__( Object.prototype,
+        'm', function( block ) {
             if ( block !== undefined ) {
                 if ( typeof block === 'function' || (block instanceof Function) ) {
                     var mark = block.call( this, this );
@@ -403,7 +395,8 @@ retrieve them again later.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -420,7 +413,8 @@ allows you to filter unmarking objects.
 
 -------------------------------------------------------------------------------
 
-        n: function( block ) {
+    __shim__( Object.prototype,
+        'n', function( block ) {
             if ( this.____mark____ !== undefined ) {
                 if ( block !== undefined ) {
                     if ( block.call(this, this, this.____mark____) ) {
@@ -432,7 +426,8 @@ allows you to filter unmarking objects.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -447,7 +442,8 @@ Prints this object to `console.log`.
 
 -------------------------------------------------------------------------------
 
-        p: function( msg ) {
+    __shim__( Object.prototype,
+        'p', function( msg ) {
             if ( arguments.length === 0 ) {
                 console.log( this );
             } else {
@@ -455,7 +451,8 @@ Prints this object to `console.log`.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -469,7 +466,8 @@ Prints a stack trace to the console.
 
 -------------------------------------------------------------------------------
 
-        s: function() {
+    __shim__( Object.prototype,
+        's', function() {
             var err = new Error();
 
             if ( err.stack ) {
@@ -477,7 +475,8 @@ Prints a stack trace to the console.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -491,11 +490,13 @@ A timestamp is dumped to the console.
 
 -------------------------------------------------------------------------------
 
-        t: function() {
+    __shim__( Object.prototype,
+        't', function() {
             console.log( Date.now() );
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -510,7 +511,8 @@ Shows an alert to the user.
    
 -------------------------------------------------------------------------------
 
-        u: function( msg ) {
+    __shim__( Object.prototype,
+        'u', function( msg ) {
             if ( arguments.length > 0 ) {
                 alert( msg );
             } else {
@@ -518,7 +520,8 @@ Shows an alert to the user.
             }
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -544,7 +547,8 @@ in turn.
 
 -------------------------------------------------------------------------------
 
-        v: function( block ) {
+    __shim__( Object.prototype,
+        'v', function( block ) {
             for ( var k in this ) {
                 if ( this.hasOwnProperty(k) ) {
                     if ( block ) {
@@ -557,9 +561,5 @@ in turn.
 
             return this;
         }
-
-
-
-    });
-
+    );
 

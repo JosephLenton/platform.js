@@ -356,7 +356,7 @@ in a callback method.
                 setOn( events, dom, name[i], fun, useCapture );
             }
         } else {
-            if ( dom instanceof Element ) {
+            if ( dom.nodeType !== undefined ) {
                 if ( events.hasOwnProperty(name) ) {
                     events[name](dom, fun, useCapture);
                 } else {
@@ -462,7 +462,7 @@ in a callback method.
     var applyOne = function(bb, bbGun, dom, arg, stringsAreContent) {
         if (arg instanceof Array) {
             applyArray( bb, bbGun, dom, arg, 0 );
-        } else if ( arg instanceof Element ) {
+        } else if ( arg.nodeType !== undefined ) {
             dom.appendChild( arg );
         } else if ( arg.__isBBGun ) {
             dom.appendChild( arg.dom() );
@@ -521,7 +521,7 @@ in a callback method.
             } else {
                 return bb.createElement();
             }
-        } else if ( obj instanceof Element ) {
+        } else if ( obj.nodeType !== undefined ) {
             return obj;
         } else if ( obj.__isBBGun ) {
             return obj;
@@ -679,7 +679,7 @@ in a callback method.
                 for ( var i = 0; i < arg.length; i++ ) {
                     beforeOne( bb, parentDom, dom, arg[i] );
                 }
-            } else if ( arg instanceof Element ) {
+            } else if ( arg.nodeType !== undefined ) {
                 parentDom.insertBefore( arg, dom );
             } else if ( arg.__isBBGun ) {
                 parentDom.insertBefore( arg.dom(), dom );
@@ -701,7 +701,7 @@ in a callback method.
                 for ( var i = 0; i < arg.length; i++ ) {
                     afterOne( bb, parentDom, dom, arg[i] );
                 }
-            } else if ( arg instanceof Element ) {
+            } else if ( arg.nodeType !== undefined ) {
                 parentDom.insertAfter( arg, dom );
             } else if ( arg.__isBBGun ) {
                 parentDom.insertAfter( arg.dom(), dom );
@@ -723,7 +723,7 @@ in a callback method.
                 for ( var i = 0; i < arg.length; i++ ) {
                     addOne( bb, dom, arg[i] );
                 }
-            } else if ( arg instanceof Element ) {
+            } else if ( arg.nodeType !== undefined ) {
                 assert( arg.parentNode === null, "adding element, which already has a parent" );
                 dom.appendChild( arg );
             } else if ( arg.__isBBGun ) {
@@ -787,7 +787,7 @@ in a callback method.
         } else {
             newDom = bb.createElement( domType );
 
-            if ( val instanceof Element ) {
+            if ( val.nodeType !== undefined ) {
                 newDom.appendChild( val );
             } else if ( val.__isBBGun ) {
                 newDom.appendChild( val.dom() );
@@ -1352,7 +1352,7 @@ the input with type button.
                 if ( dom.__isBBGun ) {
                     return dom.dom();
                 }  else {
-                    assert( dom instanceof Element, "html element event, must return a HTML Element, or BBGun", dom );
+                    assert( dom && dom.nodeType !== undefined, "html element event, must return a HTML Element, or BBGun", dom );
 
                     return dom;
                 }
@@ -1490,7 +1490,7 @@ false for the removed fun.
 
         bb.addClassOne = function(dom, klass) {
             dom = this.get(dom, false);
-            assert(dom instanceof Element, "falsy dom given");
+            assert(dom && dom.nodeType !== undefined, "falsy dom given");
 
             klass = klass.trim();
             if ( klass.length > 0 ) {
@@ -1569,13 +1569,15 @@ false for the removed fun.
         }
 
         bb.get = function(dom, performQuery) {
+            assert( dom, "falsy dom given" );
+
             if (performQuery !== false && isString(dom)) {
                 return document.querySelector(dom) || null;
-            } else if ( dom instanceof Element ) {
+            } else if ( dom.nodeType !== undefined ) {
                 return dom;
             } else if ( isObject(dom) ) {
                 return createObj( this, null, dom );
-            } else if ( dom && dom.__isBBGun ) {
+            } else if ( dom.__isBBGun ) {
                 return dom.dom()
             } else {
                 logError( "unknown object given", dom );
@@ -1676,7 +1678,7 @@ Sets the HTML content within this element.
 
             if ( isString(el) ) {
                 dom.innerHTML = el;
-            } else if ( el instanceof Element ) {
+            } else if ( el.nodeType !== undefined ) {
                 dom.appendChild( el );
             } else if ( el.__isBBGun ) {
                 dom.appendChild( el.dom() )
@@ -1717,7 +1719,7 @@ Sets the HTML content within this element.
                         content = '';
                     }
 
-                    if ( el instanceof Element ) {
+                    if ( el.nodeType !== undefined ) {
                         dom.appendChild( el );
                     } else if ( el.__isBBGun ) {
                         dom.appendChild( el.dom() );

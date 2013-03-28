@@ -68,7 +68,7 @@
     }
 
     var pressBuilder = function( el, onDown, onMove, onUp ) {
-        if ( ! (el instanceof HTMLElement) ) {
+        if ( ! isHTMLElement(el) ) {
             throw new Error( "non-html element given" );
         }
 
@@ -181,7 +181,7 @@
     };
 
     var clickBuilder = function( el, callback ) {
-        if ( ! (el instanceof HTMLElement) ) {
+        if ( ! isHTMLElement(el) ) {
             throw new Error( "non-html element given" );
         }
 
