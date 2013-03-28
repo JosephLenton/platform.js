@@ -60,12 +60,37 @@ exports.jsx = (function() {
         }
     };
 
+    var isListTest = function( line ) {
+        return (
+                        (
+                                line.charAt(0) === ' ' &&
+                                line.charAt(1) === '-' &&
+                                line.charAt(2) !== '-'
+                        ) || (
+                                line.charAt(0) === '-' &&
+                                line.charAt(1) !== '-' &&
+                                line.length > 2
+                        )
+                ) || (
+                        (
+                                line.charAt(0) === ' ' &&
+                                line.charAt(1) === '*' &&
+                                line.charAt(2) !== '*'
+                        ) || (
+                                line.charAt(0) === '*' &&
+                                line.charAt(1) !== '*' &&
+                                line.length > 2
+                        )
+                );
+    }
+
     jsx.parse = function( code ) {
         var lines = code.split(/\n\r|\r\n|\n|\r/);
 
         var isMarkdown      = true,
             commentStarted  = false,
-            isExample       = false;
+            isExample       = false,
+            isList          = false;
 
         var code = [ '"use strict";(function() {' ];
 
@@ -112,9 +137,19 @@ exports.jsx = (function() {
                         line.charAt(2) === ' ' &&
                         line.charAt(3) === ' '
                 ) {
-                    if ( ! isExample ) {
+                    if ( isList && line.trim() !== '' ) {
+                        // ignore, if this is a continuation of a list
+                    } else if ( ! isExample ) {
                         isMarkdown = false;
                     }
+                } else if ( isList ) {
+                    if ( line.trim() === '' ) {
+                        isList = false;
+                    } else if ( ! isListTest(line) ) {
+                        isList = false;
+                    }
+                } else if ( isListTest(line) ) {
+                    isList = true;
                 }
             } else {
                 if (
