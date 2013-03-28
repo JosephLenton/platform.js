@@ -1327,6 +1327,8 @@ with the given 'pre' function tacked on before it.
 
 ### function.callLater
 
+This is a mix of call, and later.
+
 ------------------------------------------------------------------------------- */
 
         callLater: function( target ) {
@@ -1421,6 +1423,35 @@ Cancelling the timeout can be done using 'clearTimeout'.
 
             return setTimeout( fun, timeout );
         }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+### function.bindLater
+
+This returns a function, which when called, will call this function, in the
+future.
+
+Yes, it's as simple as that.
+
+@param target Optional, a target object to bind this function to.
+@param timeout Optional, the timeout to wait before calling this function, defaults to 0.
+
+------------------------------------------------------------------------------- */
+
+        bindLater: function( target, timeout ) {
+            if ( arguments.length === 0 ) {
+                return this.method( 'later' );
+            } else if ( arguments.length === 1 ) {
+                return this.method( 'later', timeout );
+            } else {
+                return this.method( 'later', target, timeout );
+            }
+        }
+
+
+
     });
 
 
@@ -4212,7 +4243,7 @@ in a callback method.
                 dom.addEventListener( k, val, false )
             }
         /* custom BBGun Event */
-        } else if ( bbGun !== null && bbGun.__proto__.__eventList[k] === true ) {
+        } else if ( bbGun !== null && bbGun.constructor.prototype.__eventList[k] === true ) {
             bbGun.on( k, val );
 
         /* new objet creation */

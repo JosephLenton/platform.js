@@ -885,7 +885,7 @@ in a callback method.
                 dom.addEventListener( k, val, false )
             }
         /* custom BBGun Event */
-        } else if ( bbGun !== null && bbGun.__proto__.__eventList[k] === true ) {
+        } else if ( bbGun !== null && bbGun.constructor.prototype.__eventList[k] === true ) {
             bbGun.on( k, val );
 
         /* new objet creation */
