@@ -1,44 +1,30 @@
-"use strict";
 
-(function() {
-    var extend = function( obj, props ) {
-        for ( var k in props ) {
-            if ( props.hasOwnProperty(k) ) {
-                if ( Object.defineProperty !== undefined ) {
-                    Object.defineProperty( obj, k, {
-                            value           : props[k], 
-                            enumerable      : false,
-                            writable        : true,
-                            configurable    : true
-                    } );
-                } else {
-                    obj[k] = props[k];
-                }
-            }
-        }
-    }
+===============================================================================
 
-    /*
-     * ### ### ### ### ### ### ### ### ### ### ### ### 
-     *          Object
-     * ### ### ### ### ### ### ### ### ### ### ### ### 
-     */
+## Object
 
-    extend( Object.prototype, {
-            /**
-             * Maps the function given, against the items stored
-             * within this object. Note that only the items *directly*
-             * stored are included; prototype items are skipped.
-             *
-             * The function is in the order:
-             *
-             *  function( value, key )
-             *
-             * This is so that it matches up with Array.map.
-             *
-             * @param fun The function to apply against this object's properties.
-             */
-            map: function( fun ) {
+===============================================================================
+
+    var __setProp__ = window['__setProp__'];
+
+-------------------------------------------------------------------------------
+
+Maps the function given, against the items stored
+within this object. Note that only the items *directly*
+stored are included; prototype items are skipped.
+
+The function is in the order:
+
+ function( value, key )
+
+This is so that it matches up with Array.map.
+
+@param fun The function to apply against this object's properties.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Object.prototype,
+            'map', function( fun ) {
                 var rs = [];
 
                 for ( var k in this ) {
@@ -48,37 +34,55 @@
                 }
 
                 return rs;
-            },
+            }
 
-            getProp: function( name ) {
+    );
+
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+    __setProp__( Object.prototype,
+            'getProp', function( name ) {
                 return this[name];
-            },
+            }
+    );
 
-            /**
-             * Finds the method, and binds it to 'this' object.
-             * This is so you can do:
-             *
-             *      this.foo.bar.something().whatever.method( 'doWork' );
-             *
-             * ... instead of ...
-             *
-             *      this.foo.bar.something().whatever.doWork.bind(
-             *              this.foo.bar.something().whatever
-             *      )
-             *
-             * You can also provide array descriptions,
-             * to call multiple methods in order.
-             * For example:
-             *
-             *      this.foo.method(
-             *              [ 'doA', a, b, c ],
-             *              [ 'doB', x, y, z ]
-             *      )
-             *
-             * When the function created is called,
-             * it's last argument is executed.
-             */
-            method: function( name ) {
+
+
+-------------------------------------------------------------------------------
+
+Finds the method, and binds it to 'this' object.
+This is so you can do:
+
+```
+     this.foo.bar.something().whatever.method( 'doWork' );
+
+... instead of ...
+
+```
+     this.foo.bar.something().whatever.doWork.bind(
+             this.foo.bar.something().whatever
+     )
+
+You can also provide array descriptions,
+to call multiple methods in order.
+For example:
+
+```
+     this.foo.method(
+             [ 'doA', a, b, c ],
+             [ 'doB', x, y, z ]
+     )
+
+When the function created is called,
+it's last argument is executed.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Object.prototype,
+            'method', function( name ) {
                 if ( isString(name) ) {
                     return this.methodApply( name, arguments, 1 );
                 } else {
@@ -108,9 +112,16 @@
                         return lastR;
                     }
                 }
-            },
+            }
+    );
 
-            methodApply: function( name, args, startI ) {
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+    __setProp__( Object.prototype,
+            'methodApply', function( name, args, startI ) {
                 var fun = this[name];
 
                 if ( (typeof fun !== 'function') || !(fun instanceof Function) ) {
@@ -138,33 +149,42 @@
 
                     return fun.bind.apply( fun, newArgs );
                 }
-            },
-
-            has: function( name ) {
-                return this.hasOwnProperty( name );
             }
-    } );
+    );
 
-    /*
-     * ### ### ### ### ### ### ### ### ### ### ### ### 
-     *          String
-     * ### ### ### ### ### ### ### ### ### ### ### ### 
-     */
 
-    extend( String.prototype, {
-            /**
-             * This is the equivalent to:
-             *
-             *      someString.split( str ).pop() || ''
-             *
-             * What it does, is find the last occurance of
-             * 'str', and then returns a substring of
-             * everything after that occurance.
-             *
-             * @param str The string to look for.
-             * @return The string found, or an empty string if not found.
-             */
-            lastSplit: function( str ) {
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+    __setProp__( Object.prototype,
+            'has', Object.hasOwnProperty
+    );
+
+===============================================================================
+
+## String
+
+===============================================================================
+
+-------------------------------------------------------------------------------
+
+This is the equivalent to:
+
+```
+     someString.split( str ).pop() || ''
+
+What it does, is find the last occurance of
+'str', and then returns a substring of
+everything after that occurance.
+
+@param str The string to look for.
+@return The string found, or an empty string if not found.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( String.prototype,
+            'lastSplit', function( str ) {
                 var index = this.lastIndexOf( str );
 
                 if ( index === -1 ) {
@@ -173,20 +193,25 @@
                     return this.substring( index+1 );
                 }
             }
-    } )
+    );
 
-    /*
-     * ### ### ### ### ### ### ### ### ### ### ### ### 
-     *          Array
-     * ### ### ### ### ### ### ### ### ### ### ### ### 
-     */
 
-    /*
-     * We fallback onto the old map for some of our behaviour,
-     * or define a new one, if missing (IE 8).
-     *
-     * @see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Array/map#Compatibility
-     */
+
+===============================================================================
+
+## Array
+
+===============================================================================
+
+-------------------------------------------------------------------------------
+
+We fallback onto the old map for some of our behaviour,
+or define a new one, if missing (IE 8).
+
+@see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Array/map#Compatibility
+
+-------------------------------------------------------------------------------
+
     var oldMap = Array.prototype.map;
     if ( oldMap === undefined ) {
         oldMap = function(callback, thisArg) {
@@ -258,17 +283,21 @@
         };      
     }
 
-    /**
-     * Same as 'filterMethod', however this will remove
-     * all items which return 'true', rather than keep them.
-     *
-     * This is useful for when things return 'true',
-     * and you don't want them. For example:
-     *
-     *  var nonEmptyNodes = nodes.filterOutMethod( 'isEmpty' )
-     */
-    extend( Array.prototype, {
-            filterOutMethod: function( meth ) {
+-------------------------------------------------------------------------------
+
+Same as 'filterMethod', however this will remove
+all items which return 'true', rather than keep them.
+
+This is useful for when things return 'true',
+and you don't want them. For example:
+
+```
+    var nonEmptyNodes = nodes.filterOutMethod( 'isEmpty' )
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Array.prototype,
+            'filterOutMethod', function( meth ) {
                 var fun;
                 if ( arguments.length > 1 ) {
                     var args = new Array( arguments.length-1 );
@@ -288,18 +317,26 @@
                 }
 
                 return this.filter( fun );
-            },
+            }
+    );
 
-            /**
-             * Calls the given method against all elements in the array.
-             * If it returns a non-falsy item (false, null, or undefined),
-             * then it will be kept.
-             *
-             * Otherwise, it will be removed.
-             *
-             *  var emptyNodes = nodes.filterOutMethod( 'isEmpty' )
-             */
-            filterMethod: function( meth ) {
+
+
+-------------------------------------------------------------------------------
+
+Calls the given method against all elements in the array.
+If it returns a non-falsy item (false, null, or undefined),
+then it will be kept.
+
+Otherwise, it will be removed.
+
+```
+    var emptyNodes = nodes.filterOutMethod( 'isEmpty' )
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Array.prototype,
+            'filterMethod', function( meth ) {
                 var fun;
                 if ( arguments.length > 1 ) {
                     var args = new Array( arguments.length-1 );
@@ -319,31 +356,45 @@
                 }
 
                 return this.filter( fun );
-            },
+            }
+    );
 
-            /**
-             * This is shorthand for using filterType,
-             * where 'keepProto' is set to false.
-             */
-            filterOutType: function( proto, thisObj ) {
+
+
+-------------------------------------------------------------------------------
+
+This is shorthand for using filterType,
+where 'keepProto' is set to false.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Array.prototype,
+            'filterOutType', function( proto, thisObj ) {
                 if ( arguments.length > 1 ) {
                     return this.filterType( proto, thisObj, false );
                 } else {
                     return this.filterType( proto, false );
                 }
-            },
+            }
+    );
 
-            /**
-             * Filters object based on the prototype given.
-             * This can work in two ways:
-             *
-             *  - keepProto = true - keep only object, of that type
-             *  - keepProto = true - keep all objects, except for that type
-             *
-             * By default, keepProto is true, and so will keep only items
-             * which match the proto constructor given.
-             */
-            filterType: function( proto, thisObj, keepProto ) {
+
+
+-------------------------------------------------------------------------------
+
+Filters object based on the prototype given.
+This can work in two ways:
+
+ - keepProto = true - keep only object, of that type
+ - keepProto = true - keep all objects, except for that type
+
+By default, keepProto is true, and so will keep only items
+which match the proto constructor given.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Array.prototype,
+            'filterType', function( proto, thisObj, keepProto ) {
                 var hasThis = false;
                 var argsLen = arguments.length;
 
@@ -387,16 +438,23 @@
                 } else {
                     return this.filter( fun );
                 }
-            },
+            }
+    );
 
-            /**
-             * Similar to 'forEach',
-             * except that the target goes first in the parameter list.
-             *
-             * The target is also returned if it is provided,
-             * and if not, then this array is returned.
-             */
-            each: function( target, callback ) {
+
+
+-------------------------------------------------------------------------------
+
+Similar to 'forEach',
+except that the target goes first in the parameter list.
+
+The target is also returned if it is provided,
+and if not, then this array is returned.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Array.prototype,
+            'each', function( target, callback ) {
                 if ( arguments.length === 1 ) {
                     callback = target;
                     assertFunction( callback );
@@ -411,9 +469,16 @@
 
                     return target;
                 }
-            },
+            }
+    );
 
-            map: function( fun ) {
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+    __setProp__( Array.prototype,
+            'map', function( fun ) {
                 if ( typeof fun === 'string' || (fun instanceof String) ) {
                     var args = new Array( arguments.length-1 );
                     for ( var i = 0; i < args.length; i++ ) {
@@ -426,9 +491,16 @@
                 } else {
                     return oldMap.apply( this, arguments );
                 }
-            },
+            }
+    );
 
-            inject: function( sum, fun ) {
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+    __setProp__( Array.prototype,
+            'inject', function( sum, fun ) {
                 if ( arguments.length === 1 ) {
                     assertFunction( sum, "no inject function provided" );
                     return this.reduce( sum );
@@ -437,7 +509,5 @@
                     return this.reduce( fun, sum );
                 }
             }
-    })
-})();
-
+    )
 

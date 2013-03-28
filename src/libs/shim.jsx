@@ -1,43 +1,30 @@
-"use strict";
 
-/**
- * shim.js
- *
- * This is a collection of shims from around the internet,
- * and some built by me, which add support for missing JS features.
- */
+===============================================================================
 
-/*
- * ### ### ### ### ### ### ### ### ### ### ### ### ### 
- *          Object
- * ### ### ### ### ### ### ### ### ### ### ### ### ### 
- */
+shim.js
+=======
 
-(function() {
-    var shim = function( obj, props ) {
-        for ( var k in props ) {
-            if ( props.hasOwnProperty(k) && !obj.hasOwnProperty(k) ) {
-                if ( Object.defineProperty !== undefined ) {
-                    Object.defineProperty( obj, k, {
-                            value           : props[k], 
-                            enumerable      : false,
-                            writable        : true,
-                            configurable    : true
-                    } );
-                } else {
-                    obj[k] = props[k];
-                }
-            }
-        }
-    }
+
+This is a collection of shims from around the internet,
+and some built by me, which add support for missing JS features.
+
+===============================================================================
+
+    var __shim__ = window['__shim__'];
+
+===============================================================================
+
+## Object
+
+===============================================================================
 
     /**
      * Object.create
      *
      * @see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Object/create
      */
-    shim( Object, {
-        create: function(o) {
+    __shim__( Object,
+        'create', function(o) {
             if (arguments.length > 1) {
                 throw new Error('Object.create implementation only accepts the first parameter.');
             }
@@ -47,23 +34,32 @@
 
             return new F();
         }
-    })
+    );
 
-    /*
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     *          Array
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     */
+    __shim__( Date,
+        'now', function() {
+            return new Date().getTime();
+        }
+    );
 
-    // Production steps of ECMA-262, Edition 5, 15.4.4.18
-    // Reference: http://es5.github.com/#x15.4.4.18
+===============================================================================
+
+### Array
+
+Note that 'map' is missing, because it is dealt with
+in the 'extras' file.
+
+===============================================================================
+
+### forEach
+
+Production steps of ECMA-262, Edition 5, 15.4.4.18
+Reference: http://es5.github.com/#x15.4.4.18
     
-    /*
-     * Note that 'map' is missing, because it is dealt with
-     * in the 'extras' file.
-     */
-    shim( Array.prototype, {
-        forEach: function( callback, thisArg ) {
+-------------------------------------------------------------------------------
+
+    __shim__( Array.prototype,
+        'forEach', function( callback, thisArg ) {
             var T, k;
 
             if ( this == null ) {
@@ -115,23 +111,30 @@
             }
             // 8. return undefined
         }
-    })
+    );
 
-    /*
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     *          String
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     */
+===============================================================================
 
-    /**
-     * @see https://github.com/paulmillr/es6-shim/blob/master/es6-shim.js
-     */
-    shim( String.prototype, {
-            toArray: function() {
+## String
+
+===============================================================================
+
+-------------------------------------------------------------------------------
+
+### toArray
+
+@see https://github.com/paulmillr/es6-shim/blob/master/es6-shim.js
+
+-------------------------------------------------------------------------------
+
+    __shim__( String.prototype,
+            'toArray', function() {
                 return this.split( '' );
-            },
+            }
+    );
 
-            contains: function( str, index ) {
+    __shim__( String.prototype,
+            'contains', function( str, index ) {
                 if ( arguments.length === 1 ) {
                     return this.indexOf(str) !== -1;
                 } else if ( arguments.length === 2 ) {
@@ -139,17 +142,21 @@
                 } else if ( arguments.length === 0 ) {
                     throw new Error( "no search string provided" );
                 }
-            },
+            }
+    );
 
+    __shim__( String.prototype,
             // Fast repeat, uses the `Exponentiation by squaring` algorithm.
-            repeat: function(times) {
+            'repeat', function(times) {
               if (times < 1) return '';
               if (times % 2) return this.repeat(times - 1) + this;
               var half = this.repeat(times / 2);
               return half + half;
-            },
+            }
+    );
 
-            startsWith: function(searchString) {
+    __shim__( String.prototype,
+            'startsWith', function(searchString) {
               var position = arguments[1];
 
               // Let searchStr be ToString(searchString).
@@ -185,9 +192,11 @@
               // return true.
               var index = ''.indexOf.call(s, searchString, start);
               return index === start;
-            },
+            }
+    );
 
-            endsWith: function(searchString) {
+    __shim__( String.prototype,
+            'endsWith', function(searchString) {
               var endPosition = arguments[1];
 
               // ReturnIfAbrupt(CheckObjectCoercible(this value)).
@@ -225,26 +234,31 @@
               var index = ''.indexOf.call(s, searchString, start);
               return index === start;
             }
-    })
+    );
 
-    /*
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     *          Element
-     * ### ### ### ### ### ### ### ### ### ### ### ### ### 
-     */
+===============================================================================
 
-    /**
-     *      Element.matchesSelector()
-     *
-     * A new W3C selection tester, for testing if a node
-     * matches a selection. Very new, so it's either browser
-     * specific, or needs a shim.
-     *
-     * @author termi https://gist.github.com/termi
-     * @see https://gist.github.com/termi/2369850/f4022295bf19332ff17e79350ec06c5114d7fbc9
-     */
-    shim( Element.prototype, {
-        matchesSelector: 
+## Element
+
+These do *not* use __shim__, as it breaks in IE 8!
+
+===============================================================================
+
+-------------------------------------------------------------------------------
+
+### element.matchesSelector()
+
+A new W3C selection tester, for testing if a node
+matches a selection. Very new, so it's either browser
+specific, or needs a shim.
+
+@author termi https://gist.github.com/termi
+@see https://gist.github.com/termi/2369850/f4022295bf19332ff17e79350ec06c5114d7fbc9
+
+-------------------------------------------------------------------------------
+
+    if ( Element.prototype.matchesSelector === undefined ) {
+        Element.prototype.matchesSelector =
                 Element.prototype.matches ||
                 Element.prototype.webkitMatchesSelector ||
                 Element.prototype.mozMatchesSelector ||
@@ -300,25 +314,34 @@
 
                     return match;
                 }
-    })
+    };
 
-    shim( Element.prototype, {
-        matches: Element.prototype.matchesSelector
-    });
+-------------------------------------------------------------------------------
 
-    /*
-     * classList.js: Cross-browser full element.classList implementation.
-     * 2012-11-15
-     *
-     * By Eli Grey, http://eligrey.com
-     * Public Domain.
-     * NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
-     */
-     
-    /*global self, document, DOMException */
-     
-    /*! @source http://purl.eligrey.com/github/classList.js/blob/master/classList.js*/
-     
+### element.matches
+
+-------------------------------------------------------------------------------
+
+    if ( Element.prototype.matches === undefined ) {
+        Element.prototype.matches =
+            Element.prototype.matchesSelector
+    };
+
+-------------------------------------------------------------------------------
+
+### classList.js: Cross-browser full element.classList implementation.
+
+2012-11-15
+
+By Eli Grey, http://eligrey.com
+Public Domain.
+
+NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
+
+@source http://purl.eligrey.com/github/classList.js/blob/master/classList.js
+
+-------------------------------------------------------------------------------
+  
     if (typeof document !== "undefined" && !("classList" in document.createElement("a"))) {
         (function (view) {
             "use strict";
@@ -483,4 +506,3 @@
             }
         }(self));
     }
-})()

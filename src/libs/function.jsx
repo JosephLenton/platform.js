@@ -49,22 +49,7 @@ In the example, the parameter left out is exactly defined, using the underscore.
 
 -------------------------------------------------------------------------------
 
-    var extend = function( obj, props ) {
-        for ( var k in props ) {
-            if ( props.hasOwnProperty(k) ) {
-                if ( Object.defineProperty !== undefined ) {
-                    Object.defineProperty( obj, k, {
-                            value           : props[k], 
-                            enumerable      : false,
-                            writable        : true,
-                            configurable    : true
-                    } );
-                } else {
-                    obj[k] = props[k];
-                }
-            }
-        }
-    }
+    var __setProp__ = window['__setProp__'];
 
 -------------------------------------------------------------------------------
 
@@ -335,8 +320,8 @@ you can then bind and pass it around.
 
 -------------------------------------------------------------------------------
 
-    extend( Function, {
-        create: function() {
+    __setProp__( Function,
+        'create', function() {
             var argsLen = arguments.length;
 
             if ( argsLen === 0 ) {
@@ -372,7 +357,7 @@ you can then bind and pass it around.
                 }
             }
         }
-    });
+    );
 
 ===============================================================================
 
@@ -381,8 +366,6 @@ you can then bind and pass it around.
 Methods for function objects.
 
 ===============================================================================
-
-    extend( Function.prototype, {
 
 -------------------------------------------------------------------------------
 
@@ -395,7 +378,8 @@ other function methods, for adding in extras on top.
 
 -------------------------------------------------------------------------------
 
-        bind: function( target ) {
+    __setProp__( Function.prototype,
+        'bind', function( target ) {
             assert( arguments.length > 0, "not enough arguments" );
 
             var newFun = newPartial( this, target || undefined, arguments, 1, false );
@@ -403,7 +387,8 @@ other function methods, for adding in extras on top.
             newFun.__bound = target;
 
             return newFun;
-        },
+        }
+    );    
 
 
 
@@ -421,7 +406,8 @@ they will be executed in turn.
 
 -------------------------------------------------------------------------------
 
-        lazy: function(target) {
+    __setProp__( Function.prototype,
+        'lazy', function(target) {
             var args = arguments;
             var self = this;
 
@@ -448,7 +434,8 @@ they will be executed in turn.
 
                         return self.apply( target, allArgs );
                     }).proto( this );
-        },
+        }
+    );
 
 
 
@@ -459,7 +446,8 @@ they will be executed in turn.
 
 -------------------------------------------------------------------------------
 
-        eventFields: function( field ) {
+    __setProp__( Function.prototype,
+        'eventFields', function( field ) {
             for ( var i = 0; i < arguments.length; i++ ) {
                 var field = arguments[i];
 
@@ -469,7 +457,8 @@ they will be executed in turn.
             }
 
             return this;
-        },
+        }
+    );
 
 -------------------------------------------------------------------------------
 
@@ -481,7 +470,8 @@ Duplicates this function, and sets a new prototype for it.
 
 -------------------------------------------------------------------------------
 
-        proto: function( newProto ) {
+    __setProp__( Function.prototype,
+        'proto', function( newProto ) {
             if ( (typeof newProto === 'function') || (newProto instanceof Function) ) {
                 for ( var k in newProto ) {
                     if ( newProto.hasOwnProperty(k) && k !== 'prototype' ) {
@@ -495,7 +485,8 @@ Duplicates this function, and sets a new prototype for it.
             this.prototype = newProto;
 
             return this;
-        },
+        }
+    );
 
 
 
@@ -511,9 +502,11 @@ as a prototype instead of a funtion.
 
 -------------------------------------------------------------------------------
 
-        newPrototype: function() {
+    __setProp__( Function.prototype,
+        'newPrototype', function() {
             return newPrototypeArray( this, arguments );
-        },
+        }
+    );
 
 
 -------------------------------------------------------------------------------
@@ -526,12 +519,14 @@ This allows you to have a sanity check.
 
 -------------------------------------------------------------------------------
 
-        override: newFunctionExtend(
+    __setProp__( Function.prototype,
+        'override', newFunctionExtend(
                 "Methods are overriding, but they do not exist,",
                 function(dest, k, val) {
                     return ( dest[k] !== undefined )
                 }
-        ),
+        )
+    );
 
 
 
@@ -542,7 +537,8 @@ This allows you to have a sanity check.
 
 -------------------------------------------------------------------------------
 
-        before: newFunctionExtend(
+    __setProp__( Function.prototype,
+        'before', newFunctionExtend(
                 "Pre-Adding method behaviour, but original method not found,",
                 function(dest, k, val) {
                     if ( dest[k] === undefined ) {
@@ -551,7 +547,8 @@ This allows you to have a sanity check.
                         return dest[k].preSub( val );
                     }
                 }
-        ),
+        )
+    );
 
 
 
@@ -562,7 +559,8 @@ This allows you to have a sanity check.
 
 -------------------------------------------------------------------------------
 
-        after: newFunctionExtend(
+    __setProp__( Function.prototype,
+        'after', newFunctionExtend(
                 "Adding method behaviour, but original method not found,",
                 function(dest, k, val) {
                     if ( dest[k] === undefined ) {
@@ -571,7 +569,8 @@ This allows you to have a sanity check.
                         return dest[k].sub( val );
                     }
                 }
-        ),
+        )
+    );
 
 
 
@@ -586,12 +585,14 @@ This is used as a sanity check.
 
 -------------------------------------------------------------------------------
 
-        extend: newFunctionExtend(
+    __setProp__( Function.prototype,
+        'extend', newFunctionExtend(
                 "Extending methods already exist, ",
                 function(dest, k, val) {
                     return ( dest[k] === undefined )
                 }
-        ),
+        )
+    );
 
 
 
@@ -602,7 +603,8 @@ This is used as a sanity check.
 
 -------------------------------------------------------------------------------
 
-        require: newFunctionExtend(
+    __setProp__( Function.prototype,
+        'require', newFunctionExtend(
                 "Pre-Adding method behaviour, but original method not found,",
                 function(dest, k, val) {
                     if ( dest[k] !== undefined ) {
@@ -613,7 +615,8 @@ This is used as a sanity check.
                         }
                     }
                 }
-        ),
+        )
+    );
 
 
 
@@ -629,14 +632,16 @@ when the function is called.
 
 -------------------------------------------------------------------------------
 
-        params: function() {
+    __setProp__( Function.prototype,
+        'params', function() {
             var self = this,
                 args = arguments;
 
             return (function() {
                         return self.apply( this, args );
                     }).proto( this );
-        },
+        }
+    );
 
 
 
@@ -655,10 +660,12 @@ given.
 
 -------------------------------------------------------------------------------
 
-        curry: function() {
+    __setProp__( Function.prototype,
+        'curry', function() {
             return newPartial( this, undefined, arguments, 0, false ).
                     proto( self );
-        },
+        }
+    );
 
 
 
@@ -711,10 +718,12 @@ Variables inside f will be ...
 
 -------------------------------------------------------------------------------
 
-        postCurry: function() {
+    __setProp__( Function.prototype,
+        'postCurry', function() {
             return newPartial( this, undefined, arguments, 0, true ).
                     proto( self );
-        },
+        }
+    );
 
 
 
@@ -732,14 +741,16 @@ but makes a copy first.
 
 -------------------------------------------------------------------------------
 
-        preSub: function( pre ) {
+    __setProp__( Function.prototype,
+        'preSub', function( pre ) {
             var self = this;
             return (function() {
                         pre.apply( this, arguments );
                         return self.apply( this, arguments );
                     }).
                     proto( this );
-        },
+        }
+    );
 
 
 
@@ -765,7 +776,8 @@ So parameters start from index 1, not 0.
 
 -------------------------------------------------------------------------------
 
-        wrap: function( wrap ) {
+    __setProp__( Function.prototype,
+        'wrap', function( wrap ) {
             assertFunction( wrap, "function not provided for wrap parameter" );
 
             var self = this;
@@ -780,7 +792,8 @@ So parameters start from index 1, not 0.
                         return wrap.call( this, arguments );
                     }).
                     proto( this );
-        },
+        }
+    );
 
 
 
@@ -801,7 +814,8 @@ but makes a copy first.
 
 -------------------------------------------------------------------------------
 
-        sub: function( post ) {
+    __setProp__( Function.prototype,
+        'sub', function( post ) {
             var self = this;
 
             return (function() {
@@ -809,7 +823,8 @@ but makes a copy first.
                         return post.apply( this, arguments );
                     }).
                     proto( this );
-        },
+        }
+    );
 
 
 
@@ -839,7 +854,8 @@ i.e.
 
 -------------------------------------------------------------------------------
 
-        then: function() {
+    __setProp__( Function.prototype,
+        'then', function() {
             var argsLen = arguments.length,
                 args = arguments;
 
@@ -858,7 +874,8 @@ i.e.
                     return andFun( this, arguments );
                 }
             }
-        },
+        }
+    );
 
 
 
@@ -871,13 +888,15 @@ with the given 'pre' function tacked on before it.
 
 -------------------------------------------------------------------------------
 
-        subBefore: function( pre ) {
+    __setProp__( Function.prototype,
+        'subBefore', function( pre ) {
             return (function() {
                         post.call( this, arguments );
                         return self.call( this, arguments );
                     }).
                     proto( this );
-        },
+        }
+    );
 
 -------------------------------------------------------------------------------
 
@@ -887,7 +906,8 @@ This is a mix of call, and later.
 
 -------------------------------------------------------------------------------
 
-        callLater: function( target ) {
+    __setProp__( Function.prototype,
+        'callLater', function( target ) {
             var argsLen = arguments.length;
             var self = this;
 
@@ -919,7 +939,8 @@ This is a mix of call, and later.
             } else {
                 return this.applyLater( target, arguments );
             }
-        },
+        }
+    );
 
 
 
@@ -930,7 +951,8 @@ This is a mix of call, and later.
 
 -------------------------------------------------------------------------------
 
-        applyLater: function( target, args ) {
+    __setProp__( Function.prototype,
+        'applyLater', function( target, args ) {
             if ( arguments.length <= 1 ) {
                 args = new Array(0);
             }
@@ -940,7 +962,8 @@ This is a mix of call, and later.
             return setTimeout( function() {
                 self.apply( target, args );
             }, 0 );
-        },
+        }
+    );
 
 
 
@@ -962,7 +985,8 @@ Cancelling the timeout can be done using 'clearTimeout'.
 
 -------------------------------------------------------------------------------
 
-        later: function( timeout ) {
+    __setProp__( Function.prototype,
+        'later', function( timeout ) {
             var fun = this;
 
             if ( arguments.length === 0 ) {
@@ -979,6 +1003,7 @@ Cancelling the timeout can be done using 'clearTimeout'.
 
             return setTimeout( fun, timeout );
         }
+    );
 
 
 
@@ -996,7 +1021,8 @@ Yes, it's as simple as that.
 
 -------------------------------------------------------------------------------
 
-        bindLater: function( target, timeout ) {
+    __setProp__( Function.prototype,
+        'bindLater', function( target, timeout ) {
             if ( arguments.length === 0 ) {
                 return this.method( 'later' );
             } else if ( arguments.length === 1 ) {
@@ -1005,8 +1031,5 @@ Yes, it's as simple as that.
                 return this.method( 'later', target, timeout );
             }
         }
-
-
-
-    });
+    );
 
