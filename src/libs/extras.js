@@ -16,6 +16,31 @@
      */
 
     extend( Object.prototype, {
+            /**
+             * Maps the function given, against the items stored
+             * within this object. Note that only the items *directly*
+             * stored are included; prototype items are skipped.
+             *
+             * The function is in the order:
+             *
+             *  function( value, key )
+             *
+             * This is so that it matches up with Array.map.
+             *
+             * @param fun The function to apply against this object's properties.
+             */
+            map: function( fun ) {
+                var rs = [];
+
+                for ( var k in this ) {
+                    if ( this.has(k) ) {
+                        rs.push( fun.call(this, this[k], k) );
+                    }
+                }
+
+                return rs;
+            },
+
             getProp: function( name ) {
                 return this[name];
             },
