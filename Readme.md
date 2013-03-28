@@ -98,3 +98,16 @@ A little shorter, and a little clearer.
 The aim is you write less boiler plate,
 and more descriptions of what should happen.
 
+JSX
+---
+
+Platform.js is written in it's own language, JSX,
+which is JavaScript + Markdown for comments.
+This makes the code look more readable,
+and laid out more like documentation.
+
+It also includes a few language extensions,
+such as inserting "use strict" and a wrapping self-executing function around all code.
+
+Otherwise, JSX is just JavaScript.
+
