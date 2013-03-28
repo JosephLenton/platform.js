@@ -1420,7 +1420,7 @@ Cancelling the timeout can be done using 'clearTimeout'.
             }
 
             return setTimeout( fun, timeout );
-        },
+        }
     });
 
 
