@@ -3747,6 +3747,8 @@ it will be of this type by default.
 
     var DEFAULT_ELEMENT = 'div';
 
+    var WHITESPACE_REGEX = / +/g;
+
     var TYPE_NAME_PROPERTY = 'nodeName';
 
     var STOP_PROPAGATION_FUN = function( ev ) {
@@ -4082,6 +4084,8 @@ in a callback method.
             for ( var i = 0; i < name.length; i++ ) {
                 setOn( events, dom, name[i], fun, useCapture );
             }
+        } else if ( name.indexOf(' ') !== -1 ) {
+            setOn( events, dom, name.split(WHITESPACE_REGEX), fun, useCapture );
         } else {
             if ( dom.nodeType !== undefined ) {
                 if ( events.hasOwnProperty(name) ) {
@@ -4186,6 +4190,33 @@ in a callback method.
         return dom;
     }
 
+    var runAttrFun = function( bb, bbGun, dom, arg ) {
+        bb.__doms[ bb.__domsI ] = dom;
+        bb.__domsI++;
+
+        var r;
+        if ( bbGun !== null ) {
+            r = arg.call( bbGun );
+        } else {
+            r = arg.call( dom );
+        }
+
+        /*
+         * Any non-undefined result is appended.
+         */
+
+        if ( r !== undefined ) {
+            if ( isArray(r) ) {
+                addArray( bb, dom, r, 0 );
+            } else {
+                addOne( bb, dom, r );
+            }
+        }
+
+        bb.__domsI--;
+        bb.__doms[ bb.__domsI ] = null;
+    }
+
     var applyOne = function(bb, bbGun, dom, arg, stringsAreContent) {
         if (arg instanceof Array) {
             applyArray( bb, bbGun, dom, arg, 0 );
@@ -4205,6 +4236,8 @@ in a callback method.
             }
         } else if ( isObject(arg) ) {
             attrObj( bb, bbGun, dom, arg, true );
+        } else if ( isFunction(arg) ) {
+            runAttrFun( bb, bbGun, dom, arg );
         } else {
             logError( "invalid argument given", arg );
         }
@@ -4225,6 +4258,16 @@ in a callback method.
     }
 
     var createOne = function( bb, obj ) {
+        if ( bb.__domsI === 0 ) {
+            return createOneInner( bb, obj );
+        } else {
+            var newDom = createOneInner( bb, obj );
+            bb.__doms[ bb.__domsI-1 ].appendChild( newDom );
+            return newDom;
+        }
+    }
+
+    var createOneInner = function( bb, obj ) {
         /*
          * A String ...
          *  <html element="description"></html>
@@ -4682,6 +4725,10 @@ and a function.
             }
         }
 
+        bb.__domsI = 0;
+
+        bb.__doms = [];
+
  /* -------------------------------------------------------------------------------
 
 ## bb.clone()
@@ -4887,9 +4934,12 @@ These events include:
     on( dom, ["mouseup", "mousedown"]       , fun        )
     
     on( dom, { click: fun, mousedown: fun } , true       )
-    on( dom, { click: fun, mousedown: fun }              )
+    on( dom, { click: fun, mousedown: fun }              ) */
 
-------------------------------------------------------------------------------- */
+    on( dom, 'mouseup click'                , mouseChange)
+    on( dom, { 'mouseup click': fun }                    )
+
+ /* ------------------------------------------------------------------------------- */
 
         bb.on = function( dom, name, fun, useCapture ) {
             var argsLen = arguments.length;
@@ -4987,7 +5037,7 @@ Used as the standard way to
                     createOne( this, obj ),
                     args,
                     i
-            )
+            );
         }
 
         bb.apply = function( dom ) {
