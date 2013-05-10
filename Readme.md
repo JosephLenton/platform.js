@@ -44,6 +44,96 @@ For when you are working at the element level;
 setting up and manipulating HTML elements,
 you'd use bb.js.
 
+### bb()
+
+The main function for creating new DOM elements, is the 'bb' function.
+Like the jQuery dollar, it also holds functions as properties, which you can call.
+
+You pass in the details describing a new element,
+and you get returned a browser DOM HTMLElement object.
+Note I mean the actual HTMLElement object that the browser uses,
+not an intermediate object I have created.
+
+If not stated, it is presumed that the element should be a div.
+
+#### string parameters
+
+Strings are always presumed to be class names. So for example:
+
+    // equivalent to ...
+    //      <div class="text-pane right disabled"></div>
+
+    var el = bb( 'text-pane', 'right', 'disabled' );
+
+Strings can also take dots, for denoting the string is a class ...
+
+    var el = bb( '.text-pane', '.right', '.disabled' );
+
+This can also be given as one string ...
+
+    // these are all the same
+    var el = bb(  'text-pane',  'right',  'disabled' );
+    var el = bb( '.text-pane', '.right', '.disabled' );
+    
+    var el = bb(  'text-pane  right  disabled' );
+    var el = bb( '.text-pane .right .disabled' );
+
+    var el = bb( '.text-pane  right', '.disabled' );
+
+#### arrays
+
+Arrays are presumed to just carry more parameters.
+So these are the same:
+
+    var el = bb(  'text-pane',  'right',  'disabled'  );
+    var el = bb( ['text-pane',  'right',  'disabled'] );
+    var el = bb(  'text-pane', ['right',  'disabled'] );
+
+#### functions
+
+Functions can be given, which are then called straight away.
+**Any DOM elements created inside the function, are automatically appended to the object!**
+
+The above might sound odd, but it's the whole point you can pass in functions.
+For example:
+
+    var inner;
+    var outer = bb( 'outer-wrap', function() {
+        inner = bb( 'inner-wrap' );
+    } );
+
+Here an inner wrap is created, and then stored, inside of the outer wrap, automatically.
+
+#### Object
+
+Objects can also be given, listing attributes for the object being created.
+
+    var el = bb( 'some-button', {
+            'data-some-value': 'blah-foo'
+    } );
+
+There are also special attributes which can be used, such as the names of events:
+
+    var el = bb( 'some-button', {
+            click: function(ev) {
+                // handle click here
+            }
+    } );
+
+You can also specify children, through making the attribute look like a class selector:
+
+    var el = bb( 'outer-wrap', {
+            '.some-button': {
+                    click: function(ev) {
+                        // handle click on 'some-button'
+                    }
+            }
+    } );
+
+The last one, allows you to begin nesting components, one within another.
+This is where the power of bb really starts to become useful,
+for building complex objects from code.
+
 bbgun.js, High-Level class based DOM library
 --------------------------------------------
 
