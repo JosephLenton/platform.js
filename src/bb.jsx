@@ -454,10 +454,12 @@ in a callback method.
     }
 
     var applyArray = function(bb, bbGun, dom, args, startI) {
-        var argsLen = args.length;
+        if ( args !== null ) {
+            var argsLen = args.length;
 
-        for (var i = startI; i < argsLen; i++) {
-            applyOne(bb, bbGun, dom, args[i], false);
+            for (var i = startI; i < argsLen; i++) {
+                applyOne(bb, bbGun, dom, args[i], false);
+            }
         }
 
         return dom;

@@ -169,6 +169,8 @@ it's last argument is executed.
 
 -------------------------------------------------------------------------------
 
+### lastSplit
+
 This is the equivalent to:
 
 ```
@@ -195,7 +197,94 @@ everything after that occurance.
             }
     );
 
+-------------------------------------------------------------------------------
 
+### toHTML
+
+Essentially this dumps the string into a component, converting it into a HTML
+node, and then returning the element.
+
+Note that if it is turned into multiple HTML elements, then the first one is
+returned.
+
+```
+    var button = "<a href='#'>click me</a>".toHTML()
+
+If the string cannot be converted to HTML for some reason, then an empty div
+is returned instead.
+
+@eturn This string, converted to a HTML element.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( String.prototype,
+            'toHTML', function() {
+                var wrap = document.createElement( 'div' );
+                wrap.innerHTML = this;
+                return wrap.firstChild || wrap;
+            }
+    );
+
+-------------------------------------------------------------------------------
+
+### html
+
+Creates a html element, described using the parameters given, based on bb.jsx
+form. It takes the same arguments that the bb() function would take.
+
+If no arguments are given, then a div is used instead.
+
+This string is then placed inside of the element created, and that element is
+returned.
+
+```
+    blogElement.add(
+            "<blink>Welcome</blink> to the blog of 1999".html( 'h1', 'blog-header' )
+    );
+
+@return A new HTML Element that contains this string, as it's inner html.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( String.prototype,
+            'html', function() {
+                if ( window['bb'] ) {
+                    var comp = bb.createArray( arguments[0], arguments, 1 );
+                    comp.innerHTML = this;
+                    return comp;
+                } else {
+                    throw new Error( 'bb not found, and is required for this method' );
+                }
+            }
+    );
+
+-------------------------------------------------------------------------------
+
+### text
+
+The same as String.html, only this places this string into the element as text,
+instead of raw html.
+
+```
+    blogElement.add(
+            "Welcome to my blog!".text( 'h1', 'blog-header' )
+    );
+
+@return A new HTML Element, with it's text containing this string.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( String.prototype,
+            'text', function() {
+                if ( window['bb'] ) {
+                    var comp = bb.createArray( arguments[0], arguments, 1 );
+                    comp.textContent = this;
+                    return comp;
+                } else {
+                    throw new Error( 'bb not found, and is required for this method' );
+                }
+            }
+    );
 
 ===============================================================================
 
