@@ -1,4 +1,16 @@
 
+
+extras
+======
+
+This is a page of extras, added onto the core datatypes, allowing you to do
+more with them.
+
+This includes extra array methods, methods on the object to allow it to be used in a
+more array-like fashion.
+
+
+
 ===============================================================================
 
 ## Object
@@ -9,13 +21,19 @@
 
 -------------------------------------------------------------------------------
 
-Maps the function given, against the items stored
-within this object. Note that only the items *directly*
-stored are included; prototype items are skipped.
+### map
 
-The function is in the order:
+Maps the function given, against the items stored within this object. Note that
+only the items *directly* stored are included; prototype items are skipped.
 
- function( value, key )
+The function is in the form:
+
+ function( value, k )
+
+'value' is each value stored in turn, whilst 'k' is the key which the value is
+stored under.
+
+'this' is also bound to the value.
 
 This is so that it matches up with Array.map.
 
@@ -27,20 +45,83 @@ This is so that it matches up with Array.map.
             'map', function( fun ) {
                 var rs = [];
 
-                for ( var k in this ) {
-                    if ( this.has(k) ) {
-                        rs.push( fun.call(this, this[k], k) );
+                if ( (typeof fun === 'string') || (fun instanceof String) ) {
+                    if ( arguments.length === 1 ) {
+                        for ( var k in this ) {
+                            if ( this.has(k) ) {
+                                var val = this[k];
+                                rs.push( val[fun].call(val, val, k) );
+                            }
+                        }
+                    } else {
+                        var args = new Array( arguments.length+1 );
+                        for ( var i = 2; i < args.length; i++ ) {
+                            args[i] = arguments[i-1];
+                        }
+
+                        for ( var k in this ) {
+                            if ( this.has(k) ) {
+                                var val = this[k];
+
+                                args[0] = val;
+                                args[1] = k;
+
+                                rs.push( val[fun].apply(val, args) );
+                            }
+                        }
+                    }
+                } else {
+                    if ( arguments.length === 1 ) {
+                        for ( var k in this ) {
+                            if ( this.has(k) ) {
+                                var val = this[k];
+                                rs.push( fun.call(val, val, k) );
+                            }
+                        }
+                    } else {
+                        var args = new Array( arguments.length+1 );
+                        for ( var i = 2; i < args.length; i++ ) {
+                            args[i] = arguments[i-1];
+                        }
+
+                        for ( var k in this ) {
+                            if ( this.has(k) ) {
+                                var val = this[k];
+
+                                args[0] = val;
+                                args[1] = k;
+
+                                rs.push( fun.apply(val, args) );
+                            }
+                        }
                     }
                 }
 
                 return rs;
             }
-
     );
 
 
 
 -------------------------------------------------------------------------------
+
+### getProp
+
+This returns the property stored in this object, under the name given. It is
+the same as just doing ...
+
+```
+    var val = obj[ name ];
+
+However this is a method based version, allowing you to curry, or call using
+map, and other tricks like that.
+
+Note this will also return values stored in the protoype chain, if not found
+in the object.
+
+@param name The name of the property to access.
+@return undefined if the property is not found, otherwise the value stored.
+
 -------------------------------------------------------------------------------
 
     __setProp__( Object.prototype,
@@ -52,6 +133,8 @@ This is so that it matches up with Array.map.
 
 
 -------------------------------------------------------------------------------
+
+### method
 
 Finds the method, and binds it to 'this' object.
 This is so you can do:
@@ -118,6 +201,9 @@ it's last argument is executed.
 
 
 -------------------------------------------------------------------------------
+
+### methodApply
+
 -------------------------------------------------------------------------------
 
     __setProp__( Object.prototype,
@@ -155,6 +241,11 @@ it's last argument is executed.
 
 
 -------------------------------------------------------------------------------
+
+### has
+
+This is the same as 'hasOwnProperty', but is shorter, making it nicer to use.
+
 -------------------------------------------------------------------------------
 
     __setProp__( Object.prototype,
@@ -294,15 +385,19 @@ instead of raw html.
 
 -------------------------------------------------------------------------------
 
-We fallback onto the old map for some of our behaviour,
-or define a new one, if missing (IE 8).
+### map shim
+
+This is a shim for the Array.map method, *if* it is not yet implemented.
+
+We fallback onto the old map for some of our behaviour, or define a new one, if
+missing (IE 8).
 
 @see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Array/map#Compatibility
 
 -------------------------------------------------------------------------------
 
     var oldMap = Array.prototype.map;
-    if ( oldMap === undefined ) {
+    if ( ! ('map' in Array.prototype) ) {
         oldMap = function(callback, thisArg) {
             var T, A, k;
 
@@ -374,6 +469,8 @@ or define a new one, if missing (IE 8).
 
 -------------------------------------------------------------------------------
 
+### filterOutMethod
+
 Same as 'filterMethod', however this will remove
 all items which return 'true', rather than keep them.
 
@@ -412,6 +509,8 @@ and you don't want them. For example:
 
 
 -------------------------------------------------------------------------------
+
+### filterMethod
 
 Calls the given method against all elements in the array.
 If it returns a non-falsy item (false, null, or undefined),
@@ -452,6 +551,8 @@ Otherwise, it will be removed.
 
 -------------------------------------------------------------------------------
 
+### filterOutType
+
 This is shorthand for using filterType,
 where 'keepProto' is set to false.
 
@@ -470,6 +571,8 @@ where 'keepProto' is set to false.
 
 
 -------------------------------------------------------------------------------
+
+### filterType
 
 Filters object based on the prototype given.
 This can work in two ways:
@@ -534,29 +637,34 @@ which match the proto constructor given.
 
 -------------------------------------------------------------------------------
 
-Similar to 'forEach',
-except that the target goes first in the parameter list.
+### each
 
-The target is also returned if it is provided,
-and if not, then this array is returned.
+Similar to 'forEach', except the optional 'thisArg' is the first parameter.
+
+The thisArg is also returned if it is provided, and if not, then this array is
+returned.
+
+@param thisArg Optional, the value that will be 'this' in the callback.
+@param callback The function to perform on each value.
+@return This array if no 'thisArg', otherwise the 'thisArg' value given.
 
 -------------------------------------------------------------------------------
 
     __setProp__( Array.prototype,
-            'each', function( target, callback ) {
+            'each', function( thisArg, callback ) {
+                // 'thisArg' is the callback
                 if ( arguments.length === 1 ) {
-                    callback = target;
-                    assertFunction( callback );
+                    assertFunction( thisArg );
 
-                    this.forEach( target );
+                    this.forEach( thisArg );
 
                     return this;
                 } else {
                     assertFunction( callback );
 
-                    this.forEach( callback, target );
+                    this.forEach( callback, thisArg );
 
-                    return target;
+                    return thisArg;
                 }
             }
     );
@@ -564,17 +672,63 @@ and if not, then this array is returned.
 
 
 -------------------------------------------------------------------------------
+
+### map
+
+Maps a function, against all elements in the given array. If the function given
+is a function object, then it is run against each element in turn.
+
+```
+    // each unit is updated, with a delta-time given to each one
+    units.map( function(unit, i) {
+        unit.update( delta );
+    } );
+
+The 'this' value is also bound to the value given. This allows the same to be
+written as ...
+
+```
+    // each unit is updated, with a delta-time given to each one
+    units.map( function() {
+        this.update( delta );
+    } );
+
+You can also create and pass in a function to call instead.
+
+```
+    var updateFun = function() {
+        this.update( delta );
+    }
+
+    units.map( updateFun );
+
+If however it is a string given, then that function is called on each element 
+in turn.
+
+```
+    // each unit is updated, with a delta-time given to each one
+    units.map( 'update', delta );
+
+One or more parameters can be given after the function, as extra parameters to
+execute.
+
+@param fun The function to perform on each element.
+@return A new array, containing the result from each value.
+
 -------------------------------------------------------------------------------
 
     __setProp__( Array.prototype,
             'map', function( fun ) {
                 if ( typeof fun === 'string' || (fun instanceof String) ) {
-                    var args = new Array( arguments.length-1 );
-                    for ( var i = 0; i < args.length; i++ ) {
+                    var args = new Array( arguments.length+1 );
+                    for ( var i = 2; i < args.length; i++ ) {
                         args[i] = arguments[i-1];
                     }
 
-                    return oldMap.call( this, function(obj) {
+                    return oldMap.call( this, function(obj, i) {
+                        args[0] = obj;
+                        args[1] = i;
+
                         return obj[fun].apply( obj, args );
                     } );
                 } else {
