@@ -11,12 +11,12 @@ Also includes some helper functions, to make working with functions easier.
 
 ===============================================================================
 
-## Utility Functions
+## Function
 
 ===============================================================================
 
 -------------------------------------------------------------------------------
-    
+
 ### Lazy
 
 A system for describing lazy parameters. When using bind, method, or curry,
@@ -390,7 +390,46 @@ other function methods, for adding in extras on top.
         }
     );    
 
+    
 
+-------------------------------------------------------------------------------
+
+### Throttle
+
+This returns a version of the function, where when called, it will wait a set
+amount of milliseconds, before it is called.
+
+If the function is called multiple times, each time it will reset the wait
+timer.
+
+-------------------------------------------------------------------------------
+
+
+    __setProp__( Function.prototype,
+        'throttle', function( delay ) {
+            if ( delay === undefined ) {
+                delay = 1;
+            }
+
+            var fun = this;
+            var funTimeout = null;
+
+            return function() {
+                var self = this;
+                var args = arguments;
+
+                if ( funTimeout !== null ) {
+                    cancelTimeout( funTimeout );
+                }
+
+                funTimeout = setTimeout( function() {
+                    funTimeout = null;
+
+                    fun.apply( self, args );
+                }, delay );
+            }
+        }
+    );
 
 -------------------------------------------------------------------------------
 
