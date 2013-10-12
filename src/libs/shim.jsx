@@ -119,6 +119,9 @@ Reference: http://es5.github.com/#x15.4.4.18
 
 ===============================================================================
 
+    var leftTrimRegex = /^\s\s*/;
+    var spaceRegex = /\s/;
+
 -------------------------------------------------------------------------------
 
 ### toArray
@@ -127,8 +130,11 @@ Reference: http://es5.github.com/#x15.4.4.18
 
 -------------------------------------------------------------------------------
 
-    var leftTrimRegex = /^\s\s*/;
-    var spaceRegex = /\s/;
+    __shim__( String.prototype,
+            'toArray', function() {
+                return this.split( '' );
+            }
+    );
 
     __shim__( String.prototype,
             'trim', function(str) {
@@ -150,12 +156,6 @@ Reference: http://es5.github.com/#x15.4.4.18
                 var	i = this.length;
                 while ( spaceRegex.test(this.charAt(--i)) );
                 return this.slice( 0, i + 1 );
-            }
-    );
-
-    __shim__( String.prototype,
-            'toArray', function() {
-                return this.split( '' );
             }
     );
 
@@ -262,9 +262,15 @@ Reference: http://es5.github.com/#x15.4.4.18
             }
     );
 
+===============================================================================
+
+## document
+
+===============================================================================
+
 -------------------------------------------------------------------------------
 
-## document.getElementsByClassName( name )
+### document.getElementsByClassName( name )
 
 -------------------------------------------------------------------------------
 
@@ -415,9 +421,8 @@ These do *not* use __shim__, as it breaks in IE 8!
 
 ### element.matchesSelector()
 
-A new W3C selection tester, for testing if a node
-matches a selection. Very new, so it's either browser
-specific, or needs a shim.
+A new W3C selection tester, for testing if a node matches a selection. Very 
+new, so it's either browser specific, or needs a shim.
 
 @author termi https://gist.github.com/termi
 @see https://gist.github.com/termi/2369850/f4022295bf19332ff17e79350ec06c5114d7fbc9
@@ -490,8 +495,7 @@ specific, or needs a shim.
 -------------------------------------------------------------------------------
 
     if ( ! Element.prototype.matches ) {
-        Element.prototype.matches =
-            Element.prototype.matchesSelector
+        Element.prototype.matches = Element.prototype.matchesSelector
     };
 
 -------------------------------------------------------------------------------
