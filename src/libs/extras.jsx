@@ -258,6 +258,59 @@ This is the same as 'hasOwnProperty', but is shorter, making it nicer to use.
 
 ===============================================================================
 
+    var escaprRegExpRegExp = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g;
+
+
+-------------------------------------------------------------------------------
+
+### escapeRegExp
+
+Returns a version of this string, where all special characters from a regular
+expression, are escaped and made safe.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( String.prototype,
+            'escapeRegExp', function() {
+                return this.replace(escapeRegExpRegExp, "\\$&");
+            }
+    )
+
+
+
+-------------------------------------------------------------------------------
+
+### remove
+
+Removes all of the strings given, from this string.
+
+```
+    // yields "he wrld"
+    "hello world".remove( 'l', 'o' );
+
+@param 1 or more strings to be removed.
+@return A new string, with all occurrances of the string given, to be removed.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( String.prototype,
+            'remove', function() {
+                if ( arguments.length === 0 ) {
+                    throw new Error( 'no strings given to remove' );
+                } else {
+                    var reg = '(' + arguments[0].escapeRegExp();
+
+                    for ( var i = 1; i < arguments.length; i++ ) {
+                        reg += ')|(' + arguments[i].escapeRegExp();
+                    }
+
+                    return this.replace( new RegExp(reg + ')', 'g'), '' );
+                }
+            }
+    );
+
+
+
 -------------------------------------------------------------------------------
 
 ### lastSplit
@@ -288,6 +341,8 @@ everything after that occurance.
             }
     );
 
+
+
 -------------------------------------------------------------------------------
 
 ### toHTML
@@ -315,6 +370,8 @@ is returned instead.
                 return wrap.firstChild || wrap;
             }
     );
+
+
 
 -------------------------------------------------------------------------------
 
@@ -349,6 +406,8 @@ returned.
             }
     );
 
+
+
 -------------------------------------------------------------------------------
 
 ### text
@@ -376,6 +435,8 @@ instead of raw html.
                 }
             }
     );
+
+
 
 ===============================================================================
 
