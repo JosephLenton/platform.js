@@ -139,28 +139,73 @@ in the object.
 Finds the method, and binds it to 'this' object.
 This is so you can do:
 
+#### use case
+
 ```
-     this.foo.bar.something().whatever.method( 'doWork' );
+     var fun = this.foo.bar.something().whatever.method( 'doWork' );
 
 ... instead of ...
 
 ```
-     this.foo.bar.something().whatever.doWork.bind(
+     var fun = this.foo.bar.something().whatever.doWork.bind(
              this.foo.bar.something().whatever
      )
 
-You can also provide array descriptions,
-to call multiple methods in order.
+#### currying
+
+This also supports currying.
+
+```
+    var fun = this.foo.bar.something().whatever.method( 'doWork', 1, 2 );
+
+... instead of ...
+
+```
+     var fun = this.foo.bar.something().whatever.doWork.bind(
+             this.foo.bar.something().whatever,
+             1,
+             2
+     )
+
+#### currying with underscore 
+
+It also supports use of the _ variable, to leave variables open for use later.
+
+```
+    var fun = this.foo.bar.something().whatever.method( 'doWork', _, 1, 2 );
+
+... instead of ...
+
+```
+    var fun = (function(whatever) {
+        return function( param ) {
+            return whatever.doWork( param, 1, 2 );
+        }
+    })(this.foo.bar.something().whatever);
+
+#### call multiple methods
+
+You can also provide array descriptions, to call multiple methods in order.
 For example:
 
 ```
-     this.foo.method(
+     var fun = this.foo.method(
              [ 'doA', a, b, c ],
              [ 'doB', x, y, z ]
      )
 
-When the function created is called,
-it's last argument is executed.
+... instead of ...
+
+```
+    var fun = (function(foo) {
+        return function() {
+            foo.doA( a, b, c );
+            return foo.doB( x, y, z );
+        }
+    })( this.foo );
+
+When the function created is called, it's last method is used for the return
+value.
 
 -------------------------------------------------------------------------------
 
