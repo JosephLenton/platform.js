@@ -17,7 +17,7 @@ Also includes some helper functions, to make working with functions easier.
 
 -------------------------------------------------------------------------------
 
-### Lazy
+### LazyParam
 
 A system for describing lazy parameters. When using bind, method, or curry,
 this gives you exact control over *which* parameters can be omitted.
@@ -35,13 +35,23 @@ The above is the same as calling:
 
 In the example, the parameter left out is exactly defined, using the underscore.
 
+#### alternative to using underscore
+
+If you wish to use the underscore for something else, you can use the value
+'LazyParam' instead.
+
+```
+    var f2 = f.curry( a, b, LazyParam, c );
+    f2( x );
+
 -------------------------------------------------------------------------------
 
-    var Lazy = function() {
+    var LazyParam = function() {
         logError( "evaluating a lazy value" );
     }
 
-    window['_'] = Lazy;
+    window['_'] = LazyParam;
+    window['LazyParam'] = LazyParam;
 
 -------------------------------------------------------------------------------
 
@@ -189,7 +199,7 @@ In the example, the parameter left out is exactly defined, using the underscore.
                     var combinedArgs;
                     if ( arguments.length === 0 ) {
                         for ( var i = initArgsStartI; i < initArgs.length; i++ ) {
-                            if ( initArgs[i] === Lazy ) {
+                            if ( initArgs[i] === LazyParam ) {
                                 logError( "value not provided for lazy argument" );
                             }
                         }
@@ -209,7 +219,7 @@ In the example, the parameter left out is exactly defined, using the underscore.
                             for ( var i = initArgsLen-1; i >= initArgsStartI; i-- ) {
                                 var arg = initArgs[i];
 
-                                if ( arg === Lazy ) {
+                                if ( arg === LazyParam ) {
                                     argsLen--;
                                     combinedArgs.unshift( arguments[argsLen] );
                                 } else {
@@ -231,7 +241,7 @@ In the example, the parameter left out is exactly defined, using the underscore.
                             for ( var i = initArgsStartI; i < initArgsLen; i++ ) {
                                 var arg = initArgs[i];
 
-                                if ( arg === Lazy ) {
+                                if ( arg === LazyParam ) {
                                     combinedArgs.push( arguments[startI] );
                                     startI++;
                                 } else {
