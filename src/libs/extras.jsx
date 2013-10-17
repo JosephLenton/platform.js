@@ -116,6 +116,12 @@ the same as just doing ...
 However this is a method based version, allowing you to curry, or call using
 map, and other tricks like that.
 
+```
+    var getName = obj.method( 'getName' );
+
+    // sometime later
+    var currentName = getName();
+
 Note this will also return values stored in the protoype chain, if not found
 in the object.
 
@@ -130,7 +136,67 @@ in the object.
             }
     );
 
+-------------------------------------------------------------------------------
 
+### setProp
+
+This is a method version, of setting a value using array index notation.
+
+```
+    // these two are identical
+    obj['name'] = 'John';
+    obj.setProp('name', 'John');
+
+A method version is provided, to allow currying, mapping, or passing the method
+when bound to an object around. For example:
+
+```
+    var updateName = obj.method( 'setProp', 'name' );
+
+    // some time later
+    updateName( 'John' );
+
+It can also take an object of values, to set multiple values to the object.
+
+```
+    var person = new Person();
+
+    person.setProp({
+            name: 'John',
+            age: 20,
+            sex: 'male',
+            nationality: 'French'
+    });
+
+@return This object.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Object.prototype,
+            'setProp', function( obj, value ) {
+                if ( arguments.length === 1 ) {
+                    if ( ! isObject(obj) ) {
+                        throw new Error("non-object given for multiple property assignment");
+                    }
+
+                    for ( var k in obj ) {
+                        if ( obj.has(k) ) {
+                            this[k] = obj[k];
+                        }
+                    }
+                } else if ( arguments.length === 2 ) {
+                    if ( ! isString(obj) ) {
+                        throw new Error("non-object given for property assignment");
+                    }
+
+                    this[obj] = value;
+                } else {
+                    throw new Error("invalid number of arguments given");
+                }
+
+                return this;
+            }
+    );
 
 -------------------------------------------------------------------------------
 
