@@ -117,7 +117,7 @@ However this is a method based version, allowing you to curry, or call using
 map, and other tricks like that.
 
 ```
-    var getName = obj.method( 'getName' );
+    var getName = runtime.method( 'getProp', 'name' );
 
     // sometime later
     var currentName = getName();
