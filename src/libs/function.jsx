@@ -15,6 +15,9 @@ Also includes some helper functions, to make working with functions easier.
 
 ===============================================================================
 
+    var __setProp__ = window['__setProp__'];
+
+
 -------------------------------------------------------------------------------
 
 ### LazyParam
@@ -55,14 +58,6 @@ If you wish to use the underscore for something else, you can use the value
 
 -------------------------------------------------------------------------------
 
-### extend
-
--------------------------------------------------------------------------------
-
-    var __setProp__ = window['__setProp__'];
-
--------------------------------------------------------------------------------
-
 ### newPrototypeArray
 
 
@@ -88,7 +83,7 @@ If you wish to use the underscore for something else, you can use the value
 
                     assert( hasCheck, "Function implementation missing for " + k );
 
-                    var alt = check( obj, k, undefined );
+                    var alt = check.callback( obj, k, undefined );
 
                     assert( alt !== undefined, "Function implementation missing for " + k );
 
@@ -102,7 +97,7 @@ If you wish to use the underscore for something else, you can use the value
                 for ( var k in srcObj ) {
                     if ( srcObj.hasOwnProperty(k) ) {
                         if ( hasCheck ) {
-                            var alt = check( obj, k, srcObj[k] );
+                            var alt = check.callback( obj, k, srcObj[k] );
 
                             if ( alt !== undefined ) {
                                 obj[k] = alt;
@@ -129,6 +124,33 @@ If you wish to use the underscore for something else, you can use the value
 
 -------------------------------------------------------------------------------
 
+    var newFunctionExtendCallback = {
+        isOkCallback: null,
+
+        callback: function(dest, k, val) {
+            if ( k !== 'constructor' ) {
+                var val = this.isOkCallback(dest, k, val);
+
+                if (
+                        val !== undefined &&
+                        val !== null &&
+                        val !== false &&
+                        val !== true
+                ) {
+                    return val;
+                } else if ( val !== true ) {
+                    if ( errors === null ) {
+                        errors = [ k ];
+                    } else {
+                        errors.push( k );
+                    }
+                } else {
+                    return undefined;
+                }
+            }
+        }
+    }
+
     /**
      * Used to generate the Function extension methods.
      */
@@ -136,28 +158,8 @@ If you wish to use the underscore for something else, you can use the value
         return function() {
             var errors = null;
 
-            var proto = newPrototypeArray( this, arguments, function(dest, k, val) {
-                if ( k !== 'constructor' ) {
-                    var val = isOkCallback(dest, k, val);
-
-                    if (
-                            val !== undefined &&
-                            val !== null &&
-                            val !== false &&
-                            val !== true
-                    ) {
-                        return val;
-                    } else if ( val !== true ) {
-                        if ( errors === null ) {
-                            errors = [ k ];
-                        } else {
-                            errors.push( k );
-                        }
-                    } else {
-                        return undefined;
-                    }
-                }
-            } )
+            newFunctionExtendCallback.isOkCallback = isOkCallback;
+            var proto = newPrototypeArray( this, arguments, newFunctionExtendCallback )
              
             if ( errors !== null ) {
                 throw new Error( errMsg + "\n    " + errors.join(', ') );
@@ -560,7 +562,7 @@ as a prototype instead of a funtion.
 
 -------------------------------------------------------------------------------
 
-### function.override
+### function.protoOverride
 
 Same as append, but the methods it overrides *must* exist.
 
@@ -569,7 +571,7 @@ This allows you to have a sanity check.
 -------------------------------------------------------------------------------
 
     __setProp__( Function.prototype,
-        'override', newFunctionExtend(
+        'protoOverride', newFunctionExtend(
                 "Methods are overriding, but they do not exist,",
                 function(dest, k, val) {
                     return ( dest[k] !== undefined )
@@ -581,13 +583,13 @@ This allows you to have a sanity check.
 
 -------------------------------------------------------------------------------
 
-### function.before
+### function.protoBefore
 
 
 -------------------------------------------------------------------------------
 
     __setProp__( Function.prototype,
-        'before', newFunctionExtend(
+        'protoBefore', newFunctionExtend(
                 "Pre-Adding method behaviour, but original method not found,",
                 function(dest, k, val) {
                     if ( dest[k] === undefined ) {
@@ -603,13 +605,13 @@ This allows you to have a sanity check.
 
 -------------------------------------------------------------------------------
 
-### function.after
+### function.protoAfter
 
 
 -------------------------------------------------------------------------------
 
     __setProp__( Function.prototype,
-        'after', newFunctionExtend(
+        'protoAfter', newFunctionExtend(
                 "Adding method behaviour, but original method not found,",
                 function(dest, k, val) {
                     if ( dest[k] === undefined ) {
@@ -625,7 +627,7 @@ This allows you to have a sanity check.
 
 -------------------------------------------------------------------------------
 
-### function.extend
+### function.protoExtend
 
 Adds on extra methods, but none of them are allowed 
 to override any others.
@@ -635,7 +637,7 @@ This is used as a sanity check.
 -------------------------------------------------------------------------------
 
     __setProp__( Function.prototype,
-        'extend', newFunctionExtend(
+        'protoExtend', newFunctionExtend(
                 "Extending methods already exist, ",
                 function(dest, k, val) {
                     return ( dest[k] === undefined )
@@ -653,7 +655,7 @@ This is used as a sanity check.
 -------------------------------------------------------------------------------
 
     __setProp__( Function.prototype,
-        'require', newFunctionExtend(
+        'protoRequire', newFunctionExtend(
                 "Pre-Adding method behaviour, but original method not found,",
                 function(dest, k, val) {
                     if ( dest[k] !== undefined ) {
