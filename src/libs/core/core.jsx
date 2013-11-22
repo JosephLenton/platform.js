@@ -40,7 +40,7 @@ This is for setting shims, hence why it's called 'shim'.
 
 -------------------------------------------------------------------------------
 
-    window['__shim__'] = function( obj, name, fun ) {
+    window.__shim__ = function( obj, name, fun ) {
         if ( ! obj.hasOwnProperty(name) ) {
             __setProp__( obj, name, fun );
         }
@@ -52,13 +52,27 @@ This is for setting shims, hence why it's called 'shim'.
 
 -------------------------------------------------------------------------------
 
-    window['__setProp__'] = function( obj, name, fun ) {
-        OBJECT_DESCRIPTION.value = fun;
+    window.__setProp__ = function( obj, name, fun ) {
+        if ( typeof name === 'string' ) {
+            OBJECT_DESCRIPTION.value = fun;
 
-        try {
-            Object.defineProperty( obj, name, OBJECT_DESCRIPTION );
-        } catch ( ex ) {
-            obj[name] = fun;
+            try {
+                Object.defineProperty( obj, name, OBJECT_DESCRIPTION );
+            } catch ( ex ) {
+                obj[name] = fun;
+            }
+        } else {
+            for ( var trueName in name ) {
+                if ( name.hasOwnProperty(trueName) ) {
+                    OBJECT_DESCRIPTION.value = trueName;
+
+                    try {
+                        Object.defineProperty( obj, name[trueName], OBJECT_DESCRIPTION );
+                    } catch ( ex ) {
+                        obj[trueName] = name[trueName];
+                    }
+                }
+            }
         }
     }
 

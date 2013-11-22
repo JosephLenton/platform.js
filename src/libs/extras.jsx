@@ -17,7 +17,7 @@ more array-like fashion.
 
 ===============================================================================
 
-    var __setProp__ = window['__setProp__'];
+    var __setProp__ = window.__setProp__;
 
 -------------------------------------------------------------------------------
 
@@ -507,7 +507,7 @@ returned.
 
     __setProp__( String.prototype,
             'html', function() {
-                if ( window['bb'] ) {
+                if ( window.bb ) {
                     var comp = bb.createArray( arguments[0], arguments, 1 );
                     comp.innerHTML = this;
                     return comp;
@@ -537,7 +537,7 @@ instead of raw html.
 
     __setProp__( String.prototype,
             'text', function() {
-                if ( window['bb'] ) {
+                if ( window.bb ) {
                     var comp = bb.createArray( arguments[0], arguments, 1 );
                     comp.textContent = this;
                     return comp;

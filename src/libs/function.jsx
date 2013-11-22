@@ -15,7 +15,7 @@ Also includes some helper functions, to make working with functions easier.
 
 ===============================================================================
 
-    var __setProp__ = window['__setProp__'];
+    var __setProp__ = window.__setProp__;
 
 
 -------------------------------------------------------------------------------
@@ -53,8 +53,8 @@ If you wish to use the underscore for something else, you can use the value
         logError( "evaluating a lazy value" );
     }
 
-    window['_'] = LazyParam;
-    window['LazyParam'] = LazyParam;
+    window._ = LazyParam;
+    window.LazyParam = LazyParam;
 
 -------------------------------------------------------------------------------
 
@@ -402,7 +402,26 @@ other function methods, for adding in extras on top.
         }
     );    
 
-    
+
+-------------------------------------------------------------------------------
+
+### function.$
+
+An alias for 'bind'.
+
+```
+    // these two are identical ...
+    button.onclick = refresh.bind( environment, user );
+    button.onclick = refresh.λ( environment, user );
+
+@see function.bind
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Function.prototype,
+        'λ', Function.prototype.bind
+    );
+
 
 -------------------------------------------------------------------------------
 

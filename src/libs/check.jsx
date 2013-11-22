@@ -41,7 +41,7 @@ For regular objects do ...
 
 -------------------------------------------------------------------------------
 
-    var isObject = window['isObject'] = function( obj ) {
+    var isObject = window.isObject = function( obj ) {
         if ( obj !== undefined || obj !== null ) {
             var proto = obj.constructor.prototype;
 
@@ -63,7 +63,7 @@ For regular objects do ...
 
 -------------------------------------------------------------------------------
 
-    var isFunction = window['isFunction'] = function( f ) {
+    var isFunction = window.isFunction = function( f ) {
         return ( typeof f === 'function' ) || ( f instanceof Function );
     }
 
@@ -78,7 +78,7 @@ For regular objects do ...
 
 -------------------------------------------------------------------------------
 
-    var isNumber = window['isNumber'] = function( n ) {
+    var isNumber = window.isNumber = function( n ) {
         return ( typeof n === 'number' ) || ( n instanceof Number );
     }
 
@@ -96,7 +96,7 @@ This is either an actual number, or a string which represents one.
 
 -------------------------------------------------------------------------------
 
-    var isNumeric = window['isNumeric'] = function( str ) {
+    var isNumeric = window.isNumeric = function( str ) {
         return ( typeof str === 'number' ) ||
                ( str instanceof Number   ) ||
                ( String(str).search( /^\s*(\+|-)?((\d+(\.\d+)?)|(\.\d+))\s*$/ ) !== -1 )
@@ -113,7 +113,7 @@ This is either an actual number, or a string which represents one.
 
 -------------------------------------------------------------------------------
 
-    var isString = window['isString'] = function( str ) {
+    var isString = window.isString = function( str ) {
         return ( typeof str === 'string' ) || ( str instanceof String );
     }
 
@@ -132,7 +132,7 @@ as Number or String).
 
 -------------------------------------------------------------------------------
 
-    var isLiteral = window['isLiteral'] = function(obj) {
+    var isLiteral = window.isLiteral = function(obj) {
         return isString(obj) ||
                 isNumber(obj) ||
                 obj === undefined ||
@@ -149,7 +149,7 @@ as Number or String).
 
 -------------------------------------------------------------------------------
 
-    var isHTMLElement = window['isHTMLElement'] = function(obj) {
+    var isHTMLElement = window.isHTMLElement = function(obj) {
         return obj.nodeType !== undefined;
     }
 
@@ -169,7 +169,7 @@ this.
 
 -------------------------------------------------------------------------------
 
-    var isArrayArguments = window['isArrayArguments'] = function( arr ) {
+    var isArrayArguments = window.isArrayArguments = function( arr ) {
         return isArray(arr) ||
                (
                        arr !== undefined &&
@@ -193,7 +193,7 @@ include them, use 'isArrayArguments'.
 
 -------------------------------------------------------------------------------
 
-    var isArray = window['isArray'] = Array.isArray ?
+    var isArray = window.isArray = Array.isArray ?
             Array.isArray :
             function( arr ) {
                 return ( arr instanceof Array );
