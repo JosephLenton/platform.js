@@ -6,17 +6,18 @@ Math.jsx
 
 Adds on extras for extra mathematical operations.
 
+
     var __setProp__ = window.__setProp__;
     
-    __setProp__( Math.prototype, 
-            'TAO'   , Math.prototype.PI*2,
-            'π'     , Math.prototype.PI,
-            'τ'     , Math.prototype.PI*2
-    );
+    __setProp__( Math, {
+            'TAO': Math.PI*2  ,
+            'π'  : Math.PI    ,
+            'τ'  : Math.PI*2
+    } );
     
     __setProp__( window, {
-            'π'     , Math.prototype.PI,
-            'τ'     , Math.prototype.PI*2
+            'π'  : Math.PI    ,
+            'τ'  : Math.PI*2
     } );
 
 -------------------------------------------------------------------------------
@@ -50,7 +51,7 @@ decimal places.
 
     var oldRound = Math.round;
 
-    __setProp__( Math.prototype,
+    __setProp__( Math,
             'round', function( num, within ) {
                 if ( arguments.length === 1 ) {
                     return oldRound( num );
