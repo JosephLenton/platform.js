@@ -1204,13 +1204,10 @@ These events include:
 ```
     on( dom, "click"                        , fun, true  )
     on( dom, "click"                        , fun        )
-    
     on( dom, ["mouseup", "mousedown"]       , fun, false )
     on( dom, ["mouseup", "mousedown"]       , fun        )
-    
     on( dom, { click: fun, mousedown: fun } , true       )
     on( dom, { click: fun, mousedown: fun }              )
-
     on( dom, 'mouseup click'                , mouseChange)
     on( dom, { 'mouseup click': fun }                    )
 
@@ -1853,15 +1850,15 @@ to the text values given.
  - html
  - text     Sets the textContent of this element.
  - value,   Sets the value within this element. This applies to inputs and
-            textareas.
+   textareas.
 
  - stopPropagation For the events named, they are set, with a function which 
-            will simply stop propagation of that event.
+   will simply stop propagation of that event.
  - preventDefault  For the events named, this will set a function, which
-            prevents the default action from taking place.
+   prevents the default action from taking place.
 
  - addTo,   given an element (or a description of an element), this element
-            is added to the one given.
+   is added to the one given.
 
 Anything else is set as an attribute of the object.
 
@@ -1930,7 +1927,7 @@ is pre-provided.
                     || !!('onmsgesturechange' in window); // works on IE 10
 
         if ( IS_TOUCH ) {
-            bb.setup.event( 'click', touch.click );
+            bb.setup.event( 'click', touchy.click );
         }
 
         bb.setup.event( 'hold', touchy.hold );
