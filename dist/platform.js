@@ -41,7 +41,7 @@ This is for setting shims, hence why it's called 'shim'.
 
 ------------------------------------------------------------------------------- */
 
-    window['__shim__'] = function( obj, name, fun ) {
+    window.__shim__ = function( obj, name, fun ) {
         if ( ! obj.hasOwnProperty(name) ) {
             __setProp__( obj, name, fun );
         }
@@ -53,16 +53,1096 @@ This is for setting shims, hence why it's called 'shim'.
 
 ------------------------------------------------------------------------------- */
 
-    window['__setProp__'] = function( obj, name, fun ) {
-        OBJECT_DESCRIPTION.value = fun;
+    window.__setProp__ = function( obj, name, fun ) {
+        if ( typeof name === 'string' ) {
+            OBJECT_DESCRIPTION.value = fun;
 
-        try {
-            Object.defineProperty( obj, name, OBJECT_DESCRIPTION );
-        } catch ( ex ) {
-            obj[name] = fun;
+            try {
+                Object.defineProperty( obj, name, OBJECT_DESCRIPTION );
+            } catch ( ex ) {
+                obj[name] = fun;
+            }
+        } else {
+            for ( var trueName in name ) {
+                if ( name.hasOwnProperty(trueName) ) {
+                    OBJECT_DESCRIPTION.value = trueName;
+
+                    try {
+                        Object.defineProperty( obj, name[trueName], OBJECT_DESCRIPTION );
+                    } catch ( ex ) {
+                        obj[trueName] = name[trueName];
+                    }
+                }
+            }
         }
     }
 
+
+})();
+"use strict";
+
+(function() {
+    var IS_TOUCH = !! ('ontouchstart' in window)  // works on most browsers 
+                || !!('onmsgesturechange' in window); // works on IE 10
+
+    /**
+     * How quickly someone must tap,
+     * for it to be a 'fast click'.
+     *
+     * In milliseconds.
+     */
+    var FAST_CLICK_DURATION = 150,
+        FAST_CLICK_DIST = 20,
+        SLOW_CLICK_DIST = 15;
+
+    var startTouch = function( xy, touch ) {
+        if ( touch ) {
+            xy.finger = touch.identifier;
+            xy.timestart = Date.now();
+
+            updateXY( xy, touch, false );
+
+            return true;
+        } else {
+            return false;
+        }
+    };
+
+    var updateXY = function( xy, ev, updateMove ) {
+        var x,
+            y;
+
+        if ( ev.offsetX !== undefined ) { // Opera
+            x = ev.offsetX;
+            y = ev.offsetY;
+        } else if ( ev.layerX !== undefined ) { // Firefox
+            x = ev.layerX;
+            y = ev.layerY;
+        } else if ( ev.clientX !== undefined ) {
+            x = ev.clientX;
+            y = ev.clientY;
+
+            for (
+                    var tag = ev.target;
+                    tag.offsetParent;
+                    tag = tag.offsetParent
+            ) {
+                x -= tag.offsetLeft;
+                y -= tag.offsetTop;
+            }
+        // fail, so just put no movement in
+        } else {
+            x = 0;
+            y = 0;
+        }
+
+        if ( updateMove ) {
+            xy.moveX += (xy.x - x)
+            xy.moveY += (xy.y - y)
+        } else {
+            xy.moveX = 0;
+            xy.moveY = 0;
+        }
+
+        xy.x = x;
+        xy.y = y;
+    }
+
+    var pressBuilder = function( el, onDown, onMove, onUp ) {
+        if ( ! isHTMLElement(el) ) {
+            throw new Error( "non-html element given" );
+        }
+
+        var xy = {
+                timestart : 0,
+                finger    : 0,
+
+                x: 0,
+                y: 0,
+
+                moveX: 0,
+                moveY: 0
+        };
+
+        if ( IS_TOUCH ) {
+            var touchstart = function( ev ) {
+                var touch = ev.changedTouches[ 0 ];
+        
+                if ( startTouch(xy, touch) ) {
+                    onDown.call( el, ev, touch );
+                }
+            }
+
+            el.addEventListener( 'touchstart', touchstart, false );
+
+            el.addEventListener( 'touchmove', function(ev) {
+                if ( xy.finger === -1 ) {
+                    touchstart( ev );
+                } else {
+                    for ( var i = 0; i < ev.changedTouches.length; i++ ) {
+                        var touch = ev.changedTouches[ i ];
+                    
+                        if ( touch && touch.identifier === xy.finger ) {
+                            onMove.call( el, ev, touch );
+                            return;
+                        }
+                    }
+                }
+            }, false );
+
+            var touchEnd = function(ev) {
+                for ( var i = 0; i < ev.changedTouches.length; i++ ) {
+                    var touch = ev.changedTouches[ i ];
+                
+                    if ( touch && touch.identifier === xy.finger ) {
+                        xy.finger = -1;
+
+                        updateXY( xy, touch, true );
+
+                        var duration = Date.now() - xy.timestart;
+                        var dist = Math.sqrt( xy.moveX*xy.moveX + xy.moveY*xy.moveY )
+
+                        if (
+                                ( dist < FAST_CLICK_DIST && duration < FAST_CLICK_DURATION ) ||
+                                  dist < SLOW_CLICK_DIST
+                        ) {
+                            // true is a click
+                            onUp.call( el, ev, touch, true );
+                        } else {
+                            // false is a hold
+                            onUp.call( el, ev, touch, false );
+                        }
+
+                        return;
+                    }
+                }
+            }
+
+            document.getElementsByTagName('body')[0].
+                    addEventListener( 'touchend', touchEnd );
+            el.addEventListener( 'touchend', touchEnd, false );
+
+            el.addEventListener( 'click', function(ev) {
+                if ( (ev.which || ev.button) === 1 ) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                }
+            } );
+        } else {
+            var isDown = false;
+
+            el.addEventListener( 'mousedown', function(ev) {
+                ev = ev || window.event;
+
+                if ( (ev.which || ev.button) === 1 ) {
+                    isDown = true;
+                    onDown.call( el, ev, ev );
+                }
+            } );
+
+            el.addEventListener( 'mousemove', function(ev) {
+                ev = ev || window.event;
+
+                if ( (ev.which || ev.button) === 1 && isDown ) {
+                    onMove.call( el, ev, ev );
+                }
+            } );
+
+            el.addEventListener( 'mouseup', function(ev) {
+                ev = ev || window.event;
+
+                if ( (ev.which || ev.button) === 1 && isDown ) {
+                    isDown = false;
+                    onUp.call( el, ev, ev );
+                }
+            } );
+        }
+
+        return el;
+    };
+
+    var clickBuilder = function( el, callback ) {
+        if ( ! isHTMLElement(el) ) {
+            throw new Error( "non-html element given" );
+        }
+
+        var xy = { finger: -1, timestart: 0, x: 0, y: 0, moveX: 0, moveY: 0 };
+
+        if ( IS_TOUCH ) {
+            var touchstart = function(ev) {
+                startTouch( xy, ev.changedTouches[0] );
+            };
+
+            el.addEventListener( 'touchstart', touchstart, false );
+
+            el.addEventListener( 'touchmove', function(ev) {
+                if ( xy.finger === -1 ) {
+                    touchstart( ev );
+                } else {
+                    for ( var i = 0; i < ev.changedTouches.length; i++ ) {
+                        var touch = ev.changedTouches[ i ];
+                    
+                        if ( touch && touch.identifier === xy.finger ) {
+                            updateXY( xy, touch, true );
+                            return;
+                        }
+                    }
+                }
+            }, false )
+
+            el.addEventListener( 'touchend', function(ev) {
+                for ( var i = 0; i < ev.changedTouches.length; i++ ) {
+                    var touch = ev.changedTouches[ i ];
+                    
+                    if ( touch && touch.identifier === xy.finger ) {
+                        xy.finger = -1;
+
+                        updateXY( xy, touch, true );
+
+                        var duration = Date.now() - xy.timestart;
+                        var dist = Math.sqrt( xy.moveX*xy.moveX + xy.moveY*xy.moveY )
+
+                        if (
+                                ( dist < FAST_CLICK_DIST && duration < FAST_CLICK_DURATION ) ||
+                                  dist < SLOW_CLICK_DIST
+                        ) {
+                            callback.call( el, ev );
+                            ev.preventDefault();
+                        }
+
+                        return;
+                    }
+                }
+            }, false )
+
+            var killEvent = function(ev) {
+                if ( (ev.which || ev.button) === 1 ) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                }
+            }
+
+            el.addEventListener( 'click'    , killEvent );
+            el.addEventListener( 'mouseup'  , killEvent );
+            el.addEventListener( 'mousedown', killEvent );
+        } else {
+            el.addEventListener( 'click', function(ev) {
+                ev = ev || window.event;
+
+                if ( (ev.which || ev.button) === 1 ) {
+                    ev.preventDefault();
+                
+                    callback.call( el, ev, ev );
+                }
+            } );
+        }
+
+        return el;
+    };
+
+    var holdBuilder = IS_TOUCH ?
+            function( el, fun ) {
+                pressBuilder(
+                        el,
+
+                        // goes down
+                        function(ev) {
+                            fun.call( el, ev, true, false );
+                        },
+
+                        // moves
+                        function(ev) {
+                            // do nothing
+                        },
+
+                        function(ev, touchEv, isClick) {
+                            fun.call( el, ev, false, isClick );
+                        }
+                )
+
+                return el;
+            } :
+            function( el, fun ) {
+                var isDown = false;
+
+                el.addEventListener( 'mousedown', function(ev) {
+                    ev = ev || window.event;
+
+                    if ( (ev.which || ev.button) === 1 ) {
+                        ev.preventDefault();
+                    
+                        isDown = true;
+                        fun.call( el, ev, true );
+                    }
+                } );
+
+                el.addEventListener( 'mouseup', function(ev) {
+                    ev = ev || window.event;
+
+                    if ( (ev.which || ev.button) === 1 && isDown ) {
+                        ev.preventDefault();
+                    
+                        isDown = false;
+                        fun.call( el, ev, false );
+                    }
+                } );
+
+                return el;
+            } ;
+
+    var touchy = window['touchy'] = {
+            click: clickBuilder,
+            press: pressBuilder,
+            hold : holdBuilder
+    }
+})();
+"use strict";(function() {
+ /* 
+===============================================================================
+
+shim.js
+=======
+
+
+This is a collection of shims from around the internet,
+and some built by me, which add support for missing JS features.
+
+=============================================================================== */
+
+    var __shim__ = window.__shim__;
+
+ /* ===============================================================================
+
+## Object
+
+=============================================================================== */
+
+    /**
+     * Object.create
+     *
+     * @see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Object/create
+     */
+    __shim__( Object,
+        'create', function(o) {
+            if (arguments.length > 1) {
+                throw new Error('Object.create implementation only accepts the first parameter.');
+            }
+
+            function F() {}
+            F.prototype = o;
+
+            return new F();
+        }
+    );
+
+    __shim__( Date,
+        'now', function() {
+            return new Date().getTime();
+        }
+    );
+
+ /* ===============================================================================
+
+### Array
+
+Note that 'map' is missing, because it is dealt with
+in the 'extras' file.
+
+===============================================================================
+
+### forEach
+
+Production steps of ECMA-262, Edition 5, 15.4.4.18
+Reference: http://es5.github.com/#x15.4.4.18
+    
+------------------------------------------------------------------------------- */
+
+    __shim__( Array.prototype,
+        'forEach', function( callback, thisArg ) {
+            var T, k;
+
+            if ( this == null ) {
+              throw new TypeError( "this is null or not defined" );
+            }
+
+            // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
+            var O = Object(this);
+
+            // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
+            // 3. Let len be ToUint32(lenValue).
+            var len = O.length >>> 0; // Hack to convert O.length to a UInt32
+
+            // 4. If IsCallable(callback) is false, throw a TypeError exception.
+            // See: http://es5.github.com/#x9.11
+            if ( {}.toString.call(callback) !== "[object Function]" ) {
+              throw new TypeError( callback + " is not a function" );
+            }
+
+            // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
+            if ( thisArg ) {
+              T = thisArg;
+            }
+
+            // 6. Let k be 0
+            k = 0;
+
+            // 7. Repeat, while k < len
+            while( k < len ) {
+
+              var kValue;
+
+              // a. Let Pk be ToString(k).
+              //   This is implicit for LHS operands of the in operator
+              // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
+              //   This step can be combined with c
+              // c. If kPresent is true, then
+              if ( Object.prototype.hasOwnProperty.call(O, k) ) {
+
+                // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
+                kValue = O[ k ];
+
+                // ii. Call the Call internal method of callback with T as the this value and
+                // argument list containing kValue, k, and O.
+                callback.call( T, kValue, k, O );
+              }
+              // d. Increase k by 1.
+              k++;
+            }
+            // 8. return undefined
+        }
+    );
+
+ /* ===============================================================================
+
+## String
+
+=============================================================================== */
+
+    var leftTrimRegex = /^\s\s*/;
+    var spaceRegex = /\s/;
+
+ /* -------------------------------------------------------------------------------
+
+### toArray
+
+@see https://github.com/paulmillr/es6-shim/blob/master/es6-shim.js
+
+------------------------------------------------------------------------------- */
+
+    __shim__( String.prototype,
+            'toArray', function() {
+                return this.split( '' );
+            }
+    );
+
+    __shim__( String.prototype,
+            'trim', function(str) {
+                var	str = this.replace(leftTrimRegex, ''),
+                    i = str.length;
+                while (spaceRegex.test(str.charAt(--i)));
+                return str.slice(0, i + 1);
+            }
+    );
+
+    __shim__( String.prototype,
+            'trimLeft', function(str) {
+                return this.replace( leftTrimRegex, '' );
+            }
+    );
+
+    __shim__( String.prototype,
+            'trimRight', function(str) {
+                var	i = this.length;
+                while ( spaceRegex.test(this.charAt(--i)) );
+                return this.slice( 0, i + 1 );
+            }
+    );
+
+    __shim__( String.prototype,
+            'contains', function( str, index ) {
+                if ( arguments.length === 1 ) {
+                    return this.indexOf(str) !== -1;
+                } else if ( arguments.length === 2 ) {
+                    return this.indexOf(str, index) !== -1;
+                } else if ( arguments.length === 0 ) {
+                    throw new Error( "no search string provided" );
+                }
+            }
+    );
+
+    __shim__( String.prototype,
+            // Fast repeat, uses the `Exponentiation by squaring` algorithm.
+            'repeat', function(times) {
+              if (times < 1) return '';
+              if (times % 2) return this.repeat(times - 1) + this;
+              var half = this.repeat(times / 2);
+              return half + half;
+            }
+    );
+
+    __shim__( String.prototype,
+            'startsWith', function(searchString) {
+              var position = arguments[1];
+
+              // Let searchStr be ToString(searchString).
+              var searchStr = searchString.toString();
+
+              // ReturnIfAbrupt(searchStr).
+
+              // Let S be the result of calling ToString,
+              // giving it the this value as its argument.
+              var s = this.toString();
+
+              // ReturnIfAbrupt(S).
+
+              // Let pos be ToInteger(position).
+              // (If position is undefined, this step produces the value 0).
+              var pos = (position === undefined) ? 0 : Number.toInteger(position);
+              // ReturnIfAbrupt(pos).
+
+              // Let len be the number of elements in S.
+              var len = s.length;
+
+              // Let start be min(max(pos, 0), len).
+              var start = Math.min(Math.max(pos, 0), len);
+
+              // Let searchLength be the number of elements in searchString.
+              var searchLength = searchString.length;
+
+              // If searchLength+start is greater than len, return false.
+              if ((searchLength + start) > len) return false;
+
+              // If the searchLength sequence of elements of S starting at
+              // start is the same as the full element sequence of searchString,
+              // return true.
+              var index = ''.indexOf.call(s, searchString, start);
+              return index === start;
+            }
+    );
+
+    __shim__( String.prototype,
+            'endsWith', function(searchString) {
+              var endPosition = arguments[1];
+
+              // ReturnIfAbrupt(CheckObjectCoercible(this value)).
+              // Let S be the result of calling ToString, giving it the this value as its argument.
+              // ReturnIfAbrupt(S).
+              var s = this.toString();
+
+              // Let searchStr be ToString(searchString).
+              // ReturnIfAbrupt(searchStr).
+              var searchStr = searchString.toString();
+
+              // Let len be the number of elements in S.
+              var len = s.length;
+
+              // If endPosition is undefined, let pos be len, else let pos be ToInteger(endPosition).
+              // ReturnIfAbrupt(pos).
+              var pos = (endPosition === undefined) ?
+                len :
+                Number.toInteger(endPosition);
+
+              // Let end be min(max(pos, 0), len).
+              var end = Math.min(Math.max(pos, 0), len);
+
+              // Let searchLength be the number of elements in searchString.
+              var searchLength = searchString.length;
+
+              // Let start be end - searchLength.
+              var start = end - searchLength;
+
+              // If start is less than 0, return false.
+              if (start < 0) return false;
+
+              // If the searchLength sequence of elements of S starting at start is the same as the full element sequence of searchString, return true.
+              // Otherwise, return false.
+              var index = ''.indexOf.call(s, searchString, start);
+              return index === start;
+            }
+    );
+
+ /* ===============================================================================
+
+## document
+
+===============================================================================
+
+-------------------------------------------------------------------------------
+
+### document.getElementsByClassName( name )
+
+------------------------------------------------------------------------------- */
+
+    if ( document.getElementsByClassName === undefined ) {
+        document.getElementsByClassName = function( klass ) {
+            return document.querySelectorAll( '.' + klass );
+        }
+    };
+
+ /* ===============================================================================
+
+## textContent shim
+
+=============================================================================== */
+
+    var div = document.createElement('div');
+    if ( 
+            div.textContent === undefined &&
+            div.innerText !== undefined
+    ) {
+        // handles innerHTML
+        var onPropertyChange = function (e) {
+            if (event.propertyName === 'innerHTML') {
+                var div = (event.currentTarget) ? event.currentTarget : event.srcElement;
+                var children = div.childNodes;
+
+                for ( var i = 0; i < children.length; i++ ) {
+                    addProps( children[i] );
+                }
+            }
+        }; 
+
+        var textDesc = {
+                get: function() {
+                    return this.innerText;
+                },
+
+                set: function( text ) {
+                    this.innerText = text;
+                    return text;
+                }
+        };
+
+        var addProps = function( dom ) {
+            // these only work on non-text nodes
+            if ( dom.nodeType !== 3 ) {
+                Object.defineProperty( dom, 'textContent', textDesc );
+                Object.defineProperty( dom, 'insertAdjacentHTML', insertAdjacentHTMLDesc );
+
+                // just in case it's been attached once already
+                dom.detachEvent("onpropertychange", onPropertyChange);
+                dom.attachEvent("onpropertychange", onPropertyChange);
+            }
+
+            return dom;
+        }
+
+        /*
+         * Wrap insertAdjacentHTML.
+         */
+        var insertAdjacentHTMLDesc = function(pos, html) {
+            div.innerHTML = html;
+            var children = div.children;
+
+            var p = this.parentNode;
+            var first = undefined;
+
+            if ( pos === "afterend" ) {
+                first = children[0];
+            } else if ( pos === "afterbegin" ) {
+                first = this.firstChild;
+            } else if (
+                    pos !== 'beforebegin' ||
+                    pos !== 'beforeend'
+            ) {
+                logError("invalid position given " + pos);
+            }
+
+            while ( children.length > 0 ) {
+                var child = addProps( children[0] );
+
+                if ( pos === "beforebegin" || pos === 'afterend' ) {
+                    p.insertBefore( child, this );
+                } else if ( pos === "afterbegin" ) {
+                    this.insertBefore( child, first );
+                } else if ( pos === 'beforeend' ) {
+                    this.appendChild( child );
+                }
+            }
+
+            if ( pos === 'afterend' ) {
+                p.removeChild( this );
+                p.insertBefore( this, first );
+            }
+        };
+
+        // wrap createElement
+        var oldCreate = document.createElement;
+        document.createElement = function( name ) {
+            return addProps( oldCreate(name) );
+        }
+
+        // add properties to any existing elements 
+        var doms = document.querySelectorAll('*');
+        for ( var i = 0; i < doms.length; i++ ) {
+            addProps( doms[i] );
+        }
+    }
+
+
+ /* ===============================================================================
+
+## Element
+
+These do *not* use __shim__, as it breaks in IE 8!
+
+===============================================================================
+
+-------------------------------------------------------------------------------
+
+### element.addEventListener
+
+------------------------------------------------------------------------------- */
+
+    if ( ! Element.prototype.addEventListener ) {
+        Element.prototype.addEventListener = function( name, listener ) {
+            return this.attachEvent( name, listener );
+        }
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+### element.removeEventListener
+
+------------------------------------------------------------------------------- */
+
+    if ( ! Element.prototype.removeEventListener ) {
+        Element.prototype.removeEventListener = function( name, listener ) {
+            return this.detachEvent( name, listener );
+        }
+    }
+
+
+
+ /* -------------------------------------------------------------------------------
+
+### element.matchesSelector()
+
+A new W3C selection tester, for testing if a node matches a selection. Very 
+new, so it's either browser specific, or needs a shim.
+
+@author termi https://gist.github.com/termi
+@see https://gist.github.com/termi/2369850/f4022295bf19332ff17e79350ec06c5114d7fbc9
+
+------------------------------------------------------------------------------- */
+
+    if ( ! Element.prototype.matchesSelector ) {
+        Element.prototype.matchesSelector =
+                Element.prototype.matches ||
+                Element.prototype.webkitMatchesSelector ||
+                Element.prototype.mozMatchesSelector ||
+                Element.prototype.msMatchesSelector ||
+                Element.prototype.oMatchesSelector || 
+                function(selector) {
+                    if(!selector)return false;
+                    if(selector === "*")return true;
+                    if(this === document.documentElement && selector === ":root")return true;
+                    if(this === document.body && selector === "body")return true;
+
+                    var thisObj = this,
+                        match = false,
+                        parent,
+                        i,
+                        str,
+                        tmp;
+
+                    if (/^[\w#\.][\w-]*$/.test(selector) || /^(\.[\w-]*)+$/.test(selector)) {
+                        switch (selector.charAt(0)) {
+                            case '#':
+                                return thisObj.id === selector.slice(1);
+                                break;
+                            case '.':
+                                match = true;
+                                i = -1;
+                                tmp = selector.slice(1).split(".");
+                                str = " " + thisObj.className + " ";
+                                while(tmp[++i] && match) {
+                                    match = !!~str.indexOf(" " + tmp[i] + " ");
+                                }
+                                return match;
+                                break;
+                            default:
+                                return thisObj.tagName && thisObj.tagName.toUpperCase() === selector.toUpperCase();
+                        }
+                    }
+
+                    parent = thisObj.parentNode;
+                  
+                    if (parent && parent.querySelector) {
+                        match = parent.querySelector(selector) === thisObj;
+                    }
+
+                    if (!match && (parent = thisObj.ownerDocument)) {
+                        tmp = parent.querySelectorAll( selector );
+
+                        for (i in tmp ) if(_hasOwnProperty(tmp, i)) {
+                            match = tmp[i] === thisObj;
+                            if(match)return true;
+                        }
+                    }
+
+                    return match;
+                }
+    };
+
+ /* -------------------------------------------------------------------------------
+
+### element.matches
+
+------------------------------------------------------------------------------- */
+
+    if ( ! Element.prototype.matches ) {
+        Element.prototype.matches = Element.prototype.matchesSelector
+    };
+
+ /* -------------------------------------------------------------------------------
+
+### classList.js: Cross-browser full element.classList implementation.
+
+2012-11-15
+
+By Eli Grey, http://eligrey.com
+Public Domain.
+
+NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
+
+@source http://purl.eligrey.com/github/classList.js/blob/master/classList.js
+
+------------------------------------------------------------------------------- */
+  
+    if (typeof document !== "undefined" && !("classList" in document.createElement("a"))) {
+        (function (view) {
+            "use strict";
+             
+            if ( !('HTMLElement' in view) && !('Element' in view) ) {
+                return;
+            }
+             
+            var
+                  classListProp = "classList"
+                , protoProp = "prototype"
+                , elemCtrProto = (view.HTMLElement || view.Element)[protoProp]
+                , objCtr = Object
+                , strTrim = String[protoProp].trim || function () {
+                    return this.replace(/^\s+|\s+$/g, "");
+                }
+                , arrIndexOf = Array[protoProp].indexOf || function (item) {
+                    var
+                          i = 0
+                        , len = this.length
+                    ;
+                    for (; i < len; i++) {
+                        if (i in this && this[i] === item) {
+                            return i;
+                        }
+                    }
+                    return -1;
+                }
+                // Vendors: please allow content code to instantiate DOMExceptions
+                , DOMEx = function (type, message) {
+                    this.name = type;
+                    this.code = DOMException[type];
+                    this.message = message;
+                }
+                , checkTokenAndGetIndex = function (classList, token) {
+                    if (token === "") {
+                        throw new DOMEx(
+                              "SYNTAX_ERR"
+                            , "An invalid or illegal string was specified"
+                        );
+                    }
+                    if (/\s/.test(token)) {
+                        throw new DOMEx(
+                              "INVALID_CHARACTER_ERR"
+                            , "String contains an invalid character"
+                        );
+                    }
+                    return arrIndexOf.call(classList, token);
+                }
+                , ClassList = function (elem) {
+                    var
+                          trimmedClasses = strTrim.call(elem.className)
+                        , classes = trimmedClasses ? trimmedClasses.split(/\s+/) : []
+                        , i = 0
+                        , len = classes.length
+                    ;
+                    for (; i < len; i++) {
+                        this.push(classes[i]);
+                    }
+                    this._updateClassName = function () {
+                        elem.className = this.toString();
+                    };
+                }
+                , classListProto = ClassList[protoProp] = []
+                , classListGetter = function () {
+                    return new ClassList(this);
+                }
+            ;
+            // Most DOMException implementations don't allow calling DOMException's toString()
+            // on non-DOMExceptions. Error's toString() is sufficient here.
+            DOMEx[protoProp] = Error[protoProp];
+            classListProto.item = function (i) {
+                return this[i] || null;
+            };
+            classListProto.contains = function (token) {
+                token += "";
+                return checkTokenAndGetIndex(this, token) !== -1;
+            };
+            classListProto.add = function () {
+                var
+                      tokens = arguments
+                    , i = 0
+                    , l = tokens.length
+                    , token
+                    , updated = false
+                ;
+                do {
+                    token = tokens[i] + "";
+                    if (checkTokenAndGetIndex(this, token) === -1) {
+                        this.push(token);
+                        updated = true;
+                    }
+                }
+                while (++i < l);
+             
+                if (updated) {
+                    this._updateClassName();
+                }
+            };
+
+            classListProto.remove = function () {
+                var
+                      tokens = arguments
+                    , i = 0
+                    , l = tokens.length
+                    , token
+                    , updated = false
+                ;
+                do {
+                    token = tokens[i] + "";
+                    var index = checkTokenAndGetIndex(this, token);
+                    if (index !== -1) {
+                        this.splice(index, 1);
+                        updated = true;
+                    }
+                }
+                while (++i < l);
+             
+                if (updated) {
+                    this._updateClassName();
+                }
+            };
+
+            classListProto.toggle = function (token, forse) {
+                token += "";
+             
+                var
+                      result = this.contains(token)
+                    , method = result ?
+                        forse !== true && "remove"
+                    :
+                        forse !== false && "add"
+                ;
+             
+                if (method) {
+                    this[method](token);
+                }
+             
+                return result;
+            };
+
+            classListProto.toString = function () {
+                return this.join(" ");
+            };
+             
+            if (objCtr.defineProperty) {
+                var classListPropDesc = {
+                      get: classListGetter
+                    , enumerable: true
+                    , configurable: true
+                };
+                try {
+                    objCtr.defineProperty(elemCtrProto, classListProp, classListPropDesc);
+                } catch (ex) { // IE 8 doesn't support enumerable:true
+                    if (ex.number === -0x7FF5EC54) {
+                        classListPropDesc.enumerable = false;
+                        objCtr.defineProperty(elemCtrProto, classListProp, classListPropDesc);
+                    }
+                }
+            } else if (objCtr[protoProp].__defineGetter__) {
+                elemCtrProto.__defineGetter__(classListProp, classListGetter);
+            }
+        }(self));
+    }
+
+})();
+"use strict";(function() {
+ /* 
+Math.jsx
+========
+
+@author Joseph Lenton
+
+Adds on extras for extra mathematical operations.
+ */
+
+    var __setProp__ = window.__setProp__;
+    
+    __setProp__( Math, {
+            'TAO': Math.PI*2  ,
+            'π'  : Math.PI    ,
+            'τ'  : Math.PI*2
+    } );
+    
+    __setProp__( window, {
+            'π'  : Math.PI    ,
+            'τ'  : Math.PI*2
+    } );
+
+ /* -------------------------------------------------------------------------------
+
+# Math.round
+
+The 'nearest' value is so you can round to the nearest 0.5, 0.3, 0.1, 10, or
+any other value.
+
+```
+    Math.round( 55.4      ) // returns 55
+    Math.round( 55.4, 1   ) // returns 55 (same as above)
+    Math.round( 55.4, 0.5 ) // returns 55.5
+    Math.round( 55.4, 5   ) // returns 55
+    Math.round( 55.4, 10  ) // returns 60
+    Math.round( 55.4, 100 ) // returns 100 (rounds to nearest 100)
+    Math.round( 55.4, 0   ) // returns 55.4 (always returns the number given)
+
+One useful feature is that it is trivial to round to the nearest set number of
+decimal places.
+
+```
+    // round PI to the nearest 3 decimal places, 3.142
+    Math.round( π, 0.001 )
+
+@param num The number to round.
+@param nearest Optional, another number to 'round nearest to'. By default, this is 1.
+@return The number given, rounded.
+
+------------------------------------------------------------------------------- */
+
+    var oldRound = Math.round;
+
+    __setProp__( Math,
+            'round', function( num, within ) {
+                if ( arguments.length === 1 ) {
+                    return oldRound( num );
+                } else if ( within === 0 ) {
+                    return num;
+                } else {
+                    return oldRound(num/within) * within
+                }
+            }
+    );
 
 })();
 "use strict";(function() {
@@ -79,13 +1159,16 @@ Also includes some helper functions, to make working with functions easier.
 
 ===============================================================================
 
-## Utility Functions
+## Function
 
-===============================================================================
+=============================================================================== */
 
--------------------------------------------------------------------------------
-    
-### Lazy
+    var __setProp__ = window.__setProp__;
+
+
+ /* -------------------------------------------------------------------------------
+
+### LazyParam
 
 A system for describing lazy parameters. When using bind, method, or curry,
 this gives you exact control over *which* parameters can be omitted.
@@ -103,21 +1186,23 @@ The above is the same as calling:
 
 In the example, the parameter left out is exactly defined, using the underscore.
 
+#### alternative to using underscore
+
+If you wish to use the underscore for something else, you can use the value
+'LazyParam' instead.
+
+```
+    var f2 = f.curry( a, b, LazyParam, c );
+    f2( x );
+
 ------------------------------------------------------------------------------- */
 
-    var Lazy = function() {
+    var LazyParam = function() {
         logError( "evaluating a lazy value" );
     }
 
-    window['_'] = Lazy;
-
- /* -------------------------------------------------------------------------------
-
-### extend
-
-------------------------------------------------------------------------------- */
-
-    var __setProp__ = window['__setProp__'];
+    window._ = LazyParam;
+    window.LazyParam = LazyParam;
 
  /* -------------------------------------------------------------------------------
 
@@ -146,7 +1231,7 @@ In the example, the parameter left out is exactly defined, using the underscore.
 
                     assert( hasCheck, "Function implementation missing for " + k );
 
-                    var alt = check( obj, k, undefined );
+                    var alt = check.callback( obj, k, undefined );
 
                     assert( alt !== undefined, "Function implementation missing for " + k );
 
@@ -160,7 +1245,7 @@ In the example, the parameter left out is exactly defined, using the underscore.
                 for ( var k in srcObj ) {
                     if ( srcObj.hasOwnProperty(k) ) {
                         if ( hasCheck ) {
-                            var alt = check( obj, k, srcObj[k] );
+                            var alt = check.callback( obj, k, srcObj[k] );
 
                             if ( alt !== undefined ) {
                                 obj[k] = alt;
@@ -187,6 +1272,33 @@ In the example, the parameter left out is exactly defined, using the underscore.
 
 ------------------------------------------------------------------------------- */
 
+    var newFunctionExtendCallback = {
+        isOkCallback: null,
+
+        callback: function(dest, k, val) {
+            if ( k !== 'constructor' ) {
+                var val = this.isOkCallback(dest, k, val);
+
+                if (
+                        val !== undefined &&
+                        val !== null &&
+                        val !== false &&
+                        val !== true
+                ) {
+                    return val;
+                } else if ( val !== true ) {
+                    if ( errors === null ) {
+                        errors = [ k ];
+                    } else {
+                        errors.push( k );
+                    }
+                } else {
+                    return undefined;
+                }
+            }
+        }
+    }
+
     /**
      * Used to generate the Function extension methods.
      */
@@ -194,28 +1306,8 @@ In the example, the parameter left out is exactly defined, using the underscore.
         return function() {
             var errors = null;
 
-            var proto = newPrototypeArray( this, arguments, function(dest, k, val) {
-                if ( k !== 'constructor' ) {
-                    var val = isOkCallback(dest, k, val);
-
-                    if (
-                            val !== undefined &&
-                            val !== null &&
-                            val !== false &&
-                            val !== true
-                    ) {
-                        return val;
-                    } else if ( val !== true ) {
-                        if ( errors === null ) {
-                            errors = [ k ];
-                        } else {
-                            errors.push( k );
-                        }
-                    } else {
-                        return undefined;
-                    }
-                }
-            } )
+            newFunctionExtendCallback.isOkCallback = isOkCallback;
+            var proto = newPrototypeArray( this, arguments, newFunctionExtendCallback )
              
             if ( errors !== null ) {
                 throw new Error( errMsg + "\n    " + errors.join(', ') );
@@ -257,7 +1349,7 @@ In the example, the parameter left out is exactly defined, using the underscore.
                     var combinedArgs;
                     if ( arguments.length === 0 ) {
                         for ( var i = initArgsStartI; i < initArgs.length; i++ ) {
-                            if ( initArgs[i] === Lazy ) {
+                            if ( initArgs[i] === LazyParam ) {
                                 logError( "value not provided for lazy argument" );
                             }
                         }
@@ -277,7 +1369,7 @@ In the example, the parameter left out is exactly defined, using the underscore.
                             for ( var i = initArgsLen-1; i >= initArgsStartI; i-- ) {
                                 var arg = initArgs[i];
 
-                                if ( arg === Lazy ) {
+                                if ( arg === LazyParam ) {
                                     argsLen--;
                                     combinedArgs.unshift( arguments[argsLen] );
                                 } else {
@@ -299,7 +1391,7 @@ In the example, the parameter left out is exactly defined, using the underscore.
                             for ( var i = initArgsStartI; i < initArgsLen; i++ ) {
                                 var arg = initArgs[i];
 
-                                if ( arg === Lazy ) {
+                                if ( arg === LazyParam ) {
                                     combinedArgs.push( arguments[startI] );
                                     startI++;
                                 } else {
@@ -459,6 +1551,64 @@ other function methods, for adding in extras on top.
     );    
 
 
+ /* -------------------------------------------------------------------------------
+
+### function.$
+
+An alias for 'bind'.
+
+```
+    // these two are identical ...
+    button.onclick = refresh.bind( environment, user );
+    button.onclick = refresh.λ( environment, user );
+
+@see function.bind
+
+------------------------------------------------------------------------------- */
+
+    __setProp__( Function.prototype,
+        'λ', Function.prototype.bind
+    );
+
+
+ /* -------------------------------------------------------------------------------
+
+### Throttle
+
+This returns a version of the function, where when called, it will wait a set
+amount of milliseconds, before it is called.
+
+If the function is called multiple times, each time it will reset the wait
+timer.
+
+-------------------------------------------------------------------------------
+ */
+
+    __setProp__( Function.prototype,
+        'throttle', function( delay ) {
+            if ( delay === undefined ) {
+                delay = 1;
+            }
+
+            var fun = this;
+            var funTimeout = null;
+
+            return function() {
+                var self = this;
+                var args = arguments;
+
+                if ( funTimeout !== null ) {
+                    cancelTimeout( funTimeout );
+                }
+
+                funTimeout = setTimeout( function() {
+                    funTimeout = null;
+
+                    fun.apply( self, args );
+                }, delay );
+            }
+        }
+    );
 
  /* -------------------------------------------------------------------------------
 
@@ -579,7 +1729,7 @@ as a prototype instead of a funtion.
 
  /* -------------------------------------------------------------------------------
 
-### function.override
+### function.protoOverride
 
 Same as append, but the methods it overrides *must* exist.
 
@@ -588,7 +1738,7 @@ This allows you to have a sanity check.
 ------------------------------------------------------------------------------- */
 
     __setProp__( Function.prototype,
-        'override', newFunctionExtend(
+        'protoOverride', newFunctionExtend(
                 "Methods are overriding, but they do not exist,",
                 function(dest, k, val) {
                     return ( dest[k] !== undefined )
@@ -600,13 +1750,13 @@ This allows you to have a sanity check.
 
  /* -------------------------------------------------------------------------------
 
-### function.before
+### function.protoBefore
 
 
 ------------------------------------------------------------------------------- */
 
     __setProp__( Function.prototype,
-        'before', newFunctionExtend(
+        'protoBefore', newFunctionExtend(
                 "Pre-Adding method behaviour, but original method not found,",
                 function(dest, k, val) {
                     if ( dest[k] === undefined ) {
@@ -622,13 +1772,13 @@ This allows you to have a sanity check.
 
  /* -------------------------------------------------------------------------------
 
-### function.after
+### function.protoAfter
 
 
 ------------------------------------------------------------------------------- */
 
     __setProp__( Function.prototype,
-        'after', newFunctionExtend(
+        'protoAfter', newFunctionExtend(
                 "Adding method behaviour, but original method not found,",
                 function(dest, k, val) {
                     if ( dest[k] === undefined ) {
@@ -644,7 +1794,7 @@ This allows you to have a sanity check.
 
  /* -------------------------------------------------------------------------------
 
-### function.extend
+### function.protoExtend
 
 Adds on extra methods, but none of them are allowed 
 to override any others.
@@ -654,7 +1804,7 @@ This is used as a sanity check.
 ------------------------------------------------------------------------------- */
 
     __setProp__( Function.prototype,
-        'extend', newFunctionExtend(
+        'protoExtend', newFunctionExtend(
                 "Extending methods already exist, ",
                 function(dest, k, val) {
                     return ( dest[k] === undefined )
@@ -672,7 +1822,7 @@ This is used as a sanity check.
 ------------------------------------------------------------------------------- */
 
     __setProp__( Function.prototype,
-        'require', newFunctionExtend(
+        'protoRequire', newFunctionExtend(
                 "Pre-Adding method behaviour, but original method not found,",
                 function(dest, k, val) {
                     if ( dest[k] !== undefined ) {
@@ -1105,23 +2255,41 @@ Yes, it's as simple as that.
 })();
 "use strict";(function() {
  /* 
+
+extras
+======
+
+This is a page of extras, added onto the core datatypes, allowing you to do
+more with them.
+
+This includes extra array methods, methods on the object to allow it to be used in a
+more array-like fashion.
+
+
+
 ===============================================================================
 
 ## Object
 
 =============================================================================== */
 
-    var __setProp__ = window['__setProp__'];
+    var __setProp__ = window.__setProp__;
 
  /* -------------------------------------------------------------------------------
 
-Maps the function given, against the items stored
-within this object. Note that only the items *directly*
-stored are included; prototype items are skipped.
+### map
 
-The function is in the order:
+Maps the function given, against the items stored within this object. Note that
+only the items *directly* stored are included; prototype items are skipped.
 
- function( value, key )
+The function is in the form:
+
+ function( value, k )
+
+'value' is each value stored in turn, whilst 'k' is the key which the value is
+stored under.
+
+'this' is also bound to the value.
 
 This is so that it matches up with Array.map.
 
@@ -1133,20 +2301,87 @@ This is so that it matches up with Array.map.
             'map', function( fun ) {
                 var rs = [];
 
-                for ( var k in this ) {
-                    if ( this.has(k) ) {
-                        rs.push( fun.call(this, this[k], k) );
+                if ( (typeof fun === 'string') || (fun instanceof String) ) {
+                    if ( arguments.length === 1 ) {
+                        for ( var k in this ) {
+                            if ( this.has(k) ) {
+                                var val = this[k];
+                                rs.push( val[fun].call(val, val, k) );
+                            }
+                        }
+                    } else {
+                        var args = new Array( arguments.length+1 );
+                        for ( var i = 2; i < args.length; i++ ) {
+                            args[i] = arguments[i-1];
+                        }
+
+                        for ( var k in this ) {
+                            if ( this.has(k) ) {
+                                var val = this[k];
+
+                                args[0] = val;
+                                args[1] = k;
+
+                                rs.push( val[fun].apply(val, args) );
+                            }
+                        }
+                    }
+                } else {
+                    if ( arguments.length === 1 ) {
+                        for ( var k in this ) {
+                            if ( this.has(k) ) {
+                                var val = this[k];
+                                rs.push( fun.call(val, val, k) );
+                            }
+                        }
+                    } else {
+                        var args = new Array( arguments.length+1 );
+                        for ( var i = 2; i < args.length; i++ ) {
+                            args[i] = arguments[i-1];
+                        }
+
+                        for ( var k in this ) {
+                            if ( this.has(k) ) {
+                                var val = this[k];
+
+                                args[0] = val;
+                                args[1] = k;
+
+                                rs.push( fun.apply(val, args) );
+                            }
+                        }
                     }
                 }
 
                 return rs;
             }
-
     );
 
 
 
  /* -------------------------------------------------------------------------------
+
+### getProp
+
+This returns the property stored in this object, under the name given. It is
+the same as just doing ...
+
+```
+    var val = obj[ name ];
+
+However this is a method based version, allowing you to curry, or call using
+map, and other tricks like that.
+
+```
+    var getName = runtime.method( 'getProp', 'name' );
+    var currentName = getName();
+
+Note this will also return values stored in the protoype chain, if not found
+in the object.
+
+@param name The name of the property to access.
+@return undefined if the property is not found, otherwise the value stored.
+
 ------------------------------------------------------------------------------- */
 
     __setProp__( Object.prototype,
@@ -1155,35 +2390,139 @@ This is so that it matches up with Array.map.
             }
     );
 
+ /* -------------------------------------------------------------------------------
 
+### setProp
+
+This is a method version, of setting a value using array index notation.
+
+```
+    // these two are identical
+    obj['name'] = 'John';
+    obj.setProp('name', 'John');
+
+A method version is provided, to allow currying, mapping, or passing the method
+when bound to an object around. For example:
+
+```
+    var updateName = obj.method( 'setProp', 'name' );
+    updateName( 'John' );
+
+It can also take an object of values, to set multiple values to the object.
+
+```
+    var person = new Person();
+    person.setProp({
+            name: 'John',
+            age: 20,
+            sex: 'male',
+            nationality: 'French'
+    });
+
+@return This object.
+
+------------------------------------------------------------------------------- */
+
+    __setProp__( Object.prototype,
+            'setProp', function( obj, value ) {
+                if ( arguments.length === 1 ) {
+                    if ( ! isObject(obj) ) {
+                        throw new Error("non-object given for multiple property assignment");
+                    }
+
+                    for ( var k in obj ) {
+                        if ( obj.has(k) ) {
+                            this[k] = obj[k];
+                        }
+                    }
+                } else if ( arguments.length === 2 ) {
+                    if ( ! isString(obj) ) {
+                        throw new Error("non-object given for property assignment");
+                    }
+
+                    this[obj] = value;
+                } else {
+                    throw new Error("invalid number of arguments given");
+                }
+
+                return this;
+            }
+    );
 
  /* -------------------------------------------------------------------------------
+
+### method
 
 Finds the method, and binds it to 'this' object.
 This is so you can do:
 
+#### use case
+
 ```
-     this.foo.bar.something().whatever.method( 'doWork' );
+     var fun = this.foo.bar.something().whatever.method( 'doWork' );
 
 ... instead of ...
 
 ```
-     this.foo.bar.something().whatever.doWork.bind(
+     var fun = this.foo.bar.something().whatever.doWork.bind(
              this.foo.bar.something().whatever
      )
 
-You can also provide array descriptions,
-to call multiple methods in order.
+#### currying
+
+This also supports currying.
+
+```
+    var fun = this.foo.bar.something().whatever.method( 'doWork', 1, 2 );
+
+... instead of ...
+
+```
+     var fun = this.foo.bar.something().whatever.doWork.bind(
+             this.foo.bar.something().whatever,
+             1,
+             2
+     )
+
+#### currying with underscore 
+
+It also supports use of the _ variable, to leave variables open for use later.
+
+```
+    var fun = this.foo.bar.something().whatever.method( 'doWork', _, 1, 2 );
+
+... instead of ...
+
+```
+    var fun = (function(whatever) {
+        return function( param ) {
+            return whatever.doWork( param, 1, 2 );
+        }
+    })(this.foo.bar.something().whatever);
+
+#### call multiple methods
+
+You can also provide array descriptions, to call multiple methods in order.
 For example:
 
 ```
-     this.foo.method(
+     var fun = this.foo.method(
              [ 'doA', a, b, c ],
              [ 'doB', x, y, z ]
      )
 
-When the function created is called,
-it's last argument is executed.
+... instead of ...
+
+```
+    var fun = (function(foo) {
+        return function() {
+            foo.doA( a, b, c );
+            return foo.doB( x, y, z );
+        }
+    })( this.foo );
+
+When the function created is called, it's last method is used for the return
+value.
 
 ------------------------------------------------------------------------------- */
 
@@ -1224,6 +2563,9 @@ it's last argument is executed.
 
 
  /* -------------------------------------------------------------------------------
+
+### methodApply
+
 ------------------------------------------------------------------------------- */
 
     __setProp__( Object.prototype,
@@ -1261,6 +2603,11 @@ it's last argument is executed.
 
 
  /* -------------------------------------------------------------------------------
+
+### has
+
+This is the same as 'hasOwnProperty', but is shorter, making it nicer to use.
+
 ------------------------------------------------------------------------------- */
 
     __setProp__( Object.prototype,
@@ -1271,9 +2618,64 @@ it's last argument is executed.
 
 ## String
 
-===============================================================================
+=============================================================================== */
 
--------------------------------------------------------------------------------
+    var escaprRegExpRegExp = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g;
+
+
+ /* -------------------------------------------------------------------------------
+
+### escapeRegExp
+
+Returns a version of this string, where all special characters from a regular
+expression, are escaped and made safe.
+
+------------------------------------------------------------------------------- */
+
+    __setProp__( String.prototype,
+            'escapeRegExp', function() {
+                return this.replace(escapeRegExpRegExp, "\\$&");
+            }
+    )
+
+
+
+ /* -------------------------------------------------------------------------------
+
+### remove
+
+Removes all of the strings given, from this string.
+
+```
+    // yields "he wrld"
+    "hello world".remove( 'l', 'o' );
+
+@param 1 or more strings to be removed.
+@return A new string, with all occurrances of the string given, to be removed.
+
+------------------------------------------------------------------------------- */
+
+    __setProp__( String.prototype,
+            'remove', function() {
+                if ( arguments.length === 0 ) {
+                    throw new Error( 'no strings given to remove' );
+                } else {
+                    var reg = '(' + arguments[0].escapeRegExp();
+
+                    for ( var i = 1; i < arguments.length; i++ ) {
+                        reg += ')|(' + arguments[i].escapeRegExp();
+                    }
+
+                    return this.replace( new RegExp(reg + ')', 'g'), '' );
+                }
+            }
+    );
+
+
+
+ /* -------------------------------------------------------------------------------
+
+### lastSplit
 
 This is the equivalent to:
 
@@ -1303,6 +2705,125 @@ everything after that occurance.
 
 
 
+ /* -------------------------------------------------------------------------------
+
+### toHTML
+
+Essentially this dumps the string into a component, converting it into a HTML
+node, and then returning the element.
+
+Note that if it is turned into multiple HTML elements, then the first one is
+returned.
+
+```
+    var button = "<a href='#'>click me</a>".toHTML()
+
+If the string cannot be converted to HTML for some reason, then an empty div
+is returned instead.
+
+@eturn This string, converted to a HTML element.
+
+------------------------------------------------------------------------------- */
+
+    __setProp__( String.prototype,
+            'toHTML', function() {
+                var wrap = document.createElement( 'div' );
+                wrap.innerHTML = this;
+                return wrap.firstChild || wrap;
+            }
+    );
+
+
+
+ /* -------------------------------------------------------------------------------
+
+### html
+
+Creates a html element, described using the parameters given, based on bb.jsx
+form. It takes the same arguments that the bb() function would take.
+
+If no arguments are given, then a div is used instead.
+
+This string is then placed inside of the element created, and that element is
+returned.
+
+```
+    blogElement.add(
+            "<blink>Welcome</blink> to the blog of 1999".html( 'h1', 'blog-header' )
+    );
+
+@return A new HTML Element that contains this string, as it's inner html.
+
+------------------------------------------------------------------------------- */
+
+    __setProp__( String.prototype,
+            'html', function() {
+                if ( window.bb ) {
+                    var comp = bb.createArray( arguments[0], arguments, 1 );
+                    comp.innerHTML = this;
+                    return comp;
+                } else {
+                    throw new Error( 'bb not found, and is required for this method' );
+                }
+            }
+    );
+
+
+
+ /* -------------------------------------------------------------------------------
+
+### text
+
+The same as String.html, only this places this string into the element as text,
+instead of raw html.
+
+```
+    blogElement.add(
+            "Welcome to my blog!".text( 'h1', 'blog-header' )
+    );
+
+@return A new HTML Element, with it's text containing this string.
+
+------------------------------------------------------------------------------- */
+
+    __setProp__( String.prototype,
+            'text', function() {
+                if ( window.bb ) {
+                    var comp = bb.createArray( arguments[0], arguments, 1 );
+                    comp.textContent = this;
+                    return comp;
+                } else {
+                    throw new Error( 'bb not found, and is required for this method' );
+                }
+            }
+    );
+
+
+ /* -------------------------------------------------------------------------------
+
+### string.matches( regexp )
+
+This is for an all or nothing test, to see if a string matches a whole regular
+expression 100%, or not.
+
+@return True if the regular expression matched the entire string, false if not.
+
+------------------------------------------------------------------------------- */
+
+    __setProp__( String.prototype,
+            'matches', function(regex) {
+                if ( isString(regex) ) {
+                    return this === regex;
+                } else {
+                    assert( regex instanceof RegExp, "non-regular expression given" );
+
+                    var matches = this.match( regex );
+                    return (matches.length === 1) && (mathes[0] === this);
+                }
+            }
+    );
+
+
  /* ===============================================================================
 
 ## Array
@@ -1311,15 +2832,19 @@ everything after that occurance.
 
 -------------------------------------------------------------------------------
 
-We fallback onto the old map for some of our behaviour,
-or define a new one, if missing (IE 8).
+### map shim
+
+This is a shim for the Array.map method, *if* it is not yet implemented.
+
+We fallback onto the old map for some of our behaviour, or define a new one, if
+missing (IE 8).
 
 @see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Array/map#Compatibility
 
 ------------------------------------------------------------------------------- */
 
     var oldMap = Array.prototype.map;
-    if ( oldMap === undefined ) {
+    if ( ! ('map' in Array.prototype) ) {
         oldMap = function(callback, thisArg) {
             var T, A, k;
 
@@ -1391,6 +2916,8 @@ or define a new one, if missing (IE 8).
 
  /* -------------------------------------------------------------------------------
 
+### filterOutMethod
+
 Same as 'filterMethod', however this will remove
 all items which return 'true', rather than keep them.
 
@@ -1429,6 +2956,8 @@ and you don't want them. For example:
 
 
  /* -------------------------------------------------------------------------------
+
+### filterMethod
 
 Calls the given method against all elements in the array.
 If it returns a non-falsy item (false, null, or undefined),
@@ -1469,6 +2998,8 @@ Otherwise, it will be removed.
 
  /* -------------------------------------------------------------------------------
 
+### filterOutType
+
 This is shorthand for using filterType,
 where 'keepProto' is set to false.
 
@@ -1487,6 +3018,8 @@ where 'keepProto' is set to false.
 
 
  /* -------------------------------------------------------------------------------
+
+### filterType
 
 Filters object based on the prototype given.
 This can work in two ways:
@@ -1551,29 +3084,34 @@ which match the proto constructor given.
 
  /* -------------------------------------------------------------------------------
 
-Similar to 'forEach',
-except that the target goes first in the parameter list.
+### each
 
-The target is also returned if it is provided,
-and if not, then this array is returned.
+Similar to 'forEach', except the optional 'thisArg' is the first parameter.
+
+The thisArg is also returned if it is provided, and if not, then this array is
+returned.
+
+@param thisArg Optional, the value that will be 'this' in the callback.
+@param callback The function to perform on each value.
+@return This array if no 'thisArg', otherwise the 'thisArg' value given.
 
 ------------------------------------------------------------------------------- */
 
     __setProp__( Array.prototype,
-            'each', function( target, callback ) {
+            'each', function( thisArg, callback ) {
+                // 'thisArg' is the callback
                 if ( arguments.length === 1 ) {
-                    callback = target;
-                    assertFunction( callback );
+                    assertFunction( thisArg );
 
-                    this.forEach( target );
+                    this.forEach( thisArg );
 
                     return this;
                 } else {
                     assertFunction( callback );
 
-                    this.forEach( callback, target );
+                    this.forEach( callback, thisArg );
 
-                    return target;
+                    return thisArg;
                 }
             }
     );
@@ -1581,17 +3119,62 @@ and if not, then this array is returned.
 
 
  /* -------------------------------------------------------------------------------
+
+### map
+
+Maps a function, against all elements in the given array. If the function given
+is a function object, then it is run against each element in turn.
+
+```
+    // each unit is updated, with a delta-time given to each one
+    units.map( function(unit, i) {
+        unit.update( delta );
+    } );
+
+The 'this' value is also bound to the value given. This allows the same to be
+written as ...
+
+```
+    // each unit is updated, with a delta-time given to each one
+    units.map( function() {
+        this.update( delta );
+    } );
+
+You can also create and pass in a function to call instead.
+
+```
+    var updateFun = function() {
+        this.update( delta );
+    }
+    units.map( updateFun );
+
+If however it is a string given, then that function is called on each element 
+in turn.
+
+```
+    // each unit is updated, with a delta-time given to each one
+    units.map( 'update', delta );
+
+One or more parameters can be given after the function, as extra parameters to
+execute.
+
+@param fun The function to perform on each element.
+@return A new array, containing the result from each value.
+
 ------------------------------------------------------------------------------- */
 
     __setProp__( Array.prototype,
             'map', function( fun ) {
                 if ( typeof fun === 'string' || (fun instanceof String) ) {
-                    var args = new Array( arguments.length-1 );
-                    for ( var i = 0; i < args.length; i++ ) {
+                    var args = new Array( arguments.length+1 );
+                    for ( var i = 2; i < args.length; i++ ) {
                         args[i] = arguments[i-1];
                     }
 
-                    return oldMap.call( this, function(obj) {
+                    return oldMap.call( this, function(obj, i) {
+                        args[0] = obj;
+                        args[1] = i;
+
                         return obj[fun].apply( obj, args );
                     } );
                 } else {
@@ -1618,683 +3201,35 @@ and if not, then this array is returned.
     )
 
 
-})();
-"use strict";(function() {
- /* 
-===============================================================================
-
-shim.js
-=======
-
-
-This is a collection of shims from around the internet,
-and some built by me, which add support for missing JS features.
-
-=============================================================================== */
-
-    var __shim__ = window['__shim__'];
-
- /* ===============================================================================
-
-## Object
-
-=============================================================================== */
-
-    /**
-     * Object.create
-     *
-     * @see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Object/create
-     */
-    __shim__( Object,
-        'create', function(o) {
-            if (arguments.length > 1) {
-                throw new Error('Object.create implementation only accepts the first parameter.');
-            }
-
-            function F() {}
-            F.prototype = o;
-
-            return new F();
-        }
-    );
-
-    __shim__( Date,
-        'now', function() {
-            return new Date().getTime();
-        }
-    );
-
- /* ===============================================================================
-
-### Array
-
-Note that 'map' is missing, because it is dealt with
-in the 'extras' file.
-
-===============================================================================
-
-### forEach
-
-Production steps of ECMA-262, Edition 5, 15.4.4.18
-Reference: http://es5.github.com/#x15.4.4.18
-    
-------------------------------------------------------------------------------- */
-
-    __shim__( Array.prototype,
-        'forEach', function( callback, thisArg ) {
-            var T, k;
-
-            if ( this == null ) {
-              throw new TypeError( "this is null or not defined" );
-            }
-
-            // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
-            var O = Object(this);
-
-            // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
-            // 3. Let len be ToUint32(lenValue).
-            var len = O.length >>> 0; // Hack to convert O.length to a UInt32
-
-            // 4. If IsCallable(callback) is false, throw a TypeError exception.
-            // See: http://es5.github.com/#x9.11
-            if ( {}.toString.call(callback) !== "[object Function]" ) {
-              throw new TypeError( callback + " is not a function" );
-            }
-
-            // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
-            if ( thisArg ) {
-              T = thisArg;
-            }
-
-            // 6. Let k be 0
-            k = 0;
-
-            // 7. Repeat, while k < len
-            while( k < len ) {
-
-              var kValue;
-
-              // a. Let Pk be ToString(k).
-              //   This is implicit for LHS operands of the in operator
-              // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
-              //   This step can be combined with c
-              // c. If kPresent is true, then
-              if ( Object.prototype.hasOwnProperty.call(O, k) ) {
-
-                // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
-                kValue = O[ k ];
-
-                // ii. Call the Call internal method of callback with T as the this value and
-                // argument list containing kValue, k, and O.
-                callback.call( T, kValue, k, O );
-              }
-              // d. Increase k by 1.
-              k++;
-            }
-            // 8. return undefined
-        }
-    );
-
- /* ===============================================================================
-
-## String
-
-===============================================================================
-
--------------------------------------------------------------------------------
-
-### toArray
-
-@see https://github.com/paulmillr/es6-shim/blob/master/es6-shim.js
-
-------------------------------------------------------------------------------- */
-
-    var leftTrimRegex = /^\s\s*/;
-    var spaceRegex = /\s/;
-
-    __shim__( String.prototype,
-            'trim', function(str) {
-                var	str = this.replace(leftTrimRegex, ''),
-                    i = str.length;
-                while (spaceRegex.test(str.charAt(--i)));
-                return str.slice(0, i + 1);
-            }
-    );
-
-    __shim__( String.prototype,
-            'trimLeft', function(str) {
-                return this.replace( leftTrimRegex, '' );
-            }
-    );
-
-    __shim__( String.prototype,
-            'trimRight', function(str) {
-                var	i = this.length;
-                while ( spaceRegex.test(this.charAt(--i)) );
-                return this.slice( 0, i + 1 );
-            }
-    );
-
-    __shim__( String.prototype,
-            'toArray', function() {
-                return this.split( '' );
-            }
-    );
-
-    __shim__( String.prototype,
-            'contains', function( str, index ) {
-                if ( arguments.length === 1 ) {
-                    return this.indexOf(str) !== -1;
-                } else if ( arguments.length === 2 ) {
-                    return this.indexOf(str, index) !== -1;
-                } else if ( arguments.length === 0 ) {
-                    throw new Error( "no search string provided" );
-                }
-            }
-    );
-
-    __shim__( String.prototype,
-            // Fast repeat, uses the `Exponentiation by squaring` algorithm.
-            'repeat', function(times) {
-              if (times < 1) return '';
-              if (times % 2) return this.repeat(times - 1) + this;
-              var half = this.repeat(times / 2);
-              return half + half;
-            }
-    );
-
-    __shim__( String.prototype,
-            'startsWith', function(searchString) {
-              var position = arguments[1];
-
-              // Let searchStr be ToString(searchString).
-              var searchStr = searchString.toString();
-
-              // ReturnIfAbrupt(searchStr).
-
-              // Let S be the result of calling ToString,
-              // giving it the this value as its argument.
-              var s = this.toString();
-
-              // ReturnIfAbrupt(S).
-
-              // Let pos be ToInteger(position).
-              // (If position is undefined, this step produces the value 0).
-              var pos = (position === undefined) ? 0 : Number.toInteger(position);
-              // ReturnIfAbrupt(pos).
-
-              // Let len be the number of elements in S.
-              var len = s.length;
-
-              // Let start be min(max(pos, 0), len).
-              var start = Math.min(Math.max(pos, 0), len);
-
-              // Let searchLength be the number of elements in searchString.
-              var searchLength = searchString.length;
-
-              // If searchLength+start is greater than len, return false.
-              if ((searchLength + start) > len) return false;
-
-              // If the searchLength sequence of elements of S starting at
-              // start is the same as the full element sequence of searchString,
-              // return true.
-              var index = ''.indexOf.call(s, searchString, start);
-              return index === start;
-            }
-    );
-
-    __shim__( String.prototype,
-            'endsWith', function(searchString) {
-              var endPosition = arguments[1];
-
-              // ReturnIfAbrupt(CheckObjectCoercible(this value)).
-              // Let S be the result of calling ToString, giving it the this value as its argument.
-              // ReturnIfAbrupt(S).
-              var s = this.toString();
-
-              // Let searchStr be ToString(searchString).
-              // ReturnIfAbrupt(searchStr).
-              var searchStr = searchString.toString();
-
-              // Let len be the number of elements in S.
-              var len = s.length;
-
-              // If endPosition is undefined, let pos be len, else let pos be ToInteger(endPosition).
-              // ReturnIfAbrupt(pos).
-              var pos = (endPosition === undefined) ?
-                len :
-                Number.toInteger(endPosition);
-
-              // Let end be min(max(pos, 0), len).
-              var end = Math.min(Math.max(pos, 0), len);
-
-              // Let searchLength be the number of elements in searchString.
-              var searchLength = searchString.length;
-
-              // Let start be end - searchLength.
-              var start = end - searchLength;
-
-              // If start is less than 0, return false.
-              if (start < 0) return false;
-
-              // If the searchLength sequence of elements of S starting at start is the same as the full element sequence of searchString, return true.
-              // Otherwise, return false.
-              var index = ''.indexOf.call(s, searchString, start);
-              return index === start;
-            }
-    );
-
  /* -------------------------------------------------------------------------------
-
-## document.getElementsByClassName( name )
-
 ------------------------------------------------------------------------------- */
 
-    if ( document.getElementsByClassName === undefined ) {
-        document.getElementsByClassName = function( klass ) {
-            return document.querySelectorAll( '.' + klass );
-        }
-    };
+    __setProp__( Array.prototype,
+            'drop', function( origIndex ) {
+                var len = this.length;
+                var index = origIndex;
 
- /* ===============================================================================
+                if ( index < 0 ) {
+                    index = len + index;
 
-## textContent shim
-
-=============================================================================== */
-
-    var div = document.createElement('div');
-    if ( 
-            div.textContent === undefined &&
-            div.innerText !== undefined
-    ) {
-        // handles innerHTML
-        var onPropertyChange = function (e) {
-            if (event.propertyName === 'innerHTML') {
-                var div = (event.currentTarget) ? event.currentTarget : event.srcElement;
-                var children = div.childNodes;
-
-                for ( var i = 0; i < children.length; i++ ) {
-                    addProps( children[i] );
+                    if ( index < 0 ) {
+                        throw new Error( "index out of range, " + origIndex );
+                    }
+                } else if ( index >= len ) {
+                    throw new Error( "index out of range, " + origIndex );
                 }
+
+                var arr = new Array( len-1 );
+                for ( var i = 0; i < index; i++ ) {
+                    arr[i] = this[i];
+                }
+                for ( var i = index+1; i < len; i++ ) {
+                    arr[i-1] = this[i];
+                }
+
+                return arr;
             }
-        }; 
-
-        var textDesc = {
-                get: function() {
-                    return this.innerText;
-                },
-
-                set: function( text ) {
-                    this.innerText = text;
-                    return text;
-                }
-        };
-
-        var addProps = function( dom ) {
-            // these only work on non-text nodes
-            if ( dom.nodeType !== 3 ) {
-                Object.defineProperty( dom, 'textContent', textDesc );
-                Object.defineProperty( dom, 'insertAdjacentHTML', insertAdjacentHTMLDesc );
-
-                // just in case it's been attached once already
-                dom.detachEvent("onpropertychange", onPropertyChange);
-                dom.attachEvent("onpropertychange", onPropertyChange);
-            }
-
-            return dom;
-        }
-
-        /*
-         * Wrap insertAdjacentHTML.
-         */
-        var insertAdjacentHTMLDesc = function(pos, html) {
-            div.innerHTML = html;
-            var children = div.children;
-
-            var p = this.parentNode;
-            var first = undefined;
-
-            if ( pos === "afterend" ) {
-                first = children[0];
-            } else if ( pos === "afterbegin" ) {
-                first = this.firstChild;
-            } else if (
-                    pos !== 'beforebegin' ||
-                    pos !== 'beforeend'
-            ) {
-                logError("invalid position given " + pos);
-            }
-
-            while ( children.length > 0 ) {
-                var child = addProps( children[0] );
-
-                if ( pos === "beforebegin" || pos === 'afterend' ) {
-                    p.insertBefore( child, this );
-                } else if ( pos === "afterbegin" ) {
-                    this.insertBefore( child, first );
-                } else if ( pos === 'beforeend' ) {
-                    this.appendChild( child );
-                }
-            }
-
-            if ( pos === 'afterend' ) {
-                p.removeChild( this );
-                p.insertBefore( this, first );
-            }
-        };
-
-        // wrap createElement
-        var oldCreate = document.createElement;
-        document.createElement = function( name ) {
-            return addProps( oldCreate(name) );
-        }
-
-        // add properties to any existing elements 
-        var doms = document.querySelectorAll('*');
-        for ( var i = 0; i < doms.length; i++ ) {
-            addProps( doms[i] );
-        }
-    }
-
-
- /* ===============================================================================
-
-## Element
-
-These do *not* use __shim__, as it breaks in IE 8!
-
-===============================================================================
-
--------------------------------------------------------------------------------
-
-### element.addEventListener
-
-------------------------------------------------------------------------------- */
-
-    if ( ! Element.prototype.addEventListener ) {
-        Element.prototype.addEventListener = function( name, listener ) {
-            return this.attachEvent( name, listener );
-        }
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-### element.removeEventListener
-
-------------------------------------------------------------------------------- */
-
-    if ( ! Element.prototype.removeEventListener ) {
-        Element.prototype.removeEventListener = function( name, listener ) {
-            return this.detachEvent( name, listener );
-        }
-    }
-
-
-
- /* -------------------------------------------------------------------------------
-
-### element.matchesSelector()
-
-A new W3C selection tester, for testing if a node
-matches a selection. Very new, so it's either browser
-specific, or needs a shim.
-
-@author termi https://gist.github.com/termi
-@see https://gist.github.com/termi/2369850/f4022295bf19332ff17e79350ec06c5114d7fbc9
-
-------------------------------------------------------------------------------- */
-
-    if ( ! Element.prototype.matchesSelector ) {
-        Element.prototype.matchesSelector =
-                Element.prototype.matches ||
-                Element.prototype.webkitMatchesSelector ||
-                Element.prototype.mozMatchesSelector ||
-                Element.prototype.msMatchesSelector ||
-                Element.prototype.oMatchesSelector || 
-                function(selector) {
-                    if(!selector)return false;
-                    if(selector === "*")return true;
-                    if(this === document.documentElement && selector === ":root")return true;
-                    if(this === document.body && selector === "body")return true;
-
-                    var thisObj = this,
-                        match = false,
-                        parent,
-                        i,
-                        str,
-                        tmp;
-
-                    if (/^[\w#\.][\w-]*$/.test(selector) || /^(\.[\w-]*)+$/.test(selector)) {
-                        switch (selector.charAt(0)) {
-                            case '#':
-                                return thisObj.id === selector.slice(1);
-                                break;
-                            case '.':
-                                match = true;
-                                i = -1;
-                                tmp = selector.slice(1).split(".");
-                                str = " " + thisObj.className + " ";
-                                while(tmp[++i] && match) {
-                                    match = !!~str.indexOf(" " + tmp[i] + " ");
-                                }
-                                return match;
-                                break;
-                            default:
-                                return thisObj.tagName && thisObj.tagName.toUpperCase() === selector.toUpperCase();
-                        }
-                    }
-
-                    parent = thisObj.parentNode;
-                  
-                    if (parent && parent.querySelector) {
-                        match = parent.querySelector(selector) === thisObj;
-                    }
-
-                    if (!match && (parent = thisObj.ownerDocument)) {
-                        tmp = parent.querySelectorAll( selector );
-
-                        for (i in tmp ) if(_hasOwnProperty(tmp, i)) {
-                            match = tmp[i] === thisObj;
-                            if(match)return true;
-                        }
-                    }
-
-                    return match;
-                }
-    };
-
- /* -------------------------------------------------------------------------------
-
-### element.matches
-
-------------------------------------------------------------------------------- */
-
-    if ( ! Element.prototype.matches ) {
-        Element.prototype.matches =
-            Element.prototype.matchesSelector
-    };
-
- /* -------------------------------------------------------------------------------
-
-### classList.js: Cross-browser full element.classList implementation.
-
-2012-11-15
-
-By Eli Grey, http://eligrey.com
-Public Domain.
-
-NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
-
-@source http://purl.eligrey.com/github/classList.js/blob/master/classList.js
-
-------------------------------------------------------------------------------- */
-  
-    if (typeof document !== "undefined" && !("classList" in document.createElement("a"))) {
-        (function (view) {
-            "use strict";
-             
-            if ( !('HTMLElement' in view) && !('Element' in view) ) {
-                return;
-            }
-             
-            var
-                  classListProp = "classList"
-                , protoProp = "prototype"
-                , elemCtrProto = (view.HTMLElement || view.Element)[protoProp]
-                , objCtr = Object
-                , strTrim = String[protoProp].trim || function () {
-                    return this.replace(/^\s+|\s+$/g, "");
-                }
-                , arrIndexOf = Array[protoProp].indexOf || function (item) {
-                    var
-                          i = 0
-                        , len = this.length
-                    ;
-                    for (; i < len; i++) {
-                        if (i in this && this[i] === item) {
-                            return i;
-                        }
-                    }
-                    return -1;
-                }
-                // Vendors: please allow content code to instantiate DOMExceptions
-                , DOMEx = function (type, message) {
-                    this.name = type;
-                    this.code = DOMException[type];
-                    this.message = message;
-                }
-                , checkTokenAndGetIndex = function (classList, token) {
-                    if (token === "") {
-                        throw new DOMEx(
-                              "SYNTAX_ERR"
-                            , "An invalid or illegal string was specified"
-                        );
-                    }
-                    if (/\s/.test(token)) {
-                        throw new DOMEx(
-                              "INVALID_CHARACTER_ERR"
-                            , "String contains an invalid character"
-                        );
-                    }
-                    return arrIndexOf.call(classList, token);
-                }
-                , ClassList = function (elem) {
-                    var
-                          trimmedClasses = strTrim.call(elem.className)
-                        , classes = trimmedClasses ? trimmedClasses.split(/\s+/) : []
-                        , i = 0
-                        , len = classes.length
-                    ;
-                    for (; i < len; i++) {
-                        this.push(classes[i]);
-                    }
-                    this._updateClassName = function () {
-                        elem.className = this.toString();
-                    };
-                }
-                , classListProto = ClassList[protoProp] = []
-                , classListGetter = function () {
-                    return new ClassList(this);
-                }
-            ;
-            // Most DOMException implementations don't allow calling DOMException's toString()
-            // on non-DOMExceptions. Error's toString() is sufficient here.
-            DOMEx[protoProp] = Error[protoProp];
-            classListProto.item = function (i) {
-                return this[i] || null;
-            };
-            classListProto.contains = function (token) {
-                token += "";
-                return checkTokenAndGetIndex(this, token) !== -1;
-            };
-            classListProto.add = function () {
-                var
-                      tokens = arguments
-                    , i = 0
-                    , l = tokens.length
-                    , token
-                    , updated = false
-                ;
-                do {
-                    token = tokens[i] + "";
-                    if (checkTokenAndGetIndex(this, token) === -1) {
-                        this.push(token);
-                        updated = true;
-                    }
-                }
-                while (++i < l);
-             
-                if (updated) {
-                    this._updateClassName();
-                }
-            };
-
-            classListProto.remove = function () {
-                var
-                      tokens = arguments
-                    , i = 0
-                    , l = tokens.length
-                    , token
-                    , updated = false
-                ;
-                do {
-                    token = tokens[i] + "";
-                    var index = checkTokenAndGetIndex(this, token);
-                    if (index !== -1) {
-                        this.splice(index, 1);
-                        updated = true;
-                    }
-                }
-                while (++i < l);
-             
-                if (updated) {
-                    this._updateClassName();
-                }
-            };
-
-            classListProto.toggle = function (token, forse) {
-                token += "";
-             
-                var
-                      result = this.contains(token)
-                    , method = result ?
-                        forse !== true && "remove"
-                    :
-                        forse !== false && "add"
-                ;
-             
-                if (method) {
-                    this[method](token);
-                }
-             
-                return result;
-            };
-
-            classListProto.toString = function () {
-                return this.join(" ");
-            };
-             
-            if (objCtr.defineProperty) {
-                var classListPropDesc = {
-                      get: classListGetter
-                    , enumerable: true
-                    , configurable: true
-                };
-                try {
-                    objCtr.defineProperty(elemCtrProto, classListProp, classListPropDesc);
-                } catch (ex) { // IE 8 doesn't support enumerable:true
-                    if (ex.number === -0x7FF5EC54) {
-                        classListPropDesc.enumerable = false;
-                        objCtr.defineProperty(elemCtrProto, classListProp, classListPropDesc);
-                    }
-                }
-            } else if (objCtr[protoProp].__defineGetter__) {
-                elemCtrProto.__defineGetter__(classListProp, classListGetter);
-            }
-        }(self));
-    }
+    );
 
 })();
 "use strict";(function() {
@@ -2341,7 +3276,7 @@ For regular objects do ...
 
 ------------------------------------------------------------------------------- */
 
-    var isObject = window['isObject'] = function( obj ) {
+    var isObject = window.isObject = function( obj ) {
         if ( obj !== undefined || obj !== null ) {
             var proto = obj.constructor.prototype;
 
@@ -2363,7 +3298,7 @@ For regular objects do ...
 
 ------------------------------------------------------------------------------- */
 
-    var isFunction = window['isFunction'] = function( f ) {
+    var isFunction = window.isFunction = function( f ) {
         return ( typeof f === 'function' ) || ( f instanceof Function );
     }
 
@@ -2378,7 +3313,7 @@ For regular objects do ...
 
 ------------------------------------------------------------------------------- */
 
-    var isNumber = window['isNumber'] = function( n ) {
+    var isNumber = window.isNumber = function( n ) {
         return ( typeof n === 'number' ) || ( n instanceof Number );
     }
 
@@ -2396,7 +3331,7 @@ This is either an actual number, or a string which represents one.
 
 ------------------------------------------------------------------------------- */
 
-    var isNumeric = window['isNumeric'] = function( str ) {
+    var isNumeric = window.isNumeric = function( str ) {
         return ( typeof str === 'number' ) ||
                ( str instanceof Number   ) ||
                ( String(str).search( /^\s*(\+|-)?((\d+(\.\d+)?)|(\.\d+))\s*$/ ) !== -1 )
@@ -2413,7 +3348,7 @@ This is either an actual number, or a string which represents one.
 
 ------------------------------------------------------------------------------- */
 
-    var isString = window['isString'] = function( str ) {
+    var isString = window.isString = function( str ) {
         return ( typeof str === 'string' ) || ( str instanceof String );
     }
 
@@ -2432,7 +3367,7 @@ as Number or String).
 
 ------------------------------------------------------------------------------- */
 
-    var isLiteral = window['isLiteral'] = function(obj) {
+    var isLiteral = window.isLiteral = function(obj) {
         return isString(obj) ||
                 isNumber(obj) ||
                 obj === undefined ||
@@ -2449,7 +3384,7 @@ as Number or String).
 
 ------------------------------------------------------------------------------- */
 
-    var isHTMLElement = window['isHTMLElement'] = function(obj) {
+    var isHTMLElement = window.isHTMLElement = function(obj) {
         return obj.nodeType !== undefined;
     }
 
@@ -2469,7 +3404,7 @@ this.
 
 ------------------------------------------------------------------------------- */
 
-    var isArrayArguments = window['isArrayArguments'] = function( arr ) {
+    var isArrayArguments = window.isArrayArguments = function( arr ) {
         return isArray(arr) ||
                (
                        arr !== undefined &&
@@ -2493,7 +3428,7 @@ include them, use 'isArrayArguments'.
 
 ------------------------------------------------------------------------------- */
 
-    var isArray = window['isArray'] = Array.isArray ?
+    var isArray = window.isArray = Array.isArray ?
             Array.isArray :
             function( arr ) {
                 return ( arr instanceof Array );
@@ -2839,323 +3774,6 @@ This includes both number primitives, and Number objects.
 
 
 })();
-"use strict";
-
-(function() {
-    var IS_TOUCH = !! ('ontouchstart' in window)  // works on most browsers 
-                || !!('onmsgesturechange' in window); // works on IE 10
-
-    /**
-     * How quickly someone must tap,
-     * for it to be a 'fast click'.
-     *
-     * In milliseconds.
-     */
-    var FAST_CLICK_DURATION = 150,
-        FAST_CLICK_DIST = 20,
-        SLOW_CLICK_DIST = 15;
-
-    var startTouch = function( xy, touch ) {
-        if ( touch ) {
-            xy.finger = touch.identifier;
-            xy.timestart = Date.now();
-
-            updateXY( xy, touch, false );
-
-            return true;
-        } else {
-            return false;
-        }
-    };
-
-    var updateXY = function( xy, ev, updateMove ) {
-        var x,
-            y;
-
-        if ( ev.offsetX !== undefined ) { // Opera
-            x = ev.offsetX;
-            y = ev.offsetY;
-        } else if ( ev.layerX !== undefined ) { // Firefox
-            x = ev.layerX;
-            y = ev.layerY;
-        } else if ( ev.clientX !== undefined ) {
-            x = ev.clientX;
-            y = ev.clientY;
-
-            for (
-                    var tag = ev.target;
-                    tag.offsetParent;
-                    tag = tag.offsetParent
-            ) {
-                x -= tag.offsetLeft;
-                y -= tag.offsetTop;
-            }
-        // fail, so just put no movement in
-        } else {
-            x = 0;
-            y = 0;
-        }
-
-        if ( updateMove ) {
-            xy.moveX += (xy.x - x)
-            xy.moveY += (xy.y - y)
-        } else {
-            xy.moveX = 0;
-            xy.moveY = 0;
-        }
-
-        xy.x = x;
-        xy.y = y;
-    }
-
-    var pressBuilder = function( el, onDown, onMove, onUp ) {
-        if ( ! isHTMLElement(el) ) {
-            throw new Error( "non-html element given" );
-        }
-
-        var xy = {
-                timestart : 0,
-                finger    : 0,
-
-                x: 0,
-                y: 0,
-
-                moveX: 0,
-                moveY: 0
-        };
-
-        if ( IS_TOUCH ) {
-            var touchstart = function( ev ) {
-                var touch = ev.changedTouches[ 0 ];
-        
-                if ( startTouch(xy, touch) ) {
-                    onDown.call( el, ev, touch );
-                }
-            }
-
-            el.addEventListener( 'touchstart', touchstart, false );
-
-            el.addEventListener( 'touchmove', function(ev) {
-                if ( xy.finger === -1 ) {
-                    touchstart( ev );
-                } else {
-                    for ( var i = 0; i < ev.changedTouches.length; i++ ) {
-                        var touch = ev.changedTouches[ i ];
-                    
-                        if ( touch && touch.identifier === xy.finger ) {
-                            onMove.call( el, ev, touch );
-                            return;
-                        }
-                    }
-                }
-            }, false );
-
-            var touchEnd = function(ev) {
-                for ( var i = 0; i < ev.changedTouches.length; i++ ) {
-                    var touch = ev.changedTouches[ i ];
-                
-                    if ( touch && touch.identifier === xy.finger ) {
-                        xy.finger = -1;
-
-                        updateXY( xy, touch, true );
-
-                        var duration = Date.now() - xy.timestart;
-                        var dist = Math.sqrt( xy.moveX*xy.moveX + xy.moveY*xy.moveY )
-
-                        if (
-                                ( dist < FAST_CLICK_DIST && duration < FAST_CLICK_DURATION ) ||
-                                  dist < SLOW_CLICK_DIST
-                        ) {
-                            // true is a click
-                            onUp.call( el, ev, touch, true );
-                        } else {
-                            // false is a hold
-                            onUp.call( el, ev, touch, false );
-                        }
-
-                        return;
-                    }
-                }
-            }
-
-            document.getElementsByTagName('body')[0].
-                    addEventListener( 'touchend', touchEnd );
-            el.addEventListener( 'touchend', touchEnd, false );
-
-            el.addEventListener( 'click', function(ev) {
-                if ( (ev.which || ev.button) === 1 ) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                }
-            } );
-        } else {
-            var isDown = false;
-
-            el.addEventListener( 'mousedown', function(ev) {
-                ev = ev || window.event;
-
-                if ( (ev.which || ev.button) === 1 ) {
-                    isDown = true;
-                    onDown.call( el, ev, ev );
-                }
-            } );
-
-            el.addEventListener( 'mousemove', function(ev) {
-                ev = ev || window.event;
-
-                if ( (ev.which || ev.button) === 1 && isDown ) {
-                    onMove.call( el, ev, ev );
-                }
-            } );
-
-            el.addEventListener( 'mouseup', function(ev) {
-                ev = ev || window.event;
-
-                if ( (ev.which || ev.button) === 1 && isDown ) {
-                    isDown = false;
-                    onUp.call( el, ev, ev );
-                }
-            } );
-        }
-
-        return el;
-    };
-
-    var clickBuilder = function( el, callback ) {
-        if ( ! isHTMLElement(el) ) {
-            throw new Error( "non-html element given" );
-        }
-
-        var xy = { finger: -1, timestart: 0, x: 0, y: 0, moveX: 0, moveY: 0 };
-
-        if ( IS_TOUCH ) {
-            var touchstart = function(ev) {
-                startTouch( xy, ev.changedTouches[0] );
-            };
-
-            el.addEventListener( 'touchstart', touchstart, false );
-
-            el.addEventListener( 'touchmove', function(ev) {
-                if ( xy.finger === -1 ) {
-                    touchstart( ev );
-                } else {
-                    for ( var i = 0; i < ev.changedTouches.length; i++ ) {
-                        var touch = ev.changedTouches[ i ];
-                    
-                        if ( touch && touch.identifier === xy.finger ) {
-                            updateXY( xy, touch, true );
-                            return;
-                        }
-                    }
-                }
-            }, false )
-
-            el.addEventListener( 'touchend', function(ev) {
-                for ( var i = 0; i < ev.changedTouches.length; i++ ) {
-                    var touch = ev.changedTouches[ i ];
-                    
-                    if ( touch && touch.identifier === xy.finger ) {
-                        xy.finger = -1;
-
-                        updateXY( xy, touch, true );
-
-                        var duration = Date.now() - xy.timestart;
-                        var dist = Math.sqrt( xy.moveX*xy.moveX + xy.moveY*xy.moveY )
-
-                        if (
-                                ( dist < FAST_CLICK_DIST && duration < FAST_CLICK_DURATION ) ||
-                                  dist < SLOW_CLICK_DIST
-                        ) {
-                            callback.call( el, ev );
-                            ev.preventDefault();
-                        }
-
-                        return;
-                    }
-                }
-            }, false )
-
-            var killEvent = function(ev) {
-                if ( (ev.which || ev.button) === 1 ) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                }
-            }
-
-            el.addEventListener( 'click'    , killEvent );
-            el.addEventListener( 'mouseup'  , killEvent );
-            el.addEventListener( 'mousedown', killEvent );
-        } else {
-            el.addEventListener( 'click', function(ev) {
-                ev = ev || window.event;
-
-                if ( (ev.which || ev.button) === 1 ) {
-                    ev.preventDefault();
-                
-                    callback.call( el, ev, ev );
-                }
-            } );
-        }
-
-        return el;
-    };
-
-    var holdBuilder = IS_TOUCH ?
-            function( el, fun ) {
-                pressBuilder(
-                        el,
-
-                        // goes down
-                        function(ev) {
-                            fun.call( el, ev, true, false );
-                        },
-
-                        // moves
-                        function(ev) {
-                            // do nothing
-                        },
-
-                        function(ev, touchEv, isClick) {
-                            fun.call( el, ev, false, isClick );
-                        }
-                )
-
-                return el;
-            } :
-            function( el, fun ) {
-                var isDown = false;
-
-                el.addEventListener( 'mousedown', function(ev) {
-                    ev = ev || window.event;
-
-                    if ( (ev.which || ev.button) === 1 ) {
-                        ev.preventDefault();
-                    
-                        isDown = true;
-                        fun.call( el, ev, true );
-                    }
-                } );
-
-                el.addEventListener( 'mouseup', function(ev) {
-                    ev = ev || window.event;
-
-                    if ( (ev.which || ev.button) === 1 && isDown ) {
-                        ev.preventDefault();
-                    
-                        isDown = false;
-                        fun.call( el, ev, false );
-                    }
-                } );
-
-                return el;
-            } ;
-
-    var touchy = window['touchy'] = {
-            click: clickBuilder,
-            press: pressBuilder,
-            hold : holdBuilder
-    }
-})();
 "use strict";(function() {
  /* 
 ===============================================================================
@@ -3214,7 +3832,7 @@ when you ask to mark, but don't specify it.
 
 =============================================================================== */
 
-    var __shim__ = window['__shim__'];
+    var __shim__ = window.__shim__;
 
  /* -------------------------------------------------------------------------------
 
@@ -3728,6 +4346,605 @@ in turn.
  /* 
 ===============================================================================
 
+# JSX Compiler
+
+JSX are the language extensions on top of JavaScript, which most of platform.js
+is written in (most at the time of writing).
+
+This file contains the code to attach in the JSX compiler, so JSX can compile 
+JSX.
+
+### autocompile jsx files
+
+If you set 'data-autocompile="true"' on the platform.js script tag, for example
+
+```
+    <script src="platform.js" data-autocompile="true"></script>
+
+then all of your jsx scripts will be extracted from the head, compiled, and
+then executed automatically.
+
+===============================================================================
+
+-------------------------------------------------------------------------------
+
+## jsx( code )
+
+The jsx module is a self executing function, which also has properties on it
+you can execute. Like the $ in jQuery.
+
+Given JSX code, this will return it compiled into JS.
+
+------------------------------------------------------------------------------- */
+
+    var jsx = window['jsx'] = function( code ) {
+        return jsx.compile( code );
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## orderCallbacks
+
+Helper function, which pushes callbacks into an array, and then returns a 
+function to replace that callback. This function ensures that when the function
+is called, the callbacks in the array are called in the order they were placed
+there.
+
+------------------------------------------------------------------------------- */
+
+    var scriptOrderArray = [];
+
+    var orderCallbacks = function( arr, callback ) {
+        var i = arr.length;
+        arr.push({ callback: callback, args: undefined, self: undefined });
+
+        return function() {
+            if ( arr[0].callback === callback ) {
+                arr.shift().callback.apply( this, arguments );
+
+                while ( arr.length > 0 && arr[0].args !== undefined ) {
+                    var obj = arr.shift();
+
+                    obj.callback.apply( obj.self, obj.args );
+                }
+            } else {
+                var obj = arr[i];
+
+                obj.args = arguments;
+                obj.self = this;
+            }
+        }
+    }
+
+ /* -------------------------------------------------------------------------------
+
+## jsx.executeScripts
+
+------------------------------------------------------------------------------- */
+
+    jsx.executeScripts = function() {
+        setTimeout( function() {
+            var scripts = document.getElementsByTagName( 'script' );
+
+            for ( var i = 0; i < scripts.length; i++ ) {
+                var src = scripts[i].getAttribute( 'src' );
+                var type = scripts[i].getAttribute('type');
+
+                if ( src ) {
+                    if ( isJSXScriptType(type) ) {
+                        jsx.executeUrl( src );
+                   }
+                } else if ( isJSXScriptType(type) ) {
+                    jsx.executeCode( script.innerHTML );
+                }
+            }
+        }, 0 );
+    }
+
+
+ /* -------------------------------------------------------------------------------
+
+## jsx.executeUrl( url )
+
+Note that you can provide a single url as a string, or multiple urls in an 
+array.
+
+------------------------------------------------------------------------------- */
+
+    jsx.executeUrl = function( url ) {
+        if ( typeof url === 'string' ) {
+            jsx.compileUrl( url, orderCallbacks(scriptOrderArray, function(err, code) {
+                if ( err ) {
+                    throw err;
+                } else {
+                    newScriptCode( code, url );
+                }
+            }) );
+        } else if ( url instanceof Array ) {
+            for ( var i = 0; i < url.length; i++ ) {
+                jsx.executeUrl( url[i], callback );
+            }
+        } else {
+            throw new Error( 'unknown value given for url, ' + url );
+        }
+    }
+
+
+ /* -------------------------------------------------------------------------------
+
+## jsx.executeCode( code )
+
+Parses the given code, and then inserts it into a script tag.
+
+------------------------------------------------------------------------------- */
+
+    jsx.executeCode = function( code ) {
+        setTimeout( orderCallbacks(scriptOrderArray, function() {
+            newScriptCode( code, url );
+        }), 0);
+    }
+
+
+ /* -------------------------------------------------------------------------------
+
+## jsx.compileUrl( url, callback )
+
+Callback must take the form
+
+```
+    function( ex:Error, code:string, url:string, ajaxObj:XMLHttpRequest )
+
+ * 'Ex' will be null if there was no error, and non-null if there was an error.
+
+ * 'url' is the url you gave to the compileUrl function.
+
+ * 'code' is the compiled code, which will only be present if the request was
+   successful. It will be null if it was not successful.
+
+ * 'ajaxObj' is the object used to make the request, and is provided for 
+   completeness. If for some reason the ajax object failed to be created, then
+   this will be null.
+
+------------------------------------------------------------------------------- */
+
+    jsx.compileUrl = function( url, callback ) {
+        try {
+            var ajaxObj = new window.XMLHttpRequest();
+
+            ajaxObj.onreadystatechange = function() {
+                if ( ajaxObj.readyState === 4 ) {
+                    var err    = undefined,
+                        status = ajaxObj.status;
+
+                    if ( ! (status >= 200 && status < 300 || status === 304) ) {                    
+                        err = new Error(
+                                "error connecting to url " +
+                                slate.util.htmlSafe(url) + ', ' + status
+                        );
+                        callback( err, null, url, ajaxObj );
+                    } else {
+                        var code = jsx.compile( ajaxObj.responseText );
+                        callback( null, code, url, ajaxObj );
+                    }
+                }
+            }
+
+            ajaxObj.open( 'GET', url, true );
+            ajaxObj.send();
+        } catch ( ex ) {
+            /*
+             * If access using XMLHttpRequest failed, try the ActiveX file
+             * system instead (for .hta files or JScript).
+             */
+            if ( ex.message.toLowerCase().indexOf("access is denied.") === 0 ) {
+                if ( "ActiveXObject" in window ) {
+                    try {
+                        var fileSystem = new ActiveXObject("Scripting.FileSystemObject");
+                        var path;
+
+                        if ( url.search(/^(\/|\\|file:\/\/|http:\/\/|https:\/\/)/) === 0 ) {
+                            path = url.replace(/^(file:\/\/|http:\/\/|https:\/\/)/, '');
+                        } else {
+                            path = document.URL.
+                                    replace(/^(file:\/\/|http:\/\/|https:\/\/)/, '').
+                                    replace(/\\/g, "/").
+                                    split("/").
+                                    drop(-1).
+                                    join( "/" ) + "/" + url;
+                        }
+
+                        var file = fileSystem.OpenTextFile( path, 1, false );
+                        if ( file ) {
+                            var code = jsx.compile( file.readAll() );
+                            alert( code );
+                            file.Close();
+
+                            // this *must* be done in the future
+                            setTimeout( function() {
+                                callback( null, code, url, null );
+                            }, 0 );
+
+                            return;
+                        }
+                    } catch ( ex ) {
+                        // do nothing
+                    }
+                }
+            }
+
+            callback(ex, null, url, null);
+        }
+    };
+
+ /* -------------------------------------------------------------------------------
+
+## jsx.compile( code )
+
+------------------------------------------------------------------------------- */
+
+    jsx.compile = function( code ) {
+        var lines = code.split(/\n\r|\r\n|\n|\r/);
+
+        var isMarkdown      = true,
+            commentStarted  = false,
+            isExample       = false,
+            seenExample     = false,
+            isList          = false;
+
+        var code = [ '"use strict";(function() {' ];
+
+        var isDoubleComment = false;
+        var inDoubleString = false;
+        var inSingleString = false;
+
+        for ( var i = 0; i < lines.length; i++ ) {
+            var line = lines[i];
+
+            /*
+             * Work out what to build.
+             */
+
+            if ( isMarkdown ) {
+                if (
+                        seenExample &&
+                        line.length < 4
+                ) {
+                    isExample   = false;
+                    seenExample = false;
+                } else if (
+                    line.length === 3 &&
+                    line.charAt(0) === '`' &&
+                    line.charAt(1) === '`' &&
+                    line.charAt(2) === '`'
+                ) {
+                    isExample = true;
+                    seenExample = false;
+                } else if (
+                    line.length >= 8 &&
+                    line.charAt(0) === '@' &&
+                    line.charAt(1) === 'e' &&
+                    line.charAt(2) === 'x' &&
+                    line.charAt(3) === 'a' &&
+                    line.charAt(4) === 'm' &&
+                    line.charAt(5) === 'p' &&
+                    line.charAt(6) === 'l' &&
+                    line.charAt(7) === 'e'
+                ) {
+                    isExample = true;
+                    seenExample = false;
+                } else if ( isExample && !seenExample && line.trim() !== '' ) {
+                    seenExample = true;
+
+                } else if (
+                        line.length > 4 &&
+                        line.charAt(0) === ' ' &&
+                        line.charAt(1) === ' ' &&
+                        line.charAt(2) === ' ' &&
+                        line.charAt(3) === ' '
+                ) {
+                    if ( isList && line.trim() !== '' ) {
+                        // ignore, if this is a continuation of a list
+                    } else if ( ! isExample ) {
+                        isMarkdown = false;
+                    }
+                } else if ( isList ) {
+                    if ( line.trim() === '' ) {
+                        isList = false;
+                    } else if ( ! isListTest(line) ) {
+                        isList = false;
+                    }
+                } else if ( isListTest(line) ) {
+                    isList = true;
+                }
+            } else {
+                if (
+                            line.trim().length > 0 &&
+                            (
+                                line.charAt(0) !== ' ' ||
+                                line.charAt(1) !== ' ' ||
+                                line.charAt(2) !== ' ' ||
+                                line.charAt(3) !== ' '
+                            )
+                ) {
+                    isMarkdown = true;
+                }
+            }
+
+            /*
+             * Now actually build the new line.
+             */
+            
+            if ( isMarkdown ) {
+                var codeLine;
+
+                if ( ! commentStarted ) {
+                    codeLine = " /* ";
+                    commentStarted = true;
+                } else {
+                    codeLine = '';
+                }
+
+                code.push( codeLine + line.replace( /\*\//g, "* /" ) )
+            } else {
+                // end the 'previous' line
+                if ( commentStarted ) {
+                    code[i-1] += " */";
+                    commentStarted = false;
+                }
+
+                for ( ; i < lines.length; i++ ) {
+                    var l = lines[i];
+
+                    /*
+                     * we chomp till we reach markdown,
+                     * so when we reach it, back up (with i--),
+                     * and deal with the markdown on the next outer loop.
+                     */
+                    // if the line has content, and does not start with 4 spaces ...
+                    if ( 
+                            l.trim().length > 0 &&
+                            (
+                                l.charAt(0) !== ' ' ||
+                                l.charAt(1) !== ' ' ||
+                                l.charAt(2) !== ' ' ||
+                                l.charAt(3) !== ' '
+                            )
+                    ) {
+                        isMarkdown = true;
+                        i--;
+                        break;
+                    }
+
+                    var lLen = l.length;
+                    for ( var k = 0; k < lLen; k++ ) {
+                        var c = l.charAt(k);
+
+                        // these are in order of precedence
+                        if ( inDoubleString ) {
+                            if (
+                                                c === '"' &&
+                                    l.charAt(k-1) !== '\\'
+                            ) {
+                                inDoubleString = false;
+                            // support for multiline string
+                            } else if ( k === lLen-1 ) {
+                                l = l + '\\n" + ';
+
+                                // preserve the initial indentation across the following lines
+                                // we only preserve if we can ...
+                                lines[i+1] = (lines[i+1] || '').replace( /^    ( *)/, function(match) {
+                                    var strLen = match.length;
+
+                                    if ( strLen === 4 ) {
+                                        return '    "';
+                                    } else if ( strLen > 4 ) {
+                                        // concat on all indentation spaces, but remove 1, which is replaced with a quote
+                                        // i.e. '     ' -> '    "'
+                                        var newStr = '';
+                                        for ( ; strLen > 2; strLen-- ) {
+                                            newStr += ' ';
+                                        }
+
+                                        return newStr + '"';
+                                    } else {
+                                        return match;
+                                    }
+                                });
+
+                                // close because we closed it manually on this line,
+                                // and it then opens again on the next line
+                                inDoubleString = false;
+                            }
+                        } else if ( inSingleString ) {
+                            if (
+                                                c === "'" &&
+                                    l.charAt(k-1) !== '\\'
+                            ) {
+                                inSingleString = false;
+                            // support for multiline string
+                            } else if ( k === lLen-1 ) {
+                                l = l + "' + ";
+                                lines[i+1] = "'" + (lines[i+1]||'');
+                            }
+                        } else if ( isDoubleComment ) {
+                            if (
+                                                c === '*' &&
+                                    l.charAt(k+1) === '/'
+                            ) {
+                                isDoubleComment = false;
+
+                                // +1 so we include this character too
+
+                                k++;
+                            }
+                        } else {
+                            /*
+                             * Look to enter a new type of block,
+                             * such as comments, strings, inlined-JS code.
+                             */
+
+                            // multi-line comment
+                            if (
+                                    c === '/' &&
+                                    l.charAt(k+1) === '*'
+                            ) {
+                                k++;
+
+                                isDoubleComment = true;
+                            } else if (
+                                    c === '/' &&
+                                    l.charAt(k+1) === '/'
+                            ) {
+                                /* skip the rest of the line for parsing */
+                                break;
+
+                                // look for strings
+                            } else if ( c === '"' ) {
+                                inDoubleString = true;
+                            } else if ( c === "'" ) {
+                                inSingleString = true;
+                            } else if ( c === '/' ) {
+                                // todo
+                                // replace with '#' for ecmascript 6
+                                
+                            // ?? -> arguments[arguments.i = ++arguments.i || 0]
+                            } else if (
+                                                c === '?' &&
+                                    l.charAt(k+1) === '?' &&
+                                    l.charAt(k-1) !== '?' &&
+                                    l.charAt(k+2) !== '?'
+                            ) {
+                                var newString = '(arguments[arguments.i = ++arguments.i||0])';
+                                l = l.substring( 0, k ) + newString + l.substring( k+2 );
+                                k += newString.length + 1;
+                            }
+                        }
+                    } // for c in line
+
+                    code.push( l );
+                }
+            }
+        }
+
+        code.push( '})();' );
+        code.push( '' );
+
+        return code.join( "\n" );
+    }
+
+ /* -------------------------------------------------------------------------------
+
+### newScriptCode( code:string, src:string )
+
+Creates a new script tag, and adds it to the head, for it to be executed.
+
+------------------------------------------------------------------------------- */
+
+    var newScriptCode = function( code, src ) {
+        src = src || "<anonymous script tag>";
+
+        var exception = null;
+        var catchException = function(ex) {
+            exception = ex;
+            return true;
+        }
+
+        window.addEventListener( 'error', catchException, true );
+
+        var script = document.createElement('script');
+        script.innerHTML = code;
+        document.head.appendChild( script );
+
+        window.removeEventListener( 'error', catchException, true );
+
+        if ( exception !== null ) {
+            throw new Error( 
+                    src + "\n" +
+                    "line " + (exception.lineno || exception.lineNumber) + "\n" +
+                    (exception.message || exception.description)
+            );
+        }
+    }
+
+ /* -------------------------------------------------------------------------------
+------------------------------------------------------------------------------- */
+
+    var isListTest = function( line ) {
+        return (
+                        (
+                                line.charAt(0) === ' ' &&
+                                line.charAt(1) === '-' &&
+                                line.charAt(2) !== '-'
+                        ) || (
+                                line.charAt(0) === '-' &&
+                                line.charAt(1) !== '-' &&
+                                line.length > 2
+                        )
+                ) || (
+                        (
+                                line.charAt(0) === ' ' &&
+                                line.charAt(1) === '*' &&
+                                line.charAt(2) !== '*'
+                        ) || (
+                                line.charAt(0) === '*' &&
+                                line.charAt(1) !== '*' &&
+                                line.length > 2
+                        )
+                );
+    }
+
+
+ /* -------------------------------------------------------------------------------
+
+### isJSXScriptType( type:string )
+
+Used to test if the 'type' attribute of a script tag, is the correct type for
+a JSX file.
+
+@param The type returned from calling 'getAttribute("type")' on a script tag.
+@return True if there is a type, and it's a JSX type, otherwise false.
+
+------------------------------------------------------------------------------- */
+
+    var isJSXScriptType = function( type ) {
+        if ( type !== null && type !== undefined && type !== '' ) {
+            type = type.toLowerCase();
+
+            return (
+                    type === 'jsx' ||
+                    type === 'text/jsx' ||
+                    type === 'text\\jsx' ||
+                    type === 'application/jsx' ||
+                    type === 'application\\jsx'
+            );
+        } else {
+            return false;
+        }
+    }
+
+ /* -------------------------------------------------------------------------------
+
+Automatically parse scripts if the 'data-autocompile="true"' is set on this
+script tag.
+
+------------------------------------------------------------------------------- */
+
+    var script = document.currentScript;
+    if ( ! script ) {
+        var scripts = document.getElementsByTagName( 'script' );
+        script = scripts[ scripts.length - 1 ];
+    }
+
+    if ( script.getAttribute('data-autocompile') === 'true' ) {
+        jsx.executeScripts();
+    }
+
+
+})();
+"use strict";(function() {
+ /* 
+===============================================================================
+
 # bb.js
 
 @author Joseph Lenton
@@ -4181,10 +5398,12 @@ in a callback method.
     }
 
     var applyArray = function(bb, bbGun, dom, args, startI) {
-        var argsLen = args.length;
+        if ( args !== null ) {
+            var argsLen = args.length;
 
-        for (var i = startI; i < argsLen; i++) {
-            applyOne(bb, bbGun, dom, args[i], false);
+            for (var i = startI; i < argsLen; i++) {
+                applyOne(bb, bbGun, dom, args[i], false);
+            }
         }
 
         return dom;
@@ -4929,17 +6148,14 @@ These events include:
 ```
     on( dom, "click"                        , fun, true  )
     on( dom, "click"                        , fun        )
-    
     on( dom, ["mouseup", "mousedown"]       , fun, false )
     on( dom, ["mouseup", "mousedown"]       , fun        )
-    
     on( dom, { click: fun, mousedown: fun } , true       )
-    on( dom, { click: fun, mousedown: fun }              ) */
-
+    on( dom, { click: fun, mousedown: fun }              )
     on( dom, 'mouseup click'                , mouseChange)
     on( dom, { 'mouseup click': fun }                    )
 
- /* ------------------------------------------------------------------------------- */
+------------------------------------------------------------------------------- */
 
         bb.on = function( dom, name, fun, useCapture ) {
             var argsLen = arguments.length;
@@ -5578,15 +6794,15 @@ to the text values given.
  - html
  - text     Sets the textContent of this element.
  - value,   Sets the value within this element. This applies to inputs and
-            textareas.
+   textareas.
 
  - stopPropagation For the events named, they are set, with a function which 
-            will simply stop propagation of that event.
+   will simply stop propagation of that event.
  - preventDefault  For the events named, this will set a function, which
-            prevents the default action from taking place.
+   prevents the default action from taking place.
 
  - addTo,   given an element (or a description of an element), this element
-            is added to the one given.
+   is added to the one given.
 
 Anything else is set as an attribute of the object.
 
@@ -5655,7 +6871,7 @@ is pre-provided.
                     || !!('onmsgesturechange' in window); // works on IE 10
 
         if ( IS_TOUCH ) {
-            bb.setup.event( 'click', touch.click );
+            bb.setup.event( 'click', touchy.click );
         }
 
         bb.setup.event( 'hold', touchy.hold );
