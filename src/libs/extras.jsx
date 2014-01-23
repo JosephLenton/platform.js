@@ -118,8 +118,6 @@ map, and other tricks like that.
 
 ```
     var getName = runtime.method( 'getProp', 'name' );
-
-    // sometime later
     var currentName = getName();
 
 Note this will also return values stored in the protoype chain, if not found
@@ -152,15 +150,12 @@ when bound to an object around. For example:
 
 ```
     var updateName = obj.method( 'setProp', 'name' );
-
-    // some time later
     updateName( 'John' );
 
 It can also take an object of values, to set multiple values to the object.
 
 ```
     var person = new Person();
-
     person.setProp({
             name: 'John',
             age: 20,
@@ -548,6 +543,30 @@ instead of raw html.
     );
 
 
+-------------------------------------------------------------------------------
+
+### string.matches( regexp )
+
+This is for an all or nothing test, to see if a string matches a whole regular
+expression 100%, or not.
+
+@return True if the regular expression matched the entire string, false if not.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( String.prototype,
+            'matches', function(regex) {
+                if ( isString(regex) ) {
+                    return this === regex;
+                } else {
+                    assert( regex instanceof RegExp, "non-regular expression given" );
+
+                    var matches = this.match( regex );
+                    return (matches.length === 1) && (mathes[0] === this);
+                }
+            }
+    );
+
 
 ===============================================================================
 
@@ -871,7 +890,6 @@ You can also create and pass in a function to call instead.
     var updateFun = function() {
         this.update( delta );
     }
-
     units.map( updateFun );
 
 If however it is a string given, then that function is called on each element 
@@ -926,3 +944,33 @@ execute.
             }
     )
 
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+    __setProp__( Array.prototype,
+            'drop', function( origIndex ) {
+                var len = this.length;
+                var index = origIndex;
+
+                if ( index < 0 ) {
+                    index = len + index;
+
+                    if ( index < 0 ) {
+                        throw new Error( "index out of range, " + origIndex );
+                    }
+                } else if ( index >= len ) {
+                    throw new Error( "index out of range, " + origIndex );
+                }
+
+                var arr = new Array( len-1 );
+                for ( var i = 0; i < index; i++ ) {
+                    arr[i] = this[i];
+                }
+                for ( var i = index+1; i < len; i++ ) {
+                    arr[i-1] = this[i];
+                }
+
+                return arr;
+            }
+    );
