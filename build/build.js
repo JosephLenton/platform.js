@@ -37,6 +37,10 @@ var concatFiles = function( src ) {
         }
     }
 
+    srcFiles = srcFiles.sort(function(a, b) {
+        return a < b;
+    });
+
     for ( var i = 0; i < srcFiles.length; i++ ) {
         var f = srcFiles[i];
 
