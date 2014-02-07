@@ -82,7 +82,7 @@ This is for setting shims, hence why it's called 'shim'.
 "use strict";
 
 (function() {
-    var IS_TOUCH = !! ('ontouchstart' in window)  // works on most browsers 
+    var IS_TOUCH = !!('ontouchstart' in window)  // works on most browsers 
                 || !!('onmsgesturechange' in window); // works on IE 10
 
     /**
@@ -400,9 +400,7 @@ This is for setting shims, hence why it's called 'shim'.
  /* 
 ===============================================================================
 
-shim.js
-=======
-
+# shim.js
 
 This is a collection of shims from around the internet,
 and some built by me, which add support for missing JS features.
@@ -461,7 +459,7 @@ Reference: http://es5.github.com/#x15.4.4.18
         'forEach', function( callback, thisArg ) {
             var T, k;
 
-            if ( this == null ) {
+            if ( this === null ) {
               throw new TypeError( "this is null or not defined" );
             }
 
@@ -745,7 +743,7 @@ Reference: http://es5.github.com/#x15.4.4.18
                     pos !== 'beforebegin' ||
                     pos !== 'beforeend'
             ) {
-                logError("invalid position given " + pos);
+                fail("invalid position given " + pos);
             }
 
             while ( children.length > 0 ) {
@@ -1166,6 +1164,7 @@ Also includes some helper functions, to make working with functions easier.
     var __setProp__ = window.__setProp__;
 
 
+
  /* -------------------------------------------------------------------------------
 
 ### LazyParam
@@ -1198,7 +1197,7 @@ If you wish to use the underscore for something else, you can use the value
 ------------------------------------------------------------------------------- */
 
     var LazyParam = function() {
-        logError( "evaluating a lazy value" );
+        fail( "evaluating a lazy value" );
     }
 
     window._ = LazyParam;
@@ -1334,6 +1333,8 @@ If you wish to use the underscore for something else, you can use the value
 ------------------------------------------------------------------------------- */
 
     var newPartial = function( fun, target, initArgs, initArgsStartI, isPostPend ) {
+        assert( initArgsStartI <= initArgs.length, "start index is greater than the number of arguments given" );
+
         return (function() {
                     if ( target === undefined ) {
                         target = this;
@@ -1347,18 +1348,29 @@ If you wish to use the underscore for something else, you can use the value
                      * if arguments were not supplied for the second call.
                      */
                     var combinedArgs;
-                    if ( arguments.length === 0 ) {
-                        for ( var i = initArgsStartI; i < initArgs.length; i++ ) {
+
+                    var initArgsLen = initArgs.length;
+                    var argsLen     = arguments.length;
+
+                    if ( argsLen === 0 ) {
+                        for ( var i = initArgsStartI; i < initArgsLen; i++ ) {
                             if ( initArgs[i] === LazyParam ) {
-                                logError( "value not provided for lazy argument" );
+                                fail( "value not provided for lazy argument" );
                             }
                         }
 
-                        combinedArgs = initArgs;
-                    } else {
-                        var argsLen     = arguments.length;
-                        var initArgsLen =  initArgs.length;
+                        if ( initArgsStartI === 0 ) {
+                            combinedArgs = initArgs;
+                        } else if ( initArgsStartI === initArgsLen ) {
+                            combinedArgs = null;
+                        } else {
+                            combinedArgs = new Array( initArgsLen - initArgsStartI );
 
+                            for ( var i = initArgsStartI; i < initArgsLen; i++ ) {
+                                combinedArgs[i - initArgsStartI] = initArgs[i];
+                            }
+                        }
+                    } else {
                         // post-pend (our args go last)
                         if ( isPostPend ) {
                             /*
@@ -1416,49 +1428,147 @@ If you wish to use the underscore for something else, you can use the value
  /* -------------------------------------------------------------------------------
 ------------------------------------------------------------------------------- */
 
-    var boundOne = function( self, fun ) {
-        return function() {
-            self.apply( this, arguments );
-            return fun.apply( this, arguments );
+    var bindFun = function( preFun, fun, args, startIndex ) {
+        if ( args === null ) {
+            return tagBound(function() {
+                preFun.apply( this, arguments );
+
+                if ( preFun.__bound !== undefined ) {
+                    return fun.apply( preFun.__bound, arguments );
+                } else {
+                    return fun.apply( this, arguments );
+                }
+            }, preFun.__bound );
+        } else {
+            // ensure references do not hang around to stuff we are not using
+            if ( args !== null && startIndex > 0 ) {
+                for ( var i = 0; i < startIndex; i++ ) {
+                    args[ i ] = null;
+                }
+            }
+
+            return tagBound(function() {
+                var argsLen = args.length;
+                var argumentsLen = arguments.length;
+                var funArgs;
+
+                if ( argumentsLen === 0 ) {
+                    if ( startIndex > 0 ) {
+                        funArgs = new Array( argsLen - startIndex );
+
+                        for ( var i = startIndex; i < argsLen; i++ ) {
+                            funArgs[ i - startIndex ] = args[ i ];
+                        }
+                    } else {
+                        funArgs = args;
+                    }
+                } else {
+                    if ( startIndex > 0 ) {
+                        funArgs = new Array( (argsLen - startIndex) + argumentsLen );
+                        
+                        for ( var i = startIndex; i < argsLen; i++ ) {
+                            funArgs[ i - startIndex ] = args[ i ];
+                        }
+
+                        for ( var i = 0; i < argumentsLen; i++ ) {
+                            funArgs[ i + (argsLen - startIndex) ] = arguments[ i ];
+                        }
+                    }
+                }
+
+                preFun.apply( this, arguments );
+                if ( preFun.__bound !== undefined ) {
+                    return fun.apply( preFun.__bound, funArgs );
+                } else {
+                    return fun.apply( this, funArgs );
+                }
+            }, preFun.__bound );
         }
     }
 
 
 
  /* -------------------------------------------------------------------------------
+
+### wrapNamedFun
+
+Used in conjunction with 'then', it allows you to chain method calls.
+
 ------------------------------------------------------------------------------- */
 
-    var boundArr = function( self, funs ) {
-        return (function() {
-            var funsLen = funs.length;
+    var wrapNamedFun = function( preFun, method ) {
+        var bound = preFun.__bound;
 
-            for ( var i = 0; i < funs-1; i++ ) {
-                funs[i].apply( this, arguments );
+        // no 'this', so use the window
+        if ( bound === undefined ) {
+            return function() {
+                var thisFun = window[ method ];
+                assertFunction( thisFun, "function '" + method + "', not found" );
+
+                if ( arguments.length === 0 ) {
+                    return thisFun.call( this );
+                } else {
+                    return thisFun.apply( this, arguments );
+                }
             }
+        // 'this' provided, so chain off it
+        } else {
+            return tagBound(function() {
+                var thisFun = bound[ method ];
+                assertFunction( thisFun, "method '" + method + "', not found" );
 
-            return funs[funsLen-1].apply( this, arguments );
-        });
+                if ( arguments.length === 0 ) {
+                    return thisFun.call( bound );
+                } else {
+                    return thisFun.apply( bound, arguments );
+                }
+            }, bound);
+        }
     }
 
 
 
  /* -------------------------------------------------------------------------------
 
-### addFun
+### tagBound
 
-Used in conjunction with 'Object.method',
-it allows you to chain method calls.
+Tags the target to be bound to this function, and nothing else!
+
+This is used for when you want to state what the function is bound to, but are
+already handling binding to a target (i.e. calling 'call' or 'apply') yourself
+within the function. As a result, it won't get wrapped, which the standard
+'bind' functions will do.
+
+The fact that this will return the same function given, without any added
+wrapping, is the whole point it was defined.
+
+@param fun The function to tag.
+@param target The object to bind to this function.
 
 ------------------------------------------------------------------------------- */
 
-    var andFun = function( self, args ) {
-        var method = args[0];
-        var bound = self.__bound;
-        assert( bound, self.name + " has not been bound to anything" );
+    var tagBound = function( fun, target ) {
+        fun.__bound = target;
+        return fun;
+    }
 
-        return this.then(
-                bound.methodApply( method, args, 1 )
-        )
+
+
+ /* -------------------------------------------------------------------------------
+
+### bindTarget
+
+Binds the given function to the target given, and then returns the function.
+
+@param fun The function to bind a value to.
+@param target The target to be used for the function binding.
+
+------------------------------------------------------------------------------- */
+
+    var bindTarget = function( fun, target ) {
+        return tagBound(function() {
+            return fun.apply( target, arguments );
+        }, target );
     }
 
 
@@ -1475,8 +1585,8 @@ it allows you to chain method calls.
 
 The equivalent to calling 'new Fun()'.
 
-The reason this exists, is because by oferring it as a function,
-you can then bind and pass it around.
+The reason this exists, is because by oferring it as a function, you can then 
+bind the constructor call and pass it around.
 
 ------------------------------------------------------------------------------- */
 
@@ -1519,6 +1629,75 @@ you can then bind and pass it around.
         }
     );
 
+ /* -------------------------------------------------------------------------------
+
+### Function.maybe
+
+```
+    function setupButton( callback ) {
+        button.onclick = function(ev) {
+            // called if the callback was given, and otherwise does nothing at all
+            Function.maybeCall( callback );
+        }
+    }
+
+The above can be shortened to ...
+
+```
+    function setupButton( callback ) {
+        button.onclick = Function.maybeCall.curry( callback );
+    }
+
+@param callback The function to be tested and then called.
+@param args ... 0 or more parameters for the function to take.
+@return undefined if there is no function, and otherwise the result of calling it.
+------------------------------------------------------------------------------- */
+
+    __setProp__( Function,
+        'maybeCall', function(callback) {
+            if ( callback ) {
+                assertFunction( callback, "none function provided" );
+
+                var argsLen = arguments.length;
+
+                if ( argsLen > 1 ) {
+                    return callback.apply2( this, args, 1 );
+                } else {
+                    return callback.call( this );
+                }
+            } else {
+                return undefined;
+            }
+        }
+    );
+
+ /* -------------------------------------------------------------------------------
+
+### Function.maybeApply
+
+This is the apply version of maybeCall.
+
+@param callback The function to be tested and called.
+@param args optional, the parameters for the function when it is called.
+@return undefined if there is no function, and otherwise the result of calling the function.
+------------------------------------------------------------------------------- */
+
+    __setProp__( Function,
+        'maybeApply', function(callback, args) {
+            if ( callback ) {
+                assertFunction( callback, "none function provided" );
+
+                if ( argsLen > 1 ) {
+                    return callback.apply( this, args );
+                } else {
+                    return callback.call( this );
+                }
+            } else {
+                return undefined;
+            }
+        }
+    );
+
  /* ===============================================================================
 
 ## Function.protototype extensions
@@ -1528,6 +1707,24 @@ Methods for function objects.
 ===============================================================================
 
 -------------------------------------------------------------------------------
+
+### function.__bound
+
+An internal property, used for tracking what a function gets bound to, when it
+is bound. This is so functions chaining off the first, can also access the bound
+object.
+
+By default, it binds to the default 'this', for when a function is not bound.
+This is typically always, the global 'window'.
+
+------------------------------------------------------------------------------- */
+
+    __setProp__( Function.prototype,
+        '__bound', undefined
+    );
+
+
+ /* -------------------------------------------------------------------------------
 
 ### function.bind
 
@@ -1540,9 +1737,14 @@ other function methods, for adding in extras on top.
 
     __setProp__( Function.prototype,
         'bind', function( target ) {
+            // __bound must be undefined, or a value!
+            if ( target === null ) {
+                target = undefined;
+            }
+
             assert( arguments.length > 0, "not enough arguments" );
 
-            var newFun = newPartial( this, target || undefined, arguments, 1, false );
+            var newFun = newPartial( this, target, arguments, 1, false );
             newFun.prototype = this.prototype;
             newFun.__bound = target;
 
@@ -1553,7 +1755,41 @@ other function methods, for adding in extras on top.
 
  /* -------------------------------------------------------------------------------
 
-### function.$
+### function.apply2
+
+------------------------------------------------------------------------------- */
+
+    __setProp__( Function.prototype,
+        'apply2', function( target, args, startIndex ) {
+            if ( args !== undefined && args !== null ) {
+                assertArray( args );
+
+                if ( startIndex === undefined || startIndex === 0 ) {
+                    return this.apply( target, args );
+                } else {
+                    var argsLen = args.length;
+
+                    if ( argsLen-startIndex === 1 ) {
+                        return this.call( target, args[ argsLen-1 ] );
+                    } else {
+                        var params = new Array( argsLen - startIndex );
+
+                        while ( argsLen --> startIndex ) {
+                            args[ argsLen-startIndex ] = arguments[ argsLen ];
+                        }
+
+                        return this.apply( target, params );
+                    }
+                }
+            } else {
+                return this.call( target );
+            }
+        }
+    );
+
+ /* -------------------------------------------------------------------------------
+
+### function.λ
 
 An alias for 'bind'.
 
@@ -1962,6 +2198,7 @@ but makes a copy first.
     __setProp__( Function.prototype,
         'preSub', function( pre ) {
             var self = this;
+
             return (function() {
                         pre.apply( this, arguments );
                         return self.apply( this, arguments );
@@ -2070,32 +2307,116 @@ i.e.
          obj.doB();
      }
 
+You can also use it to chain function calls. For example
+
+```
+    button.onclick = someFunction.then( callbackFunction )
+
+This is the same as ...
+
+```
+    button.onclick = function() {
+        someFunction.apply( this, arguments );
+        callbackFunction.apply( this, arguments );
+    };
+
 ------------------------------------------------------------------------------- */
 
     __setProp__( Function.prototype,
         'then', function() {
-            var argsLen = arguments.length,
-                args = arguments;
+            var argsLen = arguments.length;
 
-            if ( argsLen === 0 ) {
-                logError( "not enough parameters" );
-            } else {
-                var arg = arguments[0];
+            assert( argsLen !== 0, "not enough parameters" );
 
-                if ( isFunction(arg) ) {
-                    if ( argsLen === 1 ) {
-                        return boundOne( this, arguments[0] );
-                    } else {
-                        return boundArr( this, arguments );
-                    }
+            var arg = arguments[0];
+            if ( isFunction(arg) ) {
+                if ( argsLen === 1 ) {
+                    return bindFun( this, arg, null, 0 );
                 } else {
-                    return andFun( this, arguments );
+                    return bindFun( this, arg, arguments, 1 );
+                }
+            } else {
+                if ( argsLen === 1 ) {
+                    return bindFun( this, wrapNamedFun( this, arg ), null, 0 );
+                } else {
+                    return bindFun( this, wrapNamedFun( this, arg ), arguments, 1 );
                 }
             }
         }
     );
 
 
+ /* -------------------------------------------------------------------------------
+
+### function.thenMaybe
+
+This is the same as 'then', however if the function given is not found, it will
+silently do nothing.
+
+This is useful for chaining in callbacks which are optional.
+
+```
+    button.onclick = doSomething().thenMaybe( callback );
+
+------------------------------------------------------------------------------- */
+
+    __setProp__( Function.prototype,
+        'thenMaybe', function() {
+            var argsLen = arguments.length;
+            var func = arguments[0];
+            var outerFun = this;
+
+            assert( argsLen !== 0, "not enough parameters" );
+
+            // is a function object being chained on top
+            if ( isFunction(func) ) {
+                if ( argsLen === 1 ) {
+                    return bindFun( this, arg, null, 0 );
+                } else {
+                    return bindFun( this, arg, arguments, 1 );
+                }
+            // is a method we will call on 'this'
+            } else if ( isString(func) ) {
+                if ( argsLen > 2 ) {
+                    return function() {
+                        outerFun.apply( this, arguments );
+
+                        var f = this[func];
+
+                        if ( isFunction(f) ) {
+                            return f.apply2( this, params, 1 );
+                        } else {
+                            return undefined;
+                        }
+                    }
+                } else if ( argsLen === 2 ) {
+                    var param = arguments[1];
+
+                    return function() {
+                        outerFun.apply( this, arguments );
+
+                        if ( isFunction(this[func]) ) {
+                            return this[func]( param );
+                        } else {
+                            return undefined;
+                        }
+                    }
+                } else {
+                    return function() {
+                        outerFun.apply( this, arguments );
+
+                        if ( isFunction(this[func]) ) {
+                            return this[func]();
+                        } else {
+                            return undefined;
+                        }
+                    }
+                }
+            } else {
+                return outerFun;
+            }
+        }
+    );
 
  /* -------------------------------------------------------------------------------
 
@@ -2274,6 +2595,101 @@ more array-like fashion.
 =============================================================================== */
 
     var __setProp__ = window.__setProp__;
+
+ /* -------------------------------------------------------------------------------
+
+### invoke
+
+Takes the name of a function to call, or a function to apply to this object.
+
+This is intended for you to be able to give the name of a function, and invoke
+it.
+
+```
+    obj.invoke( 'doWork' );
+
+You may also send a function object as an alternative, which will be called 
+with the object as it's this context.
+
+```
+    obj.invoke( function() { } );
+
+Note that if the function is already bound to another value, then this will not
+override it. Function binding will take priority.
+
+@param method The name of the method to invoke, or a function object.
+
+------------------------------------------------------------------------------- */
+
+    __setProp__( Object.prototype,
+        'invoke', function( method ) {
+            return this.invokeArray( method, arguments, 1 );
+        }
+    );
+
+ /* -------------------------------------------------------------------------------
+
+### invokeArray
+
+The same as invoke, only this will take an array of parameters instead.
+
+------------------------------------------------------------------------------- */
+
+    __setProp__( Object.prototype,
+        'invokeArray', function( method, args, startIndex ) {
+            if ( startIndex === undefined ) {
+                startIndex = 0;
+            }
+
+            var funArgs;
+            var argsLen;
+
+            if ( args === undefined || args === null ) {
+                argsLen = 0;
+            } else {
+                assertArray( args, "non-array given for invoke arguments" );
+                argsLen = args.length;
+
+                if ( argsLen > 1 ) {
+                    funArgs = new Array( argsLen-1 );
+
+                    for ( var i = 1; i < argsLen; i++ ) {
+                        funArgs[ i-1 ] = args[ i ];
+                    }
+                }
+            }
+
+
+            /*
+             * obj.invoke( 'doWork' )
+             */
+            if ( isString(method) ) {
+                var fun = this[ method ];
+                assertFunction( fun, "method '" + method + "' was not found" );
+
+                if ( argsLen === 0 ) {
+                    return this[ method ]();
+                } else if ( argsLen === 1 ) {
+                    return this[ method ]( args[1] );
+                } else {
+                    return fun.apply( this, funArgs );
+                }
+            /*
+             * obj.invoke( function() { } );
+             */
+            } else if ( isFunction(method) ) {
+                if ( argsLen === 0 ) {
+                    return method.call( this );
+                } else if ( argsLen === 1 ) {
+                    return method.call( this, args[1] );
+                } else {
+                    return method.apply( this, funArgs );
+                }
+            } else {
+                fail( method, "non-function provided" );
+            }
+        }
+    );
 
  /* -------------------------------------------------------------------------------
 
@@ -2500,27 +2916,6 @@ It also supports use of the _ variable, to leave variables open for use later.
         }
     })(this.foo.bar.something().whatever);
 
-#### call multiple methods
-
-You can also provide array descriptions, to call multiple methods in order.
-For example:
-
-```
-     var fun = this.foo.method(
-             [ 'doA', a, b, c ],
-             [ 'doB', x, y, z ]
-     )
-
-... instead of ...
-
-```
-    var fun = (function(foo) {
-        return function() {
-            foo.doA( a, b, c );
-            return foo.doB( x, y, z );
-        }
-    })( this.foo );
-
 When the function created is called, it's last method is used for the return
 value.
 
@@ -2528,34 +2923,10 @@ value.
 
     __setProp__( Object.prototype,
             'method', function( name ) {
-                if ( isString(name) ) {
-                    return this.methodApply( name, arguments, 1 );
+                if ( !isString(name) && !isFunction(name) ) {
+                    fail( "unknown value given for method 'name'" );
                 } else {
-                    var args = arguments;
-
-                    for ( var i = 0; i < args.length; i++ ) {
-                        var arg = args[i];
-
-                        assert( isArray(arg) );
-                        assert( arg.length > 0, "empty array given" );
-                    }
-
-                    var self = this;
-                    return function() {
-                        var lastR;
-
-                        for ( var i = 0; i < args.length; i++ ) {
-                            var arg = args[i];
-
-                            if ( arg.length === 1 ) {
-                                lastR = self[arg[0]]();
-                            } else {
-                                lastR = self.call.apply( self, args );
-                            }
-                        }
-
-                        return lastR;
-                    }
+                    return this.methodApply( name, arguments, 1 );
                 }
             }
     );
@@ -2570,11 +2941,19 @@ value.
 
     __setProp__( Object.prototype,
             'methodApply', function( name, args, startI ) {
-                var fun = this[name];
+                var fun;
+                if ( isFunction(name) ) {
+                    fun = name;
+                } else {
+                    fun = this[name];
+                    assertFunction( fun, "method '" + name + "', was not found" );
+                }
 
-                if ( (typeof fun !== 'function') || !(fun instanceof Function) ) {
-                    throw new Error( "function " + name + " not found ", name );
-                } else if ( startI >= args.length ) {
+                if ( startI === undefined ) {
+                    startI = 0;
+                }
+
+                if ( args === null || args === undefined || startI >= args.length ) {
                     return fun.bind( this );
                 } else {
                     var newArgs;
@@ -2848,7 +3227,7 @@ missing (IE 8).
         oldMap = function(callback, thisArg) {
             var T, A, k;
 
-            if (this == null) {
+            if (this === null) {
               throw new TypeError(" this is null or not defined");
             }
 
@@ -3548,7 +3927,7 @@ second.
 
  /* -------------------------------------------------------------------------------
 
-## logError
+## fail
 
 A shorthand alternative to performing
 
@@ -3563,7 +3942,7 @@ is that it will also print out all of the
 arguments given, before it throws the error.
 
 ```
-    logError( "some-error", a, b, c )
+    fail( "some-error", a, b, c )
     
     // equivalent to ...
     
@@ -3579,7 +3958,7 @@ throw new Error, built together, as one.
 
 ------------------------------------------------------------------------------- */
 
-    var logError = window["logError"] = function( msg ) {
+    var fail = window["fail"] = function( msg ) {
         var err = Object.create( AssertionError.prototype );
         AssertionError.apply( err, arguments );
         throw err;
@@ -4556,7 +4935,6 @@ Callback must take the form
                         var file = fileSystem.OpenTextFile( path, 1, false );
                         if ( file ) {
                             var code = jsx.compile( file.readAll() );
-                            alert( code );
                             file.Close();
 
                             // this *must* be done in the future
@@ -4581,6 +4959,44 @@ Callback must take the form
 ## jsx.compile( code )
 
 ------------------------------------------------------------------------------- */
+
+    var replaceIndentationWithOpenDoubleQuote = function(match) {
+        var strLen = match.length;
+
+        if ( strLen === 4 ) {
+            return '    "';
+        } else if ( strLen > 4 ) {
+            // concat on all indentation spaces, but remove 1, which is replaced with a quote
+            // i.e. '     ' -> '    "'
+            var newStr = '';
+            for ( ; strLen > 2; strLen-- ) {
+                newStr += ' ';
+            }
+
+            return newStr + '"';
+        } else {
+            return match;
+        }
+    };
+
+    var replaceIndentationWithOpenSingleQuote = function(match) {
+        var strLen = match.length;
+
+        if ( strLen === 4 ) {
+            return "    '";
+        } else if ( strLen > 4 ) {
+            // concat on all indentation spaces, but remove 1, which is replaced with a quote
+            // i.e. '     ' -> '    "'
+            var newStr = '';
+            for ( ; strLen > 2; strLen-- ) {
+                newStr += ' ';
+            }
+
+            return newStr + "'";
+        } else {
+            return match;
+        }
+    };
 
     jsx.compile = function( code ) {
         var lines = code.split(/\n\r|\r\n|\n|\r/);
@@ -4732,24 +5148,7 @@ Callback must take the form
 
                                 // preserve the initial indentation across the following lines
                                 // we only preserve if we can ...
-                                lines[i+1] = (lines[i+1] || '').replace( /^    ( *)/, function(match) {
-                                    var strLen = match.length;
-
-                                    if ( strLen === 4 ) {
-                                        return '    "';
-                                    } else if ( strLen > 4 ) {
-                                        // concat on all indentation spaces, but remove 1, which is replaced with a quote
-                                        // i.e. '     ' -> '    "'
-                                        var newStr = '';
-                                        for ( ; strLen > 2; strLen-- ) {
-                                            newStr += ' ';
-                                        }
-
-                                        return newStr + '"';
-                                    } else {
-                                        return match;
-                                    }
-                                });
+                                lines[i+1] = (lines[i+1] || '').replace( /^    ( *)/, replaceIndentationWithOpenDoubleQuote );
 
                                 // close because we closed it manually on this line,
                                 // and it then opens again on the next line
@@ -4763,8 +5162,15 @@ Callback must take the form
                                 inSingleString = false;
                             // support for multiline string
                             } else if ( k === lLen-1 ) {
-                                l = l + "' + ";
-                                lines[i+1] = "'" + (lines[i+1]||'');
+                                l = l + '\\n" + ';
+
+                                // preserve the initial indentation across the following lines
+                                // we only preserve if we can ...
+                                lines[i+1] = (lines[i+1] || '').replace( /^    ( *)/, replaceIndentationWithOpenSingleQuote );
+
+                                // close because we closed it manually on this line,
+                                // and it then opens again on the next line
+                                inDoubleString = false;
                             }
                         } else if ( isDoubleComment ) {
                             if (
@@ -4798,16 +5204,50 @@ Callback must take the form
                                 /* skip the rest of the line for parsing */
                                 break;
 
-                                // look for strings
+                            // look for strings
                             } else if ( c === '"' ) {
                                 inDoubleString = true;
                             } else if ( c === "'" ) {
                                 inSingleString = true;
+
                             } else if ( c === '/' ) {
                                 // todo
                                 // replace with '#' for ecmascript 6
-                                
-                            // ?? -> arguments[arguments.i = ++arguments.i || 0]
+                               
+                            // change '!=' to '!=='
+                            } else if (
+                                                c === '!' &&
+                                    l.charAt(k+1) === '='
+                            ) {
+                                if ( l.charAt(k+2) !== '=' ) {
+                                    l = l.substring( 0, k ) + '!==' + l.substring( k+2 );
+                                }
+
+                                // skip past the '!=='
+                                k += 3 - 1;
+
+                            // change '==' to '==='
+                            } else if (
+                                                c === '=' &&
+                                    l.charAt(k+1) === '='
+                            ) {
+                                if ( l.charAt(k+2) !== '=' ) {
+                                    l = l.substring( 0, k ) + '===' + l.substring( k+2 );
+                                }
+
+                                // skip past the '==='
+                                k += 3 - 1;
+
+                            // change '<-' to 'return'
+                            } else if (
+                                                c === '<' &&
+                                    l.charAt(k+1) === '-' &&
+                                    l.charAt(k+2) === ' ' &&
+                                    l.charAt(k-1) !== '<'
+                            ) {
+                                l = l.substring( 0, k ) + 'return' + l.substring( k+2 );
+                                k += 6 - 1; // length of 'return' - 1
+                             // ?? -> arguments[arguments.i = ++arguments.i || 0]
                             } else if (
                                                 c === '?' &&
                                     l.charAt(k+1) === '?' &&
@@ -4935,7 +5375,7 @@ script tag.
         script = scripts[ scripts.length - 1 ];
     }
 
-    if ( script.getAttribute('data-autocompile') === 'true' ) {
+    if ( script && script.getAttribute('data-autocompile') === 'true' ) {
         jsx.executeScripts();
     }
 
@@ -5253,7 +5693,7 @@ in a callback method.
                         '            this.' + methodNameOne + '( name, fun );',
                         '        }',
                         '    } else if ( argsLen === 0 ) {',
-                        '        logError( "no parameters given" )',
+                        '        fail( "no parameters given" )',
                         '    } else {',
                         '        var names = new Array( argsLen-1 );',
                         '        fun = arguments[ argsLen-1 ];',
@@ -5374,7 +5814,7 @@ in a callback method.
             } else if ( isArray(arg) ) {
                 iterateClasses( arg, 0, arg.length, fun );
             } else {
-                logError( "invalid parameter", arg, args, i, endI );
+                fail( "invalid parameter", arg, args, i, endI );
             }
         }
     }
@@ -5390,7 +5830,7 @@ in a callback method.
             } else if ( c instanceof Array ) {
                 klass += parseClassArray( c, 0 );
             } else {
-                logError( 'unknown class given', c );
+                fail( 'unknown class given', c );
             }
         }
 
@@ -5458,7 +5898,7 @@ in a callback method.
         } else if ( isFunction(arg) ) {
             runAttrFun( bb, bbGun, dom, arg );
         } else {
-            logError( "invalid argument given", arg );
+            fail( "invalid argument given", arg );
         }
 
         return dom
@@ -5517,7 +5957,7 @@ in a callback method.
         } else if ( isObject(obj) ) {
             return createObj( bb, null, obj );
         } else {
-            logError( "unknown parameter given", obj );
+            fail( "unknown parameter given", obj );
         }
     }
 
@@ -5549,7 +5989,7 @@ in a callback method.
             var dom = bb.util.htmlToElement( obj );
 
             if ( dom === undefined ) {
-                logError( "invalid html given", obj );
+                fail( "invalid html given", obj );
             } else {
                 return dom;
             }
@@ -5677,7 +6117,7 @@ in a callback method.
             } else if ( isObject(arg) ) {
                 parentDom.insertBefore( createObj(bb, null, arg), dom );
             } else {
-                logError( "invalid argument given", arg );
+                fail( "invalid argument given", arg );
             }
         }
 
@@ -5699,7 +6139,7 @@ in a callback method.
             } else if ( isObject(arg) ) {
                 parentDom.insertAfter( createObj(bb, null, arg), dom );
             } else {
-                logError( "invalid argument given", arg );
+                fail( "invalid argument given", arg );
             }
         }
 
@@ -5724,7 +6164,7 @@ in a callback method.
             } else if ( isObject(arg) ) {
                 dom.appendChild( createObj(bb, null, arg) );
             } else {
-                logError( "invalid argument given", arg );
+                fail( "invalid argument given", arg );
             }
         }
 
@@ -5790,8 +6230,22 @@ in a callback method.
                         val,
                         0
                 )
+            } else if ( isFunction(val) ) {
+                if ( domType === 'a' ) {
+                    newDom.addEventListener( 'click', val );
+                } else if ( domType === 'input' ) {
+                    var inputType = newDom.getAttribute('type');
+
+                    if ( inputType === 'button' || inputType === 'submit' || inputType === 'checkbox' ) {
+                        newDom.addEventListener( 'click', val );
+                    } else {
+                        fail( "function given for object description for new input of " + inputType + " (don't know what to do with it)" );
+                    }
+                } else {
+                    fail( "function given for object description for new " + domType + ", (don't know what to do with it)" );
+                }
             } else {
-                logError( "invalid object description given for, " + debugVal, debugVal );
+                fail( "invalid object description given for, " + debugVal, debugVal );
             }
         }
 
@@ -5823,7 +6277,7 @@ in a callback method.
             dom.id = val
         } else if ( k === 'style' ) {
             if ( isString(val) ) {
-                dom.setAttribute( val );
+                dom.setAttribute( 'style', val );
             } else {
                 bb.style( dom, val );
             }
@@ -5895,7 +6349,7 @@ in a callback method.
             if ( obj.hasOwnProperty(k) ) {
                 if ( k === 'text' || k === 'html' ) {
                     if ( hasHTMLText ) {
-                        logError( "cannot use text and html at the same time", obj );
+                        fail( "cannot use text and html at the same time", obj );
                     } else {
                         hasHTMLText = true;
                     }
@@ -6065,11 +6519,26 @@ Clones the bb module, giving you a fresh copy.
                     dom.addEventListener( 'transitionend', fun );
                     dom.addEventListener( 'webkitTransitionEnd', fun );
                 } ).
+
+                /**
+                 * Anchors will start with a '#' as their href.
+                 */
                 element( 'a', function() {
                     var anchor = document.createElement('a');
                     anchor.setAttribute( 'href', '#' );
                     return anchor;
                 } ).
+
+                /**
+                 * If you create an element, which is named with one of those
+                 * below, then it will be created as an input with that type.
+                 * 
+                 * For example:
+                 * 
+                 *      // returns <input type="submit"></input>
+                 *      bb.createElement( 'submit' ); 
+                 * 
+                 */
                 element( [
                                 'button',
                                 'checkbox',
@@ -6173,7 +6642,7 @@ These events include:
             } else if ( argsLen === 2 ) {
                 setOnObject( this.setup.data.events, dom, name, false )
             } else {
-                logError( "unknown parameters given", arguments )
+                fail( "unknown parameters given", arguments )
             }
 
             return dom;
@@ -6555,7 +7024,7 @@ false for the removed fun.
                     }
                 }
             } else {
-                logError( "unknown object given", arguments );
+                fail( "unknown object given", arguments );
             }
 
             return dom;
@@ -6573,7 +7042,7 @@ false for the removed fun.
             } else if ( dom.__isBBGun ) {
                 return dom.dom()
             } else {
-                logError( "unknown object given", dom );
+                fail( "unknown object given", dom );
             }
         }
 
@@ -6680,7 +7149,7 @@ Sets the HTML content within this element.
             } else if ( isObject(el) ) {
                 dom.appendChild( this.describe(el) )
             } else {
-                logError( "Unknown html value given", el );
+                fail( "Unknown html value given", el );
             }
 
             return dom;
@@ -6756,7 +7225,7 @@ to the text values given.
             } else if ( isString(text) ) {
                 dom.textContent = text;
             } else {
-                logError( "non-string given for text content", text );
+                fail( "non-string given for text content", text );
             }
 
             return dom;
@@ -6831,7 +7300,7 @@ Anything else is set as an attribute of the object.
                 } else if ( isObject(obj) ) {
                     attrObj( this, null, dom, obj, false );
                 } else {
-                    logError( "invalid parameter given", obj );
+                    fail( "invalid parameter given", obj );
                 }
             } else if ( arguments.length === 3 ) {
                 assertString( obj, "non-string given as key for attr", obj );
@@ -7052,21 +7521,21 @@ window['BBGun'] = (function() {
                 var nodeParent = node.parent();
 
                 if ( nodeParent === null ) {
-                    logError( "removing node which does not have a parent", node );
+                    fail( "removing node which does not have a parent", node );
                 } else if ( nodeParent !== self ) {
-                    logError( "removing node which is not a child of this node", node );
+                    fail( "removing node which is not a child of this node", node );
                 }
 
                 removeDomCycle( node, args );
             } else if ( node.nodeType !== undefined ) {
                 if ( node.parentNode !== selfDom ) {
-                    logError( "removing Element which is not a child of this node", node );
+                    fail( "removing Element which is not a child of this node", node );
                 } else {
                     delete node.__xe;
                     node.parentNode.removeChild( nodeDom );
                 }
             } else {
-                logError( "removing unsupported element", node );
+                fail( "removing unsupported element", node );
             }
         }
 
@@ -7090,7 +7559,7 @@ window['BBGun'] = (function() {
                     bb.beforeArray( current, args, 1 );
                 }
             } else {
-                logError( "invalid number of parameters" );
+                fail( "invalid number of parameters" );
             }
         }
 
@@ -7334,7 +7803,7 @@ window['BBGun'] = (function() {
                             }
                         }
                     } else {
-                        logError( "invalid parameter given", f );
+                        fail( "invalid parameter given", f );
                     }
                 } else if ( argsLen === 2 ) {
                     assertFunction( f2, "second parameter is expected to be a function" );
@@ -7351,7 +7820,7 @@ window['BBGun'] = (function() {
                         }
                     }
                 } else {
-                    logError( "too many parameters given" );
+                    fail( "too many parameters given" );
                 }
 
                 return null;
@@ -7412,7 +7881,7 @@ window['BBGun'] = (function() {
 
                         return bbGuns;
                     } else {
-                        logError( "unknown parameter given", f );
+                        fail( "unknown parameter given", f );
                     }
                 } else if ( argsLen === 3 ) {
                     assertString( f, "non string given for element selector" );
@@ -7426,7 +7895,7 @@ window['BBGun'] = (function() {
 
                     return guns;
                 } else {
-                    logError( "too many parameters given" );
+                    fail( "too many parameters given" );
                 }
 
                 return [];
@@ -7467,7 +7936,7 @@ window['BBGun'] = (function() {
                             }
                         }
                     } else {
-                        logError( "invalid parameter given as selector", obj );
+                        fail( "invalid parameter given as selector", obj );
                     }
 
                     return null;
@@ -7483,7 +7952,7 @@ window['BBGun'] = (function() {
                         return child;
                     }
                 } else {
-                    logError( "too many parameters given" );
+                    fail( "too many parameters given" );
                 }
 
                 return null;
@@ -7609,7 +8078,7 @@ window['BBGun'] = (function() {
                         this.on( 'beforeReplace', newNode );
                         this.on( 'replace', newNode );
                     } else if ( isFunction(newNode) ) {
-                        logError( "'beforeReplace' event is not a function" );
+                        fail( "'beforeReplace' event is not a function" );
                     } else {
                         assert( oldNode, "falsy oldNode given" );
                         assert( newNode, "falsy newNode given" );
@@ -7620,25 +8089,25 @@ window['BBGun'] = (function() {
                         } else if ( oldNode.__isBBGun ) {
                             oldDom = oldNode.dom();
                         } else {
-                            logError( "node given, is not a HTML element", oldNode );
+                            fail( "node given, is not a HTML element", oldNode );
                         }
 
                         try {
                             var newDom = bb( newNode );
                         } catch ( err ) {
-                            logError( "replacement node is not a HTML element (perhaps you meant 'replaceWith'?)", err, err.stack );
+                            fail( "replacement node is not a HTML element (perhaps you meant 'replaceWith'?)", err, err.stack );
                         }
 
                         var dom = this.dom();
                         assert( oldDom.parentNode === dom , "removing node which is not a child of this element" );
                         assert( newDom.parentNode === null, "adding node which is already a child of another" );
 
-                        logError( 'replacement events need to be sent to the child' );
+                        fail( 'replacement events need to be sent to the child' );
 
                         replaceNode( oldDom, newDom, arguments, 2 );
                     }
                 } else {
-                    logError( "too many, or not enough, parameters provided", arguments );
+                    fail( "too many, or not enough, parameters provided", arguments );
                 }
 
                 return this;
@@ -7703,7 +8172,7 @@ window['BBGun'] = (function() {
                         this.on( 'beforeRemove', a );
                         this.on( 'remove', b );
                     } else if ( isFunction(b) ) {
-                        logError( "'beforeRemove' event is not a function" );
+                        fail( "'beforeRemove' event is not a function" );
                     } else {
                         var newArgs = new Array( argsLen-1 );
 
@@ -7746,7 +8215,7 @@ window['BBGun'] = (function() {
                 if ( arguments.length === 1 ) {
                     return this.on( 'click', fun );
                 } else {
-                    logError( "invalid number of arguments given" );
+                    fail( "invalid number of arguments given" );
                 }
             },
 
@@ -7776,7 +8245,7 @@ window['BBGun'] = (function() {
                     } else if (isObject(obj)) {
                         bb.style(this.dom(), obj);
                     } else {
-                        logError("invalid style parameter", obj);
+                        fail("invalid style parameter", obj);
                     }
                 } else if (argsLen === 2) {
                     assert(isString(obj) && isLiteral(val),
@@ -7784,7 +8253,7 @@ window['BBGun'] = (function() {
 
                     this.dom().style[obj] = val;
                 } else {
-                    logError("too many parameters", arguments);
+                    fail("too many parameters", arguments);
                 }
 
                 return this;
