@@ -3,7 +3,7 @@
 /**
  * jsx.js (javascriptX)
  *
- *  * markdown mixed with JavaScript, like literte coffeescript.
+ * Markdown mixed with JavaScript, like literte coffeescript.
  */
 exports.jsx = (function() {
     var jsx = function( code ) {
@@ -274,7 +274,41 @@ exports.jsx = (function() {
                             } else if ( c === '/' ) {
                                 // todo
                                 // replace with '#' for ecmascript 6
-                                
+                               
+                            // change '!=' to '!=='
+                            } else if (
+                                                c === '!' &&
+                                    l.charAt(k+1) === '='
+                            ) {
+                                if ( l.charAt(k+2) !== '=' ) {
+                                    l = l.substring( 0, k ) + '!==' + l.substring( k+2 );
+                                }
+
+                                // skip past the '!=='
+                                k += 3 - 1;
+
+                            // change '==' to '==='
+                            } else if (
+                                                c === '=' &&
+                                    l.charAt(k+1) === '='
+                            ) {
+                                if ( l.charAt(k+2) !== '=' ) {
+                                    l = l.substring( 0, k ) + '===' + l.substring( k+2 );
+                                }
+
+                                // skip past the '==='
+                                k += 3 - 1;
+
+                            // change '<-' to 'return'
+                            } else if (
+                                                c === '<' &&
+                                    l.charAt(k+1) === '-' &&
+                                    l.charAt(k+2) === ' ' &&
+                                    l.charAt(k-1) !== '<'
+                            ) {
+                                l = l.substring( 0, k ) + 'return' + l.substring( k+2 );
+                                k += 6 - 1; // length of 'return' - 1
+ 
                             // ?? -> arguments[arguments.i = ++arguments.i || 0]
                             } else if (
                                                 c === '?' &&
@@ -284,7 +318,7 @@ exports.jsx = (function() {
                             ) {
                                 var newString = '(arguments[arguments.i = ++arguments.i||0])';
                                 l = l.substring( 0, k ) + newString + l.substring( k+2 );
-                                k += newString.length + 1;
+                                k += newString.length;
                             }
                         }
                     } // for c in line

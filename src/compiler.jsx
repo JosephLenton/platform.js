@@ -211,7 +211,6 @@ Callback must take the form
                         var file = fileSystem.OpenTextFile( path, 1, false );
                         if ( file ) {
                             var code = jsx.compile( file.readAll() );
-                            alert( code );
                             file.Close();
 
                             // this *must* be done in the future
@@ -481,16 +480,50 @@ Callback must take the form
                                 /* skip the rest of the line for parsing */
                                 break;
 
-                                // look for strings
+                            // look for strings
                             } else if ( c === '"' ) {
                                 inDoubleString = true;
                             } else if ( c === "'" ) {
                                 inSingleString = true;
+
                             } else if ( c === '/' ) {
                                 // todo
                                 // replace with '#' for ecmascript 6
-                                
-                            // ?? -> arguments[arguments.i = ++arguments.i || 0]
+                               
+                            // change '!=' to '!=='
+                            } else if (
+                                                c === '!' &&
+                                    l.charAt(k+1) === '='
+                            ) {
+                                if ( l.charAt(k+2) !== '=' ) {
+                                    l = l.substring( 0, k ) + '!==' + l.substring( k+2 );
+                                }
+
+                                // skip past the '!=='
+                                k += 3 - 1;
+
+                            // change '==' to '==='
+                            } else if (
+                                                c === '=' &&
+                                    l.charAt(k+1) === '='
+                            ) {
+                                if ( l.charAt(k+2) !== '=' ) {
+                                    l = l.substring( 0, k ) + '===' + l.substring( k+2 );
+                                }
+
+                                // skip past the '==='
+                                k += 3 - 1;
+
+                            // change '<-' to 'return'
+                            } else if (
+                                                c === '<' &&
+                                    l.charAt(k+1) === '-' &&
+                                    l.charAt(k+2) === ' ' &&
+                                    l.charAt(k-1) !== '<'
+                            ) {
+                                l = l.substring( 0, k ) + 'return' + l.substring( k+2 );
+                                k += 6 - 1; // length of 'return' - 1
+                             // ?? -> arguments[arguments.i = ++arguments.i || 0]
                             } else if (
                                                 c === '?' &&
                                     l.charAt(k+1) === '?' &&
@@ -618,7 +651,7 @@ script tag.
         script = scripts[ scripts.length - 1 ];
     }
 
-    if ( script.getAttribute('data-autocompile') === 'true' ) {
+    if ( script && script.getAttribute('data-autocompile') === 'true' ) {
         jsx.executeScripts();
     }
 
