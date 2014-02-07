@@ -309,7 +309,7 @@ in a callback method.
                         '            this.' + methodNameOne + '( name, fun );',
                         '        }',
                         '    } else if ( argsLen === 0 ) {',
-                        '        logError( "no parameters given" )',
+                        '        fail( "no parameters given" )',
                         '    } else {',
                         '        var names = new Array( argsLen-1 );',
                         '        fun = arguments[ argsLen-1 ];',
@@ -430,7 +430,7 @@ in a callback method.
             } else if ( isArray(arg) ) {
                 iterateClasses( arg, 0, arg.length, fun );
             } else {
-                logError( "invalid parameter", arg, args, i, endI );
+                fail( "invalid parameter", arg, args, i, endI );
             }
         }
     }
@@ -446,7 +446,7 @@ in a callback method.
             } else if ( c instanceof Array ) {
                 klass += parseClassArray( c, 0 );
             } else {
-                logError( 'unknown class given', c );
+                fail( 'unknown class given', c );
             }
         }
 
@@ -514,7 +514,7 @@ in a callback method.
         } else if ( isFunction(arg) ) {
             runAttrFun( bb, bbGun, dom, arg );
         } else {
-            logError( "invalid argument given", arg );
+            fail( "invalid argument given", arg );
         }
 
         return dom
@@ -573,7 +573,7 @@ in a callback method.
         } else if ( isObject(obj) ) {
             return createObj( bb, null, obj );
         } else {
-            logError( "unknown parameter given", obj );
+            fail( "unknown parameter given", obj );
         }
     }
 
@@ -605,7 +605,7 @@ in a callback method.
             var dom = bb.util.htmlToElement( obj );
 
             if ( dom === undefined ) {
-                logError( "invalid html given", obj );
+                fail( "invalid html given", obj );
             } else {
                 return dom;
             }
@@ -733,7 +733,7 @@ in a callback method.
             } else if ( isObject(arg) ) {
                 parentDom.insertBefore( createObj(bb, null, arg), dom );
             } else {
-                logError( "invalid argument given", arg );
+                fail( "invalid argument given", arg );
             }
         }
 
@@ -755,7 +755,7 @@ in a callback method.
             } else if ( isObject(arg) ) {
                 parentDom.insertAfter( createObj(bb, null, arg), dom );
             } else {
-                logError( "invalid argument given", arg );
+                fail( "invalid argument given", arg );
             }
         }
 
@@ -780,7 +780,7 @@ in a callback method.
             } else if ( isObject(arg) ) {
                 dom.appendChild( createObj(bb, null, arg) );
             } else {
-                logError( "invalid argument given", arg );
+                fail( "invalid argument given", arg );
             }
         }
 
@@ -846,8 +846,22 @@ in a callback method.
                         val,
                         0
                 )
+            } else if ( isFunction(val) ) {
+                if ( domType === 'a' ) {
+                    newDom.addEventListener( 'click', val );
+                } else if ( domType === 'input' ) {
+                    var inputType = newDom.getAttribute('type');
+
+                    if ( inputType === 'button' || inputType === 'submit' || inputType === 'checkbox' ) {
+                        newDom.addEventListener( 'click', val );
+                    } else {
+                        fail( "function given for object description for new input of " + inputType + " (don't know what to do with it)" );
+                    }
+                } else {
+                    fail( "function given for object description for new " + domType + ", (don't know what to do with it)" );
+                }
             } else {
-                logError( "invalid object description given for, " + debugVal, debugVal );
+                fail( "invalid object description given for, " + debugVal, debugVal );
             }
         }
 
@@ -879,7 +893,7 @@ in a callback method.
             dom.id = val
         } else if ( k === 'style' ) {
             if ( isString(val) ) {
-                dom.setAttribute( val );
+                dom.setAttribute( 'style', val );
             } else {
                 bb.style( dom, val );
             }
@@ -951,7 +965,7 @@ in a callback method.
             if ( obj.hasOwnProperty(k) ) {
                 if ( k === 'text' || k === 'html' ) {
                     if ( hasHTMLText ) {
-                        logError( "cannot use text and html at the same time", obj );
+                        fail( "cannot use text and html at the same time", obj );
                     } else {
                         hasHTMLText = true;
                     }
@@ -1121,11 +1135,26 @@ Clones the bb module, giving you a fresh copy.
                     dom.addEventListener( 'transitionend', fun );
                     dom.addEventListener( 'webkitTransitionEnd', fun );
                 } ).
+
+                /**
+                 * Anchors will start with a '#' as their href.
+                 */
                 element( 'a', function() {
                     var anchor = document.createElement('a');
                     anchor.setAttribute( 'href', '#' );
                     return anchor;
                 } ).
+
+                /**
+                 * If you create an element, which is named with one of those
+                 * below, then it will be created as an input with that type.
+                 * 
+                 * For example:
+                 * 
+                 *      // returns <input type="submit"></input>
+                 *      bb.createElement( 'submit' ); 
+                 * 
+                 */
                 element( [
                                 'button',
                                 'checkbox',
@@ -1229,7 +1258,7 @@ These events include:
             } else if ( argsLen === 2 ) {
                 setOnObject( this.setup.data.events, dom, name, false )
             } else {
-                logError( "unknown parameters given", arguments )
+                fail( "unknown parameters given", arguments )
             }
 
             return dom;
@@ -1611,7 +1640,7 @@ false for the removed fun.
                     }
                 }
             } else {
-                logError( "unknown object given", arguments );
+                fail( "unknown object given", arguments );
             }
 
             return dom;
@@ -1629,7 +1658,7 @@ false for the removed fun.
             } else if ( dom.__isBBGun ) {
                 return dom.dom()
             } else {
-                logError( "unknown object given", dom );
+                fail( "unknown object given", dom );
             }
         }
 
@@ -1736,7 +1765,7 @@ Sets the HTML content within this element.
             } else if ( isObject(el) ) {
                 dom.appendChild( this.describe(el) )
             } else {
-                logError( "Unknown html value given", el );
+                fail( "Unknown html value given", el );
             }
 
             return dom;
@@ -1812,7 +1841,7 @@ to the text values given.
             } else if ( isString(text) ) {
                 dom.textContent = text;
             } else {
-                logError( "non-string given for text content", text );
+                fail( "non-string given for text content", text );
             }
 
             return dom;
@@ -1887,7 +1916,7 @@ Anything else is set as an attribute of the object.
                 } else if ( isObject(obj) ) {
                     attrObj( this, null, dom, obj, false );
                 } else {
-                    logError( "invalid parameter given", obj );
+                    fail( "invalid parameter given", obj );
                 }
             } else if ( arguments.length === 3 ) {
                 assertString( obj, "non-string given as key for attr", obj );

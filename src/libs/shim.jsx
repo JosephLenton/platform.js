@@ -1,9 +1,7 @@
 
 ===============================================================================
 
-shim.js
-=======
-
+# shim.js
 
 This is a collection of shims from around the internet,
 and some built by me, which add support for missing JS features.
@@ -346,7 +344,7 @@ Reference: http://es5.github.com/#x15.4.4.18
                     pos !== 'beforebegin' ||
                     pos !== 'beforeend'
             ) {
-                logError("invalid position given " + pos);
+                fail("invalid position given " + pos);
             }
 
             while ( children.length > 0 ) {

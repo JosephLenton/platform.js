@@ -167,21 +167,21 @@ window['BBGun'] = (function() {
                 var nodeParent = node.parent();
 
                 if ( nodeParent === null ) {
-                    logError( "removing node which does not have a parent", node );
+                    fail( "removing node which does not have a parent", node );
                 } else if ( nodeParent !== self ) {
-                    logError( "removing node which is not a child of this node", node );
+                    fail( "removing node which is not a child of this node", node );
                 }
 
                 removeDomCycle( node, args );
             } else if ( node.nodeType !== undefined ) {
                 if ( node.parentNode !== selfDom ) {
-                    logError( "removing Element which is not a child of this node", node );
+                    fail( "removing Element which is not a child of this node", node );
                 } else {
                     delete node.__xe;
                     node.parentNode.removeChild( nodeDom );
                 }
             } else {
-                logError( "removing unsupported element", node );
+                fail( "removing unsupported element", node );
             }
         }
 
@@ -205,7 +205,7 @@ window['BBGun'] = (function() {
                     bb.beforeArray( current, args, 1 );
                 }
             } else {
-                logError( "invalid number of parameters" );
+                fail( "invalid number of parameters" );
             }
         }
 
@@ -449,7 +449,7 @@ window['BBGun'] = (function() {
                             }
                         }
                     } else {
-                        logError( "invalid parameter given", f );
+                        fail( "invalid parameter given", f );
                     }
                 } else if ( argsLen === 2 ) {
                     assertFunction( f2, "second parameter is expected to be a function" );
@@ -466,7 +466,7 @@ window['BBGun'] = (function() {
                         }
                     }
                 } else {
-                    logError( "too many parameters given" );
+                    fail( "too many parameters given" );
                 }
 
                 return null;
@@ -527,7 +527,7 @@ window['BBGun'] = (function() {
 
                         return bbGuns;
                     } else {
-                        logError( "unknown parameter given", f );
+                        fail( "unknown parameter given", f );
                     }
                 } else if ( argsLen === 3 ) {
                     assertString( f, "non string given for element selector" );
@@ -541,7 +541,7 @@ window['BBGun'] = (function() {
 
                     return guns;
                 } else {
-                    logError( "too many parameters given" );
+                    fail( "too many parameters given" );
                 }
 
                 return [];
@@ -582,7 +582,7 @@ window['BBGun'] = (function() {
                             }
                         }
                     } else {
-                        logError( "invalid parameter given as selector", obj );
+                        fail( "invalid parameter given as selector", obj );
                     }
 
                     return null;
@@ -598,7 +598,7 @@ window['BBGun'] = (function() {
                         return child;
                     }
                 } else {
-                    logError( "too many parameters given" );
+                    fail( "too many parameters given" );
                 }
 
                 return null;
@@ -724,7 +724,7 @@ window['BBGun'] = (function() {
                         this.on( 'beforeReplace', newNode );
                         this.on( 'replace', newNode );
                     } else if ( isFunction(newNode) ) {
-                        logError( "'beforeReplace' event is not a function" );
+                        fail( "'beforeReplace' event is not a function" );
                     } else {
                         assert( oldNode, "falsy oldNode given" );
                         assert( newNode, "falsy newNode given" );
@@ -735,25 +735,25 @@ window['BBGun'] = (function() {
                         } else if ( oldNode.__isBBGun ) {
                             oldDom = oldNode.dom();
                         } else {
-                            logError( "node given, is not a HTML element", oldNode );
+                            fail( "node given, is not a HTML element", oldNode );
                         }
 
                         try {
                             var newDom = bb( newNode );
                         } catch ( err ) {
-                            logError( "replacement node is not a HTML element (perhaps you meant 'replaceWith'?)", err, err.stack );
+                            fail( "replacement node is not a HTML element (perhaps you meant 'replaceWith'?)", err, err.stack );
                         }
 
                         var dom = this.dom();
                         assert( oldDom.parentNode === dom , "removing node which is not a child of this element" );
                         assert( newDom.parentNode === null, "adding node which is already a child of another" );
 
-                        logError( 'replacement events need to be sent to the child' );
+                        fail( 'replacement events need to be sent to the child' );
 
                         replaceNode( oldDom, newDom, arguments, 2 );
                     }
                 } else {
-                    logError( "too many, or not enough, parameters provided", arguments );
+                    fail( "too many, or not enough, parameters provided", arguments );
                 }
 
                 return this;
@@ -818,7 +818,7 @@ window['BBGun'] = (function() {
                         this.on( 'beforeRemove', a );
                         this.on( 'remove', b );
                     } else if ( isFunction(b) ) {
-                        logError( "'beforeRemove' event is not a function" );
+                        fail( "'beforeRemove' event is not a function" );
                     } else {
                         var newArgs = new Array( argsLen-1 );
 
@@ -861,7 +861,7 @@ window['BBGun'] = (function() {
                 if ( arguments.length === 1 ) {
                     return this.on( 'click', fun );
                 } else {
-                    logError( "invalid number of arguments given" );
+                    fail( "invalid number of arguments given" );
                 }
             },
 
@@ -891,7 +891,7 @@ window['BBGun'] = (function() {
                     } else if (isObject(obj)) {
                         bb.style(this.dom(), obj);
                     } else {
-                        logError("invalid style parameter", obj);
+                        fail("invalid style parameter", obj);
                     }
                 } else if (argsLen === 2) {
                     assert(isString(obj) && isLiteral(val),
@@ -899,7 +899,7 @@ window['BBGun'] = (function() {
 
                     this.dom().style[obj] = val;
                 } else {
-                    logError("too many parameters", arguments);
+                    fail("too many parameters", arguments);
                 }
 
                 return this;
