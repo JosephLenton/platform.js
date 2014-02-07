@@ -18,6 +18,7 @@ Also includes some helper functions, to make working with functions easier.
     var __setProp__ = window.__setProp__;
 
 
+
 -------------------------------------------------------------------------------
 
 ### LazyParam
@@ -50,7 +51,7 @@ If you wish to use the underscore for something else, you can use the value
 -------------------------------------------------------------------------------
 
     var LazyParam = function() {
-        logError( "evaluating a lazy value" );
+        fail( "evaluating a lazy value" );
     }
 
     window._ = LazyParam;
@@ -186,6 +187,8 @@ If you wish to use the underscore for something else, you can use the value
 -------------------------------------------------------------------------------
 
     var newPartial = function( fun, target, initArgs, initArgsStartI, isPostPend ) {
+        assert( initArgsStartI <= initArgs.length, "start index is greater than the number of arguments given" );
+
         return (function() {
                     if ( target === undefined ) {
                         target = this;
@@ -199,18 +202,29 @@ If you wish to use the underscore for something else, you can use the value
                      * if arguments were not supplied for the second call.
                      */
                     var combinedArgs;
-                    if ( arguments.length === 0 ) {
-                        for ( var i = initArgsStartI; i < initArgs.length; i++ ) {
+
+                    var initArgsLen = initArgs.length;
+                    var argsLen     = arguments.length;
+
+                    if ( argsLen === 0 ) {
+                        for ( var i = initArgsStartI; i < initArgsLen; i++ ) {
                             if ( initArgs[i] === LazyParam ) {
-                                logError( "value not provided for lazy argument" );
+                                fail( "value not provided for lazy argument" );
                             }
                         }
 
-                        combinedArgs = initArgs;
-                    } else {
-                        var argsLen     = arguments.length;
-                        var initArgsLen =  initArgs.length;
+                        if ( initArgsStartI === 0 ) {
+                            combinedArgs = initArgs;
+                        } else if ( initArgsStartI === initArgsLen ) {
+                            combinedArgs = null;
+                        } else {
+                            combinedArgs = new Array( initArgsLen - initArgsStartI );
 
+                            for ( var i = initArgsStartI; i < initArgsLen; i++ ) {
+                                combinedArgs[i - initArgsStartI] = initArgs[i];
+                            }
+                        }
+                    } else {
                         // post-pend (our args go last)
                         if ( isPostPend ) {
                             /*
@@ -268,49 +282,147 @@ If you wish to use the underscore for something else, you can use the value
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
-    var boundOne = function( self, fun ) {
-        return function() {
-            self.apply( this, arguments );
-            return fun.apply( this, arguments );
+    var bindFun = function( preFun, fun, args, startIndex ) {
+        if ( args === null ) {
+            return tagBound(function() {
+                preFun.apply( this, arguments );
+
+                if ( preFun.__bound !== undefined ) {
+                    return fun.apply( preFun.__bound, arguments );
+                } else {
+                    return fun.apply( this, arguments );
+                }
+            }, preFun.__bound );
+        } else {
+            // ensure references do not hang around to stuff we are not using
+            if ( args !== null && startIndex > 0 ) {
+                for ( var i = 0; i < startIndex; i++ ) {
+                    args[ i ] = null;
+                }
+            }
+
+            return tagBound(function() {
+                var argsLen = args.length;
+                var argumentsLen = arguments.length;
+                var funArgs;
+
+                if ( argumentsLen === 0 ) {
+                    if ( startIndex > 0 ) {
+                        funArgs = new Array( argsLen - startIndex );
+
+                        for ( var i = startIndex; i < argsLen; i++ ) {
+                            funArgs[ i - startIndex ] = args[ i ];
+                        }
+                    } else {
+                        funArgs = args;
+                    }
+                } else {
+                    if ( startIndex > 0 ) {
+                        funArgs = new Array( (argsLen - startIndex) + argumentsLen );
+                        
+                        for ( var i = startIndex; i < argsLen; i++ ) {
+                            funArgs[ i - startIndex ] = args[ i ];
+                        }
+
+                        for ( var i = 0; i < argumentsLen; i++ ) {
+                            funArgs[ i + (argsLen - startIndex) ] = arguments[ i ];
+                        }
+                    }
+                }
+
+                preFun.apply( this, arguments );
+                if ( preFun.__bound !== undefined ) {
+                    return fun.apply( preFun.__bound, funArgs );
+                } else {
+                    return fun.apply( this, funArgs );
+                }
+            }, preFun.__bound );
         }
     }
 
 
 
 -------------------------------------------------------------------------------
+
+### wrapNamedFun
+
+Used in conjunction with 'then', it allows you to chain method calls.
+
 -------------------------------------------------------------------------------
 
-    var boundArr = function( self, funs ) {
-        return (function() {
-            var funsLen = funs.length;
+    var wrapNamedFun = function( preFun, method ) {
+        var bound = preFun.__bound;
 
-            for ( var i = 0; i < funs-1; i++ ) {
-                funs[i].apply( this, arguments );
+        // no 'this', so use the window
+        if ( bound === undefined ) {
+            return function() {
+                var thisFun = window[ method ];
+                assertFunction( thisFun, "function '" + method + "', not found" );
+
+                if ( arguments.length === 0 ) {
+                    return thisFun.call( this );
+                } else {
+                    return thisFun.apply( this, arguments );
+                }
             }
+        // 'this' provided, so chain off it
+        } else {
+            return tagBound(function() {
+                var thisFun = bound[ method ];
+                assertFunction( thisFun, "method '" + method + "', not found" );
 
-            return funs[funsLen-1].apply( this, arguments );
-        });
+                if ( arguments.length === 0 ) {
+                    return thisFun.call( bound );
+                } else {
+                    return thisFun.apply( bound, arguments );
+                }
+            }, bound);
+        }
     }
 
 
 
 -------------------------------------------------------------------------------
 
-### addFun
+### tagBound
 
-Used in conjunction with 'Object.method',
-it allows you to chain method calls.
+Tags the target to be bound to this function, and nothing else!
+
+This is used for when you want to state what the function is bound to, but are
+already handling binding to a target (i.e. calling 'call' or 'apply') yourself
+within the function. As a result, it won't get wrapped, which the standard
+'bind' functions will do.
+
+The fact that this will return the same function given, without any added
+wrapping, is the whole point it was defined.
+
+@param fun The function to tag.
+@param target The object to bind to this function.
 
 -------------------------------------------------------------------------------
 
-    var andFun = function( self, args ) {
-        var method = args[0];
-        var bound = self.__bound;
-        assert( bound, self.name + " has not been bound to anything" );
+    var tagBound = function( fun, target ) {
+        fun.__bound = target;
+        return fun;
+    }
 
-        return this.then(
-                bound.methodApply( method, args, 1 )
-        )
+
+
+-------------------------------------------------------------------------------
+
+### bindTarget
+
+Binds the given function to the target given, and then returns the function.
+
+@param fun The function to bind a value to.
+@param target The target to be used for the function binding.
+
+-------------------------------------------------------------------------------
+
+    var bindTarget = function( fun, target ) {
+        return tagBound(function() {
+            return fun.apply( target, arguments );
+        }, target );
     }
 
 
@@ -327,8 +439,8 @@ it allows you to chain method calls.
 
 The equivalent to calling 'new Fun()'.
 
-The reason this exists, is because by oferring it as a function,
-you can then bind and pass it around.
+The reason this exists, is because by oferring it as a function, you can then 
+bind the constructor call and pass it around.
 
 -------------------------------------------------------------------------------
 
@@ -371,6 +483,75 @@ you can then bind and pass it around.
         }
     );
 
+-------------------------------------------------------------------------------
+
+### Function.maybe
+
+```
+    function setupButton( callback ) {
+        button.onclick = function(ev) {
+            // called if the callback was given, and otherwise does nothing at all
+            Function.maybeCall( callback );
+        }
+    }
+
+The above can be shortened to ...
+
+```
+    function setupButton( callback ) {
+        button.onclick = Function.maybeCall.curry( callback );
+    }
+
+@param callback The function to be tested and then called.
+@param args ... 0 or more parameters for the function to take.
+@return undefined if there is no function, and otherwise the result of calling it.
+-------------------------------------------------------------------------------
+
+    __setProp__( Function,
+        'maybeCall', function(callback) {
+            if ( callback ) {
+                assertFunction( callback, "none function provided" );
+
+                var argsLen = arguments.length;
+
+                if ( argsLen > 1 ) {
+                    return callback.apply2( this, args, 1 );
+                } else {
+                    return callback.call( this );
+                }
+            } else {
+                return undefined;
+            }
+        }
+    );
+
+-------------------------------------------------------------------------------
+
+### Function.maybeApply
+
+This is the apply version of maybeCall.
+
+@param callback The function to be tested and called.
+@param args optional, the parameters for the function when it is called.
+@return undefined if there is no function, and otherwise the result of calling the function.
+-------------------------------------------------------------------------------
+
+    __setProp__( Function,
+        'maybeApply', function(callback, args) {
+            if ( callback ) {
+                assertFunction( callback, "none function provided" );
+
+                if ( argsLen > 1 ) {
+                    return callback.apply( this, args );
+                } else {
+                    return callback.call( this );
+                }
+            } else {
+                return undefined;
+            }
+        }
+    );
+
 ===============================================================================
 
 ## Function.protototype extensions
@@ -378,6 +559,24 @@ you can then bind and pass it around.
 Methods for function objects.
 
 ===============================================================================
+
+-------------------------------------------------------------------------------
+
+### function.__bound
+
+An internal property, used for tracking what a function gets bound to, when it
+is bound. This is so functions chaining off the first, can also access the bound
+object.
+
+By default, it binds to the default 'this', for when a function is not bound.
+This is typically always, the global 'window'.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Function.prototype,
+        '__bound', undefined
+    );
+
 
 -------------------------------------------------------------------------------
 
@@ -392,9 +591,14 @@ other function methods, for adding in extras on top.
 
     __setProp__( Function.prototype,
         'bind', function( target ) {
+            // __bound must be undefined, or a value!
+            if ( target === null ) {
+                target = undefined;
+            }
+
             assert( arguments.length > 0, "not enough arguments" );
 
-            var newFun = newPartial( this, target || undefined, arguments, 1, false );
+            var newFun = newPartial( this, target, arguments, 1, false );
             newFun.prototype = this.prototype;
             newFun.__bound = target;
 
@@ -405,7 +609,41 @@ other function methods, for adding in extras on top.
 
 -------------------------------------------------------------------------------
 
-### function.$
+### function.apply2
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Function.prototype,
+        'apply2', function( target, args, startIndex ) {
+            if ( args !== undefined && args !== null ) {
+                assertArray( args );
+
+                if ( startIndex === undefined || startIndex === 0 ) {
+                    return this.apply( target, args );
+                } else {
+                    var argsLen = args.length;
+
+                    if ( argsLen-startIndex === 1 ) {
+                        return this.call( target, args[ argsLen-1 ] );
+                    } else {
+                        var params = new Array( argsLen - startIndex );
+
+                        while ( argsLen --> startIndex ) {
+                            args[ argsLen-startIndex ] = arguments[ argsLen ];
+                        }
+
+                        return this.apply( target, params );
+                    }
+                }
+            } else {
+                return this.call( target );
+            }
+        }
+    );
+
+-------------------------------------------------------------------------------
+
+### function.λ
 
 An alias for 'bind'.
 
@@ -814,6 +1052,7 @@ but makes a copy first.
     __setProp__( Function.prototype,
         'preSub', function( pre ) {
             var self = this;
+
             return (function() {
                         pre.apply( this, arguments );
                         return self.apply( this, arguments );
@@ -922,32 +1161,116 @@ i.e.
          obj.doB();
      }
 
+You can also use it to chain function calls. For example
+
+```
+    button.onclick = someFunction.then( callbackFunction )
+
+This is the same as ...
+
+```
+    button.onclick = function() {
+        someFunction.apply( this, arguments );
+        callbackFunction.apply( this, arguments );
+    };
+
 -------------------------------------------------------------------------------
 
     __setProp__( Function.prototype,
         'then', function() {
-            var argsLen = arguments.length,
-                args = arguments;
+            var argsLen = arguments.length;
 
-            if ( argsLen === 0 ) {
-                logError( "not enough parameters" );
-            } else {
-                var arg = arguments[0];
+            assert( argsLen !== 0, "not enough parameters" );
 
-                if ( isFunction(arg) ) {
-                    if ( argsLen === 1 ) {
-                        return boundOne( this, arguments[0] );
-                    } else {
-                        return boundArr( this, arguments );
-                    }
+            var arg = arguments[0];
+            if ( isFunction(arg) ) {
+                if ( argsLen === 1 ) {
+                    return bindFun( this, arg, null, 0 );
                 } else {
-                    return andFun( this, arguments );
+                    return bindFun( this, arg, arguments, 1 );
+                }
+            } else {
+                if ( argsLen === 1 ) {
+                    return bindFun( this, wrapNamedFun( this, arg ), null, 0 );
+                } else {
+                    return bindFun( this, wrapNamedFun( this, arg ), arguments, 1 );
                 }
             }
         }
     );
 
 
+-------------------------------------------------------------------------------
+
+### function.thenMaybe
+
+This is the same as 'then', however if the function given is not found, it will
+silently do nothing.
+
+This is useful for chaining in callbacks which are optional.
+
+```
+    button.onclick = doSomething().thenMaybe( callback );
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Function.prototype,
+        'thenMaybe', function() {
+            var argsLen = arguments.length;
+            var func = arguments[0];
+            var outerFun = this;
+
+            assert( argsLen !== 0, "not enough parameters" );
+
+            // is a function object being chained on top
+            if ( isFunction(func) ) {
+                if ( argsLen === 1 ) {
+                    return bindFun( this, arg, null, 0 );
+                } else {
+                    return bindFun( this, arg, arguments, 1 );
+                }
+            // is a method we will call on 'this'
+            } else if ( isString(func) ) {
+                if ( argsLen > 2 ) {
+                    return function() {
+                        outerFun.apply( this, arguments );
+
+                        var f = this[func];
+
+                        if ( isFunction(f) ) {
+                            return f.apply2( this, params, 1 );
+                        } else {
+                            return undefined;
+                        }
+                    }
+                } else if ( argsLen === 2 ) {
+                    var param = arguments[1];
+
+                    return function() {
+                        outerFun.apply( this, arguments );
+
+                        if ( isFunction(this[func]) ) {
+                            return this[func]( param );
+                        } else {
+                            return undefined;
+                        }
+                    }
+                } else {
+                    return function() {
+                        outerFun.apply( this, arguments );
+
+                        if ( isFunction(this[func]) ) {
+                            return this[func]();
+                        } else {
+                            return undefined;
+                        }
+                    }
+                }
+            } else {
+                return outerFun;
+            }
+        }
+    );
 
 -------------------------------------------------------------------------------
 

@@ -21,6 +21,101 @@ more array-like fashion.
 
 -------------------------------------------------------------------------------
 
+### invoke
+
+Takes the name of a function to call, or a function to apply to this object.
+
+This is intended for you to be able to give the name of a function, and invoke
+it.
+
+```
+    obj.invoke( 'doWork' );
+
+You may also send a function object as an alternative, which will be called 
+with the object as it's this context.
+
+```
+    obj.invoke( function() { } );
+
+Note that if the function is already bound to another value, then this will not
+override it. Function binding will take priority.
+
+@param method The name of the method to invoke, or a function object.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Object.prototype,
+        'invoke', function( method ) {
+            return this.invokeArray( method, arguments, 1 );
+        }
+    );
+
+-------------------------------------------------------------------------------
+
+### invokeArray
+
+The same as invoke, only this will take an array of parameters instead.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Object.prototype,
+        'invokeArray', function( method, args, startIndex ) {
+            if ( startIndex === undefined ) {
+                startIndex = 0;
+            }
+
+            var funArgs;
+            var argsLen;
+
+            if ( args === undefined || args === null ) {
+                argsLen = 0;
+            } else {
+                assertArray( args, "non-array given for invoke arguments" );
+                argsLen = args.length;
+
+                if ( argsLen > 1 ) {
+                    funArgs = new Array( argsLen-1 );
+
+                    for ( var i = 1; i < argsLen; i++ ) {
+                        funArgs[ i-1 ] = args[ i ];
+                    }
+                }
+            }
+
+
+            /*
+             * obj.invoke( 'doWork' )
+             */
+            if ( isString(method) ) {
+                var fun = this[ method ];
+                assertFunction( fun, "method '" + method + "' was not found" );
+
+                if ( argsLen === 0 ) {
+                    return this[ method ]();
+                } else if ( argsLen === 1 ) {
+                    return this[ method ]( args[1] );
+                } else {
+                    return fun.apply( this, funArgs );
+                }
+            /*
+             * obj.invoke( function() { } );
+             */
+            } else if ( isFunction(method) ) {
+                if ( argsLen === 0 ) {
+                    return method.call( this );
+                } else if ( argsLen === 1 ) {
+                    return method.call( this, args[1] );
+                } else {
+                    return method.apply( this, funArgs );
+                }
+            } else {
+                fail( method, "non-function provided" );
+            }
+        }
+    );
+
+-------------------------------------------------------------------------------
+
 ### map
 
 Maps the function given, against the items stored within this object. Note that
@@ -244,27 +339,6 @@ It also supports use of the _ variable, to leave variables open for use later.
         }
     })(this.foo.bar.something().whatever);
 
-#### call multiple methods
-
-You can also provide array descriptions, to call multiple methods in order.
-For example:
-
-```
-     var fun = this.foo.method(
-             [ 'doA', a, b, c ],
-             [ 'doB', x, y, z ]
-     )
-
-... instead of ...
-
-```
-    var fun = (function(foo) {
-        return function() {
-            foo.doA( a, b, c );
-            return foo.doB( x, y, z );
-        }
-    })( this.foo );
-
 When the function created is called, it's last method is used for the return
 value.
 
@@ -272,34 +346,10 @@ value.
 
     __setProp__( Object.prototype,
             'method', function( name ) {
-                if ( isString(name) ) {
-                    return this.methodApply( name, arguments, 1 );
+                if ( !isString(name) && !isFunction(name) ) {
+                    fail( "unknown value given for method 'name'" );
                 } else {
-                    var args = arguments;
-
-                    for ( var i = 0; i < args.length; i++ ) {
-                        var arg = args[i];
-
-                        assert( isArray(arg) );
-                        assert( arg.length > 0, "empty array given" );
-                    }
-
-                    var self = this;
-                    return function() {
-                        var lastR;
-
-                        for ( var i = 0; i < args.length; i++ ) {
-                            var arg = args[i];
-
-                            if ( arg.length === 1 ) {
-                                lastR = self[arg[0]]();
-                            } else {
-                                lastR = self.call.apply( self, args );
-                            }
-                        }
-
-                        return lastR;
-                    }
+                    return this.methodApply( name, arguments, 1 );
                 }
             }
     );
@@ -314,11 +364,19 @@ value.
 
     __setProp__( Object.prototype,
             'methodApply', function( name, args, startI ) {
-                var fun = this[name];
+                var fun;
+                if ( isFunction(name) ) {
+                    fun = name;
+                } else {
+                    fun = this[name];
+                    assertFunction( fun, "method '" + name + "', was not found" );
+                }
 
-                if ( (typeof fun !== 'function') || !(fun instanceof Function) ) {
-                    throw new Error( "function " + name + " not found ", name );
-                } else if ( startI >= args.length ) {
+                if ( startI === undefined ) {
+                    startI = 0;
+                }
+
+                if ( args === null || args === undefined || startI >= args.length ) {
                     return fun.bind( this );
                 } else {
                     var newArgs;
