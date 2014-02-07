@@ -313,7 +313,7 @@ second.
 
 -------------------------------------------------------------------------------
 
-## logError
+## fail
 
 A shorthand alternative to performing
 
@@ -328,7 +328,7 @@ is that it will also print out all of the
 arguments given, before it throws the error.
 
 ```
-    logError( "some-error", a, b, c )
+    fail( "some-error", a, b, c )
     
     // equivalent to ...
     
@@ -344,7 +344,7 @@ throw new Error, built together, as one.
 
 -------------------------------------------------------------------------------
 
-    var logError = window["logError"] = function( msg ) {
+    var fail = window["fail"] = function( msg ) {
         var err = Object.create( AssertionError.prototype );
         AssertionError.apply( err, arguments );
         throw err;
