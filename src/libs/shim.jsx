@@ -117,7 +117,7 @@ Reference: http://es5.github.com/#x15.4.4.18
 
 ===============================================================================
 
-    var leftTrimRegex = /^\s\s*/;
+    var leftTrimSpaceRegex = /^\s\s*/;
     var spaceRegex = /\s/;
 
 -------------------------------------------------------------------------------
@@ -135,25 +135,58 @@ Reference: http://es5.github.com/#x15.4.4.18
     );
 
     __shim__( String.prototype,
-            'trim', function(str) {
-                var	str = this.replace(leftTrimRegex, ''),
-                    i = str.length;
-                while (spaceRegex.test(str.charAt(--i)));
-                return str.slice(0, i + 1);
+            'trim', function(check) {
+                if ( arguments.length === 0 || ( arguments.length === 1 && str === ' ' ) ) {
+                    var str = this.replace(leftTrimSpaceRegex, '');
+                    var i = str.length;
+
+                    while (spaceRegex.test(str.charAt(--i)));
+
+                    <- str.slice(0, i + 1);
+                } else if ( check.length === 0 ) {
+                    <- this;
+                } else {
+                    check = check.escapeRegExp();
+                    var regex = new RegExp( "(^(" + check + ")(" + check + ")*)|((" + check + ")(" + check + ")*$)", 'i' );
+
+                    <- this.replace( regex, '' );
+                }
             }
     );
 
     __shim__( String.prototype,
-            'trimLeft', function(str) {
-                return this.replace( leftTrimRegex, '' );
+            'trimLeft', function(check) {
+                if ( arguments.length === 0 || ( arguments.length === 1 && str === ' ' ) ) {
+                    <- this.replace( leftTrimSpaceRegex, '' );
+                } else if ( check.length === 0 ) {
+                    <- this;
+                } else {
+                    var check = check.escapeRegExp();
+
+                    <- this.replace(
+                            new RegExp( "^(" + check + ")(" + check + ")*" ),
+                            ''
+                    );
+                }
             }
     );
 
     __shim__( String.prototype,
-            'trimRight', function(str) {
-                var	i = this.length;
-                while ( spaceRegex.test(this.charAt(--i)) );
-                return this.slice( 0, i + 1 );
+            'trimRight', function() {
+                if ( arguments.length === 0 || ( arguments.length === 1 && str === ' ' ) ) {
+                    var	i = this.length;
+                    while ( spaceRegex.test(this.charAt(--i)) );
+                    return this.slice( 0, i + 1 );
+                } else if ( check.length === 0 ) {
+                    <- this;
+                } else {
+                    var check = check.escapeRegExp();
+
+                    <- this.replace(
+                            new RegExp( "(" + check + ")(" + check + ")*$" ),
+                            ''
+                    );
+                }
             }
     );
 
