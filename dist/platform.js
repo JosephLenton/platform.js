@@ -82,7 +82,7 @@ This is for setting shims, hence why it's called 'shim'.
 "use strict";
 
 (function() {
-    var IS_TOUCH = !!('ontouchstart' in window)  // works on most browsers 
+    var IS_TOUCH = !! ('ontouchstart' in window)  // works on most browsers 
                 || !!('onmsgesturechange' in window); // works on IE 10
 
     /**
@@ -516,7 +516,7 @@ Reference: http://es5.github.com/#x15.4.4.18
 
 =============================================================================== */
 
-    var leftTrimRegex = /^\s\s*/;
+    var leftTrimSpaceRegex = /^\s\s*/;
     var spaceRegex = /\s/;
 
  /* -------------------------------------------------------------------------------
@@ -534,25 +534,58 @@ Reference: http://es5.github.com/#x15.4.4.18
     );
 
     __shim__( String.prototype,
-            'trim', function(str) {
-                var	str = this.replace(leftTrimRegex, ''),
-                    i = str.length;
-                while (spaceRegex.test(str.charAt(--i)));
-                return str.slice(0, i + 1);
+            'trim', function(check) {
+                if ( arguments.length === 0 || ( arguments.length === 1 && str === ' ' ) ) {
+                    var str = this.replace(leftTrimSpaceRegex, '');
+                    var i = str.length;
+
+                    while (spaceRegex.test(str.charAt(--i)));
+
+                    return str.slice(0, i + 1);
+                } else if ( check.length === 0 ) {
+                    return this;
+                } else {
+                    check = check.escapeRegExp();
+                    var regex = new RegExp( "(^(" + check + ")(" + check + ")*)|((" + check + ")(" + check + ")*$)", 'i' );
+
+                    return this.replace( regex, '' );
+                }
             }
     );
 
     __shim__( String.prototype,
-            'trimLeft', function(str) {
-                return this.replace( leftTrimRegex, '' );
+            'trimLeft', function(check) {
+                if ( arguments.length === 0 || ( arguments.length === 1 && str === ' ' ) ) {
+                    return this.replace( leftTrimSpaceRegex, '' );
+                } else if ( check.length === 0 ) {
+                    return this;
+                } else {
+                    var check = check.escapeRegExp();
+
+                    return this.replace(
+                            new RegExp( "^(" + check + ")(" + check + ")*" ),
+                            ''
+                    );
+                }
             }
     );
 
     __shim__( String.prototype,
-            'trimRight', function(str) {
-                var	i = this.length;
-                while ( spaceRegex.test(this.charAt(--i)) );
-                return this.slice( 0, i + 1 );
+            'trimRight', function() {
+                if ( arguments.length === 0 || ( arguments.length === 1 && str === ' ' ) ) {
+                    var	i = this.length;
+                    while ( spaceRegex.test(this.charAt(--i)) );
+                    return this.slice( 0, i + 1 );
+                } else if ( check.length === 0 ) {
+                    return this;
+                } else {
+                    var check = check.escapeRegExp();
+
+                    return this.replace(
+                            new RegExp( "(" + check + ")(" + check + ")*$" ),
+                            ''
+                    );
+                }
             }
     );
 
@@ -2361,62 +2394,27 @@ This is useful for chaining in callbacks which are optional.
 ------------------------------------------------------------------------------- */
 
     __setProp__( Function.prototype,
-        'thenMaybe', function() {
-            var argsLen = arguments.length;
-            var func = arguments[0];
-            var outerFun = this;
-
-            assert( argsLen !== 0, "not enough parameters" );
-
-            // is a function object being chained on top
-            if ( isFunction(func) ) {
-                if ( argsLen === 1 ) {
-                    return bindFun( this, arg, null, 0 );
-                } else {
-                    return bindFun( this, arg, arguments, 1 );
-                }
-            // is a method we will call on 'this'
-            } else if ( isString(func) ) {
-                if ( argsLen > 2 ) {
-                    return function() {
-                        outerFun.apply( this, arguments );
-
-                        var f = this[func];
-
-                        if ( isFunction(f) ) {
-                            return f.apply2( this, params, 1 );
-                        } else {
-                            return undefined;
-                        }
-                    }
-                } else if ( argsLen === 2 ) {
-                    var param = arguments[1];
-
-                    return function() {
-                        outerFun.apply( this, arguments );
-
-                        if ( isFunction(this[func]) ) {
-                            return this[func]( param );
-                        } else {
-                            return undefined;
-                        }
-                    }
-                } else {
-                    return function() {
-                        outerFun.apply( this, arguments );
-
-                        if ( isFunction(this[func]) ) {
-                            return this[func]();
-                        } else {
-                            return undefined;
-                        }
-                    }
-                }
-            } else {
-                return outerFun;
+        'thenMaybe', function( fun ) {
+            /*
+             * if not a function,
+             * or it's the name of a function but not a method on this object,
+             * or it's the name of a function and not a function that exists globally ...
+             * 
+             * ... then replace it with a blank stub to be used instead.
+             */
+            if (
+                    ! isFunction(fun) || ( 
+                            isString( fun ) && 
+                            ( fun.__bound !== undefined && ! isFunction(fun.__bound[fun]) ) ||
+                            ( ! isFunction(window[fun]) )
+                    )
+            ) {
+                arguments[0] = function() { }
             }
+
+            return this.then.apply( this, arguments )
         }
-    );
+    )
 
  /* -------------------------------------------------------------------------------
 
@@ -2429,6 +2427,8 @@ with the given 'pre' function tacked on before it.
 
     __setProp__( Function.prototype,
         'subBefore', function( pre ) {
+            var self = this
+
             return (function() {
                         post.call( this, arguments );
                         return self.call( this, arguments );
@@ -2999,6 +2999,8 @@ This is the same as 'hasOwnProperty', but is shorter, making it nicer to use.
 
 =============================================================================== */
 
+    var stringHTMLElement = document.createElement( 'div' );
+
     var escaprRegExpRegExp = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g;
 
 
@@ -3008,6 +3010,9 @@ This is the same as 'hasOwnProperty', but is shorter, making it nicer to use.
 
 Returns a version of this string, where all special characters from a regular
 expression, are escaped and made safe.
+
+@return This string, with all RegExp characters escaped, so they no longer 
+  affect any RegExp.
 
 ------------------------------------------------------------------------------- */
 
@@ -3021,12 +3026,40 @@ expression, are escaped and made safe.
 
  /* -------------------------------------------------------------------------------
 
+### escapeHTML
+
+Escapes this string, so it is safe within HTML. This alters all HTML characters
+and entities, so they are safe.
+
+If you are doing this to insert a string into an element; STOP! It is better to
+set it using the elements 'textContent' property, than to escape with this, and
+then set it.
+
+However you can use this if you know better.
+
+@return This string, with all HTML characters escaped, so they no longer affect
+  HTML.
+
+------------------------------------------------------------------------------- */
+
+    __setProp__( String.prototype,
+            'escapeHTML', function() {
+                stringHTMLElement.textContent = this;
+                var html = stringHTMLElement.innerHTML;
+                stringHTMLElement.innerHTML = '';
+
+                return html;
+            }
+    );
+
+ /* -------------------------------------------------------------------------------
+
 ### remove
 
 Removes all of the strings given, from this string.
 
 ```
-    // yields "he wrld"
+    // yields "he wrd"
     "hello world".remove( 'l', 'o' );
 
 @param 1 or more strings to be removed.
@@ -3106,9 +3139,11 @@ is returned instead.
 
     __setProp__( String.prototype,
             'toHTML', function() {
-                var wrap = document.createElement( 'div' );
-                wrap.innerHTML = this;
-                return wrap.firstChild || wrap;
+                stringHTMLElement.innerHTML = this;
+                var child = stringHTMLElement.firstChild;
+                stringHTMLElement.innerHTML = '';
+
+                return child;
             }
     );
 
@@ -3571,44 +3606,123 @@ execute.
             'inject', function( sum, fun ) {
                 if ( arguments.length === 1 ) {
                     assertFunction( sum, "no inject function provided" );
+
                     return this.reduce( sum );
                 } else {
                     assertFunction( fun, "no inject function provided" );
+
                     return this.reduce( fun, sum );
                 }
             }
-    )
+    );
+
 
 
  /* -------------------------------------------------------------------------------
+
+### array.drop( index )
+
+Removes the item at the index given. This can be a negative or positive index.
+The element is deleted from this array, and this array is then returned, 
+allowing function chaining.
+
+@param index The index of where to delete an item from this array.
+@return this array.
+
 ------------------------------------------------------------------------------- */
 
     __setProp__( Array.prototype,
-            'drop', function( origIndex ) {
+            'drop', function( index ) {
                 var len = this.length;
-                var index = origIndex;
+                var delIndex = index;
+                var args = arguments;
+                var argsLen = args.length;
 
-                if ( index < 0 ) {
-                    index = len + index;
+                if ( argsLen === 0 ) {
+                    fail( "no indexes given" );
+                } else if ( argsLen === 1 ) {
+                    if ( delIndex < 0 ) {
+                        delIndex = len + delIndex;
 
-                    if ( index < 0 ) {
-                        throw new Error( "index out of range, " + origIndex );
+                        if ( delIndex < 0 ) {
+                            fail( "index out of range, " + index );
+                        }
+                    } else if ( delIndex >= len ) {
+                        fail( "index out of range, " + index );
                     }
-                } else if ( index >= len ) {
-                    throw new Error( "index out of range, " + origIndex );
+
+                    for ( var i = delIndex+1; i < len; i++ ) {
+                        this[ i-1 ] = this[ i ];
+                    }
+
+                    this.length = len-1;
+                } else {
+                    /* 
+                     * This brute-force searches through the indexes given, and
+                     * with each lowest index in turn, shuffles all the elements
+                     * down the array. This is from 'last+1' to 'delIndex'.
+                     * 
+                     * It then does it once more after the loop, to include 
+                     * those following the highest 'delIndex'.
+                     * 
+                     * The lowest index for each, is skipped.
+                     * 
+                     * Whilst brute force is generally considered bad, it's
+                     * best *on very small data sets!* This is because things
+                     * like array construction and function calls, would 
+                     * suddenly take up a lot more performance when compared
+                     * to O( n^2 ) on a data set with 2 or 3 elements.
+                     * 
+                     * If lots of people want to delete 20 or more elements,
+                     * then it would become a problem.
+                     */
+                    var last = -1;
+                    var offset = 0;
+                    for ( var i = 0; i < argsLen; i++ ) {
+                        var delIndex = len;
+
+                        for ( var j = 0; j < argsLen; j++ ) {
+                            var searchIndex = args[j];
+
+                            if ( searchIndex < 0 ) {
+                                searchIndex = len + searchIndex;
+                                wasNegative = true;
+
+                                if ( searchIndex < 0 ) {
+                                    fail( "index out of range, " + searchIndex );
+                                }
+                            } else if ( searchIndex >= len ) {
+                                fail( "index out of range, " + searchIndex );
+                            }
+
+                            if ( last < searchIndex && searchIndex < delIndex ) {
+                                delIndex = searchIndex;
+                            }
+                        }
+
+                        // shuffle elements down the array,
+                        // to replace the element we deleted
+                        for ( var j = last+1; j < delIndex; j++ ) {
+                            this[ j-offset ] = this[ j ];
+                        }
+
+                        last = delIndex;
+                        offset++;
+                    }
+
+                    for ( var j = last+1; j < len; j++ ) {
+                        this[ j-offset ] = this[ j ];
+                    }
+
+                    this.length = len - offset;
                 }
 
-                var arr = new Array( len-1 );
-                for ( var i = 0; i < index; i++ ) {
-                    arr[i] = this[i];
-                }
-                for ( var i = index+1; i < len; i++ ) {
-                    arr[i-1] = this[i];
-                }
-
-                return arr;
+                return this;
             }
     );
+
+
+
 
 })();
 "use strict";(function() {
@@ -5986,7 +6100,7 @@ in a callback method.
          * It's a HTML element.
          */
         if ( obj.charAt(0) === '<' ) {
-            var dom = bb.util.htmlToElement( obj );
+            var dom = obj.toHTML();
 
             if ( dom === undefined ) {
                 fail( "invalid html given", obj );
@@ -6576,33 +6690,6 @@ Clones the bb module, giving you a fresh copy.
 
  /* -------------------------------------------------------------------------------
 
-# bb.util
-
-Utiliity fucntions available for use.
-
- * bb.util.htmlToElement()
- * bb.util.htmlToText()
-
-------------------------------------------------------------------------------- */
-
-        bb.util = (function() {
-                var element = document.createElement( 'div' );
-
-                return {
-                        htmlToElement : function( str ) {
-                            element.innerHTML = str;
-                            return element.childNodes[0];
-                        },
-
-                        htmlToText: function( html ) {
-                            element.innerHTML = str;
-                            return element.textContent;
-                        }
-                }
-        })();
-
- /* -------------------------------------------------------------------------------
-
 ## bb.on
 
 Sets events to be run on this element.
@@ -6779,6 +6866,10 @@ arguments-add-class stuff.
 
 ## bb.createString
 
+Creates a new element based on a given string.
+
+This is normally used internally, to work out what the given string is for.
+
 ------------------------------------------------------------------------------- */
 
         bb.createString = function( obj ) {
@@ -6954,20 +7045,45 @@ false for the removed fun.
             dom = this.get(dom, false);
             assert(dom && dom.nodeType !== undefined, "falsy dom given");
 
-            klass = klass.trim();
+            /*
+             * Take the class apart, and then append the pieces indevidually.
+             * We have to split based on spaces, and based on '.'.
+             */
             if ( klass.length > 0 ) {
-                if ( klass.indexOf(' ') === -1 ) {
-                    dom.classList.add( klass );
-                } else {
-                    var klassParts = klass.split( ' ' );
+                if ( klass.indexOf(' ') !== -1 ) {
+                    var parts = klass.split( ' ' );
 
-                    for ( var i = 0; i < klassParts.length; i++ ) {
-                        var part = klassParts[i];
+                    for ( var i = 0; i < parts.length; i++ ) {
+                        var part = parts[i];
 
-                        if ( part !== '' ) {
-                            dom.classList.add( part );
+                        if ( part.length > 0 ) {
+                            if ( part.indexOf('.') !== -1 ) {
+                                var partParts = part.split('.');
+
+                                for ( var j = 0; j < partParts.length; j++ ) {
+                                    var partPart = partParts[j];
+
+                                    if ( partPart.length > 0 ) {
+                                        dom.classList.add( partPart );
+                                    }
+                                }
+                            } else {
+                                dom.classList.add( part );
+                            }
                         }
                     }
+                } else if ( klass.indexOf('.') !== -1 ) {
+                    var parts = klass.split( '.' );
+
+                    for ( var i = 0; i < parts.length; i++ ) {
+                        var part = parts[i];
+
+                        if ( part.length > 0 ) {
+                            dom.classList.add( klass );
+                        }
+                    }
+                } else if ( klass.length > 0 ) {
+                    dom.classList.add( klass );
                 }
             }
 
