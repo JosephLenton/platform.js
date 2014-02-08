@@ -46,7 +46,7 @@ override it. Function binding will take priority.
 
     __setProp__( Object.prototype,
         'invoke', function( method ) {
-            return this.invokeArray( method, arguments, 1 );
+            <- this.invokeArray( method, arguments, 1 );
         }
     );
 
@@ -91,22 +91,22 @@ The same as invoke, only this will take an array of parameters instead.
                 assertFunction( fun, "method '" + method + "' was not found" );
 
                 if ( argsLen === 0 ) {
-                    return this[ method ]();
+                    <- this[ method ]();
                 } else if ( argsLen === 1 ) {
-                    return this[ method ]( args[1] );
+                    <- this[ method ]( args[1] );
                 } else {
-                    return fun.apply( this, funArgs );
+                    <- fun.apply( this, funArgs );
                 }
             /*
              * obj.invoke( function() { } );
              */
             } else if ( isFunction(method) ) {
                 if ( argsLen === 0 ) {
-                    return method.call( this );
+                    <- method.call( this );
                 } else if ( argsLen === 1 ) {
-                    return method.call( this, args[1] );
+                    <- method.call( this, args[1] );
                 } else {
-                    return method.apply( this, funArgs );
+                    <- method.apply( this, funArgs );
                 }
             } else {
                 fail( method, "non-function provided" );
@@ -422,6 +422,8 @@ This is the same as 'hasOwnProperty', but is shorter, making it nicer to use.
 
 ===============================================================================
 
+    var stringHTMLElement = document.createElement( 'div' );
+
     var escaprRegExpRegExp = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g;
 
 
@@ -431,6 +433,9 @@ This is the same as 'hasOwnProperty', but is shorter, making it nicer to use.
 
 Returns a version of this string, where all special characters from a regular
 expression, are escaped and made safe.
+
+@return This string, with all RegExp characters escaped, so they no longer 
+  affect any RegExp.
 
 -------------------------------------------------------------------------------
 
@@ -444,12 +449,40 @@ expression, are escaped and made safe.
 
 -------------------------------------------------------------------------------
 
+### escapeHTML
+
+Escapes this string, so it is safe within HTML. This alters all HTML characters
+and entities, so they are safe.
+
+If you are doing this to insert a string into an element; STOP! It is better to
+set it using the elements 'textContent' property, than to escape with this, and
+then set it.
+
+However you can use this if you know better.
+
+@return This string, with all HTML characters escaped, so they no longer affect
+  HTML.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( String.prototype,
+            'escapeHTML', function() {
+                stringHTMLElement.textContent = this;
+                var html = stringHTMLElement.innerHTML;
+                stringHTMLElement.innerHTML = '';
+
+                return html;
+            }
+    );
+
+-------------------------------------------------------------------------------
+
 ### remove
 
 Removes all of the strings given, from this string.
 
 ```
-    // yields "he wrld"
+    // yields "he wrd"
     "hello world".remove( 'l', 'o' );
 
 @param 1 or more strings to be removed.
@@ -529,9 +562,11 @@ is returned instead.
 
     __setProp__( String.prototype,
             'toHTML', function() {
-                var wrap = document.createElement( 'div' );
-                wrap.innerHTML = this;
-                return wrap.firstChild || wrap;
+                stringHTMLElement.innerHTML = this;
+                var child = stringHTMLElement.firstChild;
+                stringHTMLElement.innerHTML = '';
+
+                return child;
             }
     );
 
@@ -994,41 +1029,120 @@ execute.
             'inject', function( sum, fun ) {
                 if ( arguments.length === 1 ) {
                     assertFunction( sum, "no inject function provided" );
-                    return this.reduce( sum );
+
+                    <- this.reduce( sum );
                 } else {
                     assertFunction( fun, "no inject function provided" );
-                    return this.reduce( fun, sum );
+
+                    <- this.reduce( fun, sum );
                 }
             }
-    )
+    );
+
 
 
 -------------------------------------------------------------------------------
+
+### array.drop( index )
+
+Removes the item at the index given. This can be a negative or positive index.
+The element is deleted from this array, and this array is then returned, 
+allowing function chaining.
+
+@param index The index of where to delete an item from this array.
+@return this array.
+
 -------------------------------------------------------------------------------
 
     __setProp__( Array.prototype,
-            'drop', function( origIndex ) {
+            'drop', function( index ) {
                 var len = this.length;
-                var index = origIndex;
+                var delIndex = index;
+                var args = arguments;
+                var argsLen = args.length;
 
-                if ( index < 0 ) {
-                    index = len + index;
+                if ( argsLen === 0 ) {
+                    fail( "no indexes given" );
+                } else if ( argsLen === 1 ) {
+                    if ( delIndex < 0 ) {
+                        delIndex = len + delIndex;
 
-                    if ( index < 0 ) {
-                        throw new Error( "index out of range, " + origIndex );
+                        if ( delIndex < 0 ) {
+                            fail( "index out of range, " + index );
+                        }
+                    } else if ( delIndex >= len ) {
+                        fail( "index out of range, " + index );
                     }
-                } else if ( index >= len ) {
-                    throw new Error( "index out of range, " + origIndex );
+
+                    for ( var i = delIndex+1; i < len; i++ ) {
+                        this[ i-1 ] = this[ i ];
+                    }
+
+                    this.length = len-1;
+                } else {
+                    /* 
+                     * This brute-force searches through the indexes given, and
+                     * with each lowest index in turn, shuffles all the elements
+                     * down the array. This is from 'last+1' to 'delIndex'.
+                     * 
+                     * It then does it once more after the loop, to include 
+                     * those following the highest 'delIndex'.
+                     * 
+                     * The lowest index for each, is skipped.
+                     * 
+                     * Whilst brute force is generally considered bad, it's
+                     * best *on very small data sets!* This is because things
+                     * like array construction and function calls, would 
+                     * suddenly take up a lot more performance when compared
+                     * to O( n^2 ) on a data set with 2 or 3 elements.
+                     * 
+                     * If lots of people want to delete 20 or more elements,
+                     * then it would become a problem.
+                     */
+                    var last = -1;
+                    var offset = 0;
+                    for ( var i = 0; i < argsLen; i++ ) {
+                        var delIndex = len;
+
+                        for ( var j = 0; j < argsLen; j++ ) {
+                            var searchIndex = args[j];
+
+                            if ( searchIndex < 0 ) {
+                                searchIndex = len + searchIndex;
+                                wasNegative = true;
+
+                                if ( searchIndex < 0 ) {
+                                    fail( "index out of range, " + searchIndex );
+                                }
+                            } else if ( searchIndex >= len ) {
+                                fail( "index out of range, " + searchIndex );
+                            }
+
+                            if ( last < searchIndex && searchIndex < delIndex ) {
+                                delIndex = searchIndex;
+                            }
+                        }
+
+                        // shuffle elements down the array,
+                        // to replace the element we deleted
+                        for ( var j = last+1; j < delIndex; j++ ) {
+                            this[ j-offset ] = this[ j ];
+                        }
+
+                        last = delIndex;
+                        offset++;
+                    }
+
+                    for ( var j = last+1; j < len; j++ ) {
+                        this[ j-offset ] = this[ j ];
+                    }
+
+                    this.length = len - offset;
                 }
 
-                var arr = new Array( len-1 );
-                for ( var i = 0; i < index; i++ ) {
-                    arr[i] = this[i];
-                }
-                for ( var i = index+1; i < len; i++ ) {
-                    arr[i-1] = this[i];
-                }
-
-                return arr;
+                <- this;
             }
     );
+
+
+
