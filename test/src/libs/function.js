@@ -44,7 +44,7 @@ MrTest.test('Function.prototype.then', function(t) {
 
     OrderObject.prototype.doNum = doNum;
 
-    t.add( '1, function.then( fun )', function(t) {
+    t.test( '1, function.then( fun )', function(t) {
         var first   = buildOrder( t, 1, 'first'  );
         var second  = buildOrder( t, 2, 'second' );
         var third   = buildOrder( t, 3, 'third'  );
@@ -54,7 +54,7 @@ MrTest.test('Function.prototype.then', function(t) {
         t.assertOrderEqual([1, 2, 3], "ensure all funs got called" );
     });
 
-    t.add( '2, function.then( fun ), with nesting', function(t) {
+    t.test( '2, function.then( fun ), with nesting', function(t) {
         var first   = buildOrder( t, 1, 'first'  );
         var second  = buildOrder( t, 2, 'second' );
         var third   = buildOrder( t, 3, 'third'  );
@@ -66,7 +66,7 @@ MrTest.test('Function.prototype.then', function(t) {
         t.assertOrderEqual([1, 2, 3, 4], "ensure all funs got called" );
     });
 
-    t.add( '3, obj.method( string ).then( string )', function(t) {
+    t.test( '3, obj.method( string ).then( string )', function(t) {
         var obj = new OrderObject( t, 1, 'first' );
         var doNum = obj.method( 'doNum' );
 
@@ -76,7 +76,7 @@ MrTest.test('Function.prototype.then', function(t) {
         t.assertOrderEqual([1, 2]);
     });
 
-    t.add( '4, obj.method( string ).then( fun )', function(t) {
+    t.test( '4, obj.method( string ).then( fun )', function(t) {
         var obj = new OrderObject( t, 1, 'first' );
 
         var doNum = obj.method( 'doNum' );
@@ -86,7 +86,7 @@ MrTest.test('Function.prototype.then', function(t) {
         t.assertEqual( obj.lastNum, 3, "ensure the second number, 3, got stored onto the object, provind 'doNum' was correctly bound to 'obj'" );
     });
 
-    t.add( '5, obj.method( string ).then( string ).then( string )', function(t) {
+    t.test( '5, obj.method( string ).then( string ).then( string )', function(t) {
         var obj = new OrderObject( t, 1, 'first' );
 
         var fun = obj.
@@ -101,7 +101,7 @@ MrTest.test('Function.prototype.then', function(t) {
         t.assertOrderEqual([1, 2, 3]);
     });
 
-    t.add( '6, obj.method( fun ).then( fun ).then( fun )', function(t) {
+    t.test( '6, obj.method( fun ).then( fun ).then( fun )', function(t) {
         var obj = new OrderObject( t, 1, 'first' );
 
         var fun = obj.method( doNum, 1 ).
@@ -115,7 +115,7 @@ MrTest.test('Function.prototype.then', function(t) {
         t.assertOrderEqual([1, 2, 3]);
     });
 
-    t.add( '7, window.function.then( fun )', function(t) {
+    t.test( '7, window.function.then( fun )', function(t) {
         var fun = buildOrder( t, 0, 'zero' );
 
         fun();
