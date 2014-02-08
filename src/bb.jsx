@@ -602,7 +602,7 @@ in a callback method.
          * It's a HTML element.
          */
         if ( obj.charAt(0) === '<' ) {
-            var dom = bb.util.htmlToElement( obj );
+            var dom = obj.toHTML();
 
             if ( dom === undefined ) {
                 fail( "invalid html given", obj );
@@ -1192,33 +1192,6 @@ Clones the bb module, giving you a fresh copy.
 
 -------------------------------------------------------------------------------
 
-# bb.util
-
-Utiliity fucntions available for use.
-
- * bb.util.htmlToElement()
- * bb.util.htmlToText()
-
--------------------------------------------------------------------------------
-
-        bb.util = (function() {
-                var element = document.createElement( 'div' );
-
-                return {
-                        htmlToElement : function( str ) {
-                            element.innerHTML = str;
-                            return element.childNodes[0];
-                        },
-
-                        htmlToText: function( html ) {
-                            element.innerHTML = str;
-                            return element.textContent;
-                        }
-                }
-        })();
-
--------------------------------------------------------------------------------
-
 ## bb.on
 
 Sets events to be run on this element.
@@ -1395,6 +1368,10 @@ arguments-add-class stuff.
 
 ## bb.createString
 
+Creates a new element based on a given string.
+
+This is normally used internally, to work out what the given string is for.
+
 -------------------------------------------------------------------------------
 
         bb.createString = function( obj ) {
@@ -1570,20 +1547,45 @@ false for the removed fun.
             dom = this.get(dom, false);
             assert(dom && dom.nodeType !== undefined, "falsy dom given");
 
-            klass = klass.trim();
+            /*
+             * Take the class apart, and then append the pieces indevidually.
+             * We have to split based on spaces, and based on '.'.
+             */
             if ( klass.length > 0 ) {
-                if ( klass.indexOf(' ') === -1 ) {
-                    dom.classList.add( klass );
-                } else {
-                    var klassParts = klass.split( ' ' );
+                if ( klass.indexOf(' ') !== -1 ) {
+                    var parts = klass.split( ' ' );
 
-                    for ( var i = 0; i < klassParts.length; i++ ) {
-                        var part = klassParts[i];
+                    for ( var i = 0; i < parts.length; i++ ) {
+                        var part = parts[i];
 
-                        if ( part !== '' ) {
-                            dom.classList.add( part );
+                        if ( part.length > 0 ) {
+                            if ( part.indexOf('.') !== -1 ) {
+                                var partParts = part.split('.');
+
+                                for ( var j = 0; j < partParts.length; j++ ) {
+                                    var partPart = partParts[j];
+
+                                    if ( partPart.length > 0 ) {
+                                        dom.classList.add( partPart );
+                                    }
+                                }
+                            } else {
+                                dom.classList.add( part );
+                            }
                         }
                     }
+                } else if ( klass.indexOf('.') !== -1 ) {
+                    var parts = klass.split( '.' );
+
+                    for ( var i = 0; i < parts.length; i++ ) {
+                        var part = parts[i];
+
+                        if ( part.length > 0 ) {
+                            dom.classList.add( klass );
+                        }
+                    }
+                } else if ( klass.length > 0 ) {
+                    dom.classList.add( klass );
                 }
             }
 
