@@ -25,11 +25,6 @@
  *
  */
 (function() {
-    // do not hang if the script fails for some reason
-    window.onerror = function() {
-        phantom.exit();
-    }
-
     require( './MrTest.js' );
     require( './../dist/platform.js' );
 
@@ -79,7 +74,7 @@
             if ( fs.isDirectory(file) ) {
                 runFolderTests( file );
             } else {
-                require( path );
+                require( file );
             }
         }
     }

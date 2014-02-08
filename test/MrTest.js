@@ -45,7 +45,7 @@
     }
 
     TestGroup.prototype = {
-        add: function(name, test) {
+        test: function(name, test) {
             if ( arguments.length === 1 ) {
                 test = name;
                 name = "test " + (this.tests.length+1);
