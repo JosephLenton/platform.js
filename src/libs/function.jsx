@@ -1215,62 +1215,27 @@ This is useful for chaining in callbacks which are optional.
 -------------------------------------------------------------------------------
 
     __setProp__( Function.prototype,
-        'thenMaybe', function() {
-            var argsLen = arguments.length;
-            var func = arguments[0];
-            var outerFun = this;
-
-            assert( argsLen !== 0, "not enough parameters" );
-
-            // is a function object being chained on top
-            if ( isFunction(func) ) {
-                if ( argsLen === 1 ) {
-                    return bindFun( this, arg, null, 0 );
-                } else {
-                    return bindFun( this, arg, arguments, 1 );
-                }
-            // is a method we will call on 'this'
-            } else if ( isString(func) ) {
-                if ( argsLen > 2 ) {
-                    return function() {
-                        outerFun.apply( this, arguments );
-
-                        var f = this[func];
-
-                        if ( isFunction(f) ) {
-                            return f.apply2( this, params, 1 );
-                        } else {
-                            return undefined;
-                        }
-                    }
-                } else if ( argsLen === 2 ) {
-                    var param = arguments[1];
-
-                    return function() {
-                        outerFun.apply( this, arguments );
-
-                        if ( isFunction(this[func]) ) {
-                            return this[func]( param );
-                        } else {
-                            return undefined;
-                        }
-                    }
-                } else {
-                    return function() {
-                        outerFun.apply( this, arguments );
-
-                        if ( isFunction(this[func]) ) {
-                            return this[func]();
-                        } else {
-                            return undefined;
-                        }
-                    }
-                }
-            } else {
-                return outerFun;
+        'thenMaybe', function( fun ) {
+            /*
+             * if not a function,
+             * or it's the name of a function but not a method on this object,
+             * or it's the name of a function and not a function that exists globally ...
+             * 
+             * ... then replace it with a blank stub to be used instead.
+             */
+            if (
+                    ! isFunction(fun) || ( 
+                            isString( fun ) && 
+                            ( fun.__bound !== undefined && ! isFunction(fun.__bound[fun]) ) ||
+                            ( ! isFunction(window[fun]) )
+                    )
+            ) {
+                arguments[0] = function() { }
             }
+
+            <- this.then.apply( this, arguments )
         }
-    );
+    )
 
 -------------------------------------------------------------------------------
 
@@ -1283,7 +1248,9 @@ with the given 'pre' function tacked on before it.
 
     __setProp__( Function.prototype,
         'subBefore', function( pre ) {
-            return (function() {
+            var self = this
+
+            <- (function() {
                         post.call( this, arguments );
                         return self.call( this, arguments );
                     }).
@@ -1305,20 +1272,20 @@ This is a mix of call, and later.
             var self = this;
 
             if ( argsLen <= 1 ) {
-                return setTimeout( function() {
+                <- setTimeout( function() {
                     self.call( target );
                 }, 0 );
             } else if ( argsLen === 2 ) {
                 var param1 = arguments[1];
 
-                return setTimeout( function() {
+                <- setTimeout( function() {
                     self.call( target, param1 );
                 }, 0 );
             } else if ( argsLen === 3 ) {
                 var param1 = arguments[1];
                 var param2 = arguments[2];
 
-                return setTimeout( function() {
+                <- setTimeout( function() {
                     self.call( target, param1, param2 );
                 }, 0 );
             } else if ( argsLen === 4 ) {
@@ -1326,11 +1293,11 @@ This is a mix of call, and later.
                 var param2 = arguments[2];
                 var param3 = arguments[3];
 
-                return setTimeout( function() {
+                <- setTimeout( function() {
                     self.call( target, param1, param2, param3 );
                 }, 0 );
             } else {
-                return this.applyLater( target, arguments );
+                <- this.applyLater( target, arguments );
             }
         }
     );
@@ -1352,7 +1319,7 @@ This is a mix of call, and later.
 
             var self = this;
 
-            return setTimeout( function() {
+            <- setTimeout( function() {
                 self.apply( target, args );
             }, 0 );
         }
@@ -1394,7 +1361,7 @@ Cancelling the timeout can be done using 'clearTimeout'.
                 }
             }
 
-            return setTimeout( fun, timeout );
+            <- setTimeout( fun, timeout );
         }
     );
 
