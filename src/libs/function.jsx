@@ -54,6 +54,24 @@ If you wish to use the underscore for something else, you can use the value
         fail( "evaluating a lazy value" );
     }
 
+    LazyParam.method = function( fun ) {
+        if ( isString(fun) ) {
+            <- function(obj) {
+                if ( ! isFunction(obj) ) {
+                    fail( "function not found for _." + fun );
+                }
+
+                return obj[fun]();
+            }
+        } else if ( isFunction(fun) ) {
+            <- function(obj) {
+                return fun.call( obj );
+            }
+        } else {
+            fail( "unknown parameter given, must be function or string" );
+        }
+    }
+
     window._ = LazyParam;
     window.LazyParam = LazyParam;
 
@@ -645,20 +663,21 @@ other function methods, for adding in extras on top.
 
 ### function.λ
 
-An alias for 'bind'.
+An alias for 'curry'.
 
 ```
     // these two are identical ...
-    button.onclick = refresh.bind( environment, user );
+    button.onclick = refresh.curry( environment, user );
     button.onclick = refresh.λ( environment, user );
 
-@see function.bind
+@see function.curry
 
 -------------------------------------------------------------------------------
 
     __setProp__( Function.prototype,
-        'λ', Function.prototype.bind
+        'λ', Function.prototype.curry
     );
+
 
 
 -------------------------------------------------------------------------------
@@ -1331,13 +1350,13 @@ This is a mix of call, and later.
 
 ### function.later
 
-Sets this function to be called later.
-If a timeout is given, then that is how long it
-will wait for.
+Sets this function to be called later.  If a timeout is given, then that is how
+long it will wait for.
 
 If no timeout is given, it defaults to 0.
 
-Cancelling the timeout can be done using 'clearTimeout'.
+It returns the value used when creating the timeout, and this allows you to
+cancel the timeout using 'clearTimeout'.
 
 @param target Optional, a target object to bind this function to.
 @param timeout Optional, the timeout to wait before calling this function, defaults to 0.
@@ -1352,6 +1371,7 @@ Cancelling the timeout can be done using 'clearTimeout'.
             if ( arguments.length === 0 ) {
                 timeout = 0;
             } else if ( ! (typeof timeout === 'number') ) {
+                // here the timeout is the target
                 fun = fun.bind( timeout );
 
                 if ( arguments.length > 1 ) {
