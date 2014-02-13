@@ -22,8 +22,6 @@ it will be of this type by default.
 
     var WHITESPACE_REGEX = / +/g;
 
-    var TYPE_NAME_PROPERTY = 'nodeName';
-
     var STOP_PROPAGATION_FUN = function( ev ) {
         ev.stopPropagation();
     }
@@ -32,20 +30,30 @@ it will be of this type by default.
         ev.preventDefault();
     }
 
-    var listToMap = function() {
-        var elements = {};
+    var BB_BLANK_DATA = { __isBBDataMapInfo__: true, fun: null, isFunction: false };
+
+    var listToDataMap = function() {
+        var map = {};
 
         for ( var i = 0; i < arguments.length; i++ ) {
             var el = arguments[i];
 
-            assert( ! elements.hasOwnProperty(el), "duplicate entry found in list '" + el + "'" );
-            elements[ el ] = true;
+            assert( ! map.has(el), "duplicate entry found in list '" + el + "'" );
+            map[ el ] = BB_BLANK_DATA;
         }
 
-        return elements;
+        return map;
     }
 
-    var HTML_ELEMENTS = listToMap(
+    var newBBFunctionData = function( callback ) {
+        if ( (val typeof 'function') || (val instanceof Function) ) {
+            return { __isBBDataMapInfo__: true, fun:  callback, isFunction: true  };
+        } else {
+            fail( "non-function provided as callback" );
+        }
+    }
+
+    var HTML_ELEMENTS = [
             'a',
             'abbr',
             'address',
@@ -156,7 +164,7 @@ it will be of this type by default.
             'var',
             'video',
             'wbr'
-    )
+    ];
 
 -------------------------------------------------------------------------------
 
@@ -166,7 +174,7 @@ All of the HTML events available.
 
 -------------------------------------------------------------------------------
 
-    var HTML_EVENTS = listToMap(
+    var HTML_EVENTS = [
             /* CSS Events */
 
             // this is added manually as a custom event,
@@ -257,7 +265,7 @@ All of the HTML events available.
             'DOMNodeRemoved',
             'DOMNodeRemovedFromDocument',
             'DOMSubtreeModified'
-    )
+    ];
 
 -------------------------------------------------------------------------------
 
@@ -293,7 +301,7 @@ in a callback method.
                         '        assertObject( name, "non-object given for registering" );',
                         '        ',
                         '        for ( var k in name ) {',
-                        '            if ( name.hasOwnProperty(k) ) {',
+                        '            if ( name.has(k) ) {',
                         '                this.' + methodName + '( k, name[k] );',
                         '            }',
                         '        }',
@@ -334,7 +342,7 @@ in a callback method.
         assert( dom, "null or undefined dom given", dom );
 
         for ( var k in obj ) {
-            if ( obj.hasOwnProperty(k) ) {
+            if ( obj.has(k) ) {
                 setOn( events, dom, k, obj[k], useCapture )
             }
         }
@@ -352,6 +360,7 @@ in a callback method.
 
     var setOn = function( events, dom, name, fun, useCapture ) {
         assert( dom, "null or undefined dom given", dom );
+        useCapture = !! useCapture ;
 
         if ( name instanceof Array ) {
             for ( var i = 0; i < name.length; i++ ) {
@@ -361,10 +370,16 @@ in a callback method.
             setOn( events, dom, name.split(WHITESPACE_REGEX), fun, useCapture );
         } else {
             if ( dom.nodeType !== undefined ) {
-                if ( events.hasOwnProperty(name) ) {
-                    events[name](dom, fun, useCapture);
+                var ev = events[ name ];
+
+                if ( ev !== undefined && ev !== null && ev.__isBBDataMapInfo__ === true ) {
+                    if ( ev.isFunction ) {
+                        ev.fun( dom, fun, useCapture );
+                    } else {
+                        dom.addEventListener( name, fun, useCapture )
+                    }
                 } else {
-                    dom.addEventListener( name, fun, useCapture )
+                    fail( "unknown event given " + name );
                 }
             } else if ( dom instanceof Array ) {
                 for ( var i = 0; i < dom.length; i++ ) {
@@ -578,16 +593,16 @@ in a callback method.
     }
 
     var createObj = function( bb, bbGun, obj ) {
-        var dom = obj.hasOwnProperty(TYPE_NAME_PROPERTY)      ?
-                bb.createElement( obj[TYPE_NAME_PROPERTY] ) :
-                bb.createElement()                          ;
+        var dom = obj.has("nodeName") ? bb.createElement( obj["nodeName"] ) :
+                  obj.has("tagName")  ? bb.createElement( obj["tagName"]  ) :
+                                        bb.createElement()                  ;
 
         if ( bbGun !== null ) {
             bbGun.dom( dom );
         }
 
         for ( var k in obj ) {
-            if ( obj.hasOwnProperty(k) ) {
+            if ( obj.has(k) ) {
                 attrOne( bb, bbGun, dom, k, obj[k], false );
             }
         }
@@ -826,7 +841,7 @@ in a callback method.
 
         if ( isObject(val) ) {
             assert( bb.setup.isElement(domType), "invalid element type given, " + domType );
-            val[TYPE_NAME_PROPERTY] = domType;
+            val["nodeName"] = domType;
 
             newDom = createObj( bb, null, val );
         } else {
@@ -872,11 +887,17 @@ in a callback method.
 
     var attrOne = function(bb, bbGun, dom, k, val, isApply) {
         var dotI = k.indexOf( '.' );
+        var ev;
 
         if ( dotI !== -1 ) {
             attrOneNewChild( bb, bbGun, dom, k, val, dotI );
-        } else if ( k === TYPE_NAME_PROPERTY ) {
-            /* do nothing */
+        } else if ( k === "nodeName" || k === "tagName" ) {
+            /* do nothing,
+             * 
+             * Do not fail, because this may be set through an outer method,
+             * where the nodeName/tagName was used to create this element.
+             */
+
         } else if ( k === 'className' ) {
             if ( isApply ) {
                 bb.addClass( dom, val );
@@ -897,9 +918,9 @@ in a callback method.
             } else {
                 bb.style( dom, val );
             }
-        } else if ( k === 'text' ) {
+        } else if ( k === 'text' || k === 'textContent' ) {
             bb.textOne( dom, val );
-        } else if ( k === 'html' ) {
+        } else if ( k === 'html' || k === 'innerHTML' || k === 'innerHtml' ) {
             bb.htmlOne( dom, val );
         } else if ( k === 'value' ) {
             if ( val === undefined || val === null ) {
@@ -927,22 +948,16 @@ in a callback method.
             assert( dom.parentNode === null, "dom element already has a parent" );
             createOne( bb, val ).appendChild( dom );
 
-        /* Events */
-
-        /* custom HTML event */
-        } else if ( bb.setup.data.events.hasOwnProperty(k) ) {
+        /* Events, includes HTML and custom  */
+        } else if ( (ev = bb.data.getEvent(k)) !== null ) {
             if ( bbGun !== null ) {
                 bbGun.on( k, val );
-            } else {
-                bb.setup.data.events[k]( dom, val );
-            }
-        /* standard HTML event */
-        } else if ( HTML_EVENTS.hasOwnProperty(k) ) {
-            if ( bbGun !== null ) {
-                bbGun.on( k, val );
+            } else if ( ev.isFunction ) {
+                ev( dom, val );
             } else {
                 dom.addEventListener( k, val, false )
             }
+
         /* custom BBGun Event */
         } else if ( bbGun !== null && bbGun.constructor.prototype.__eventList[k] === true ) {
             bbGun.on( k, val );
@@ -958,11 +973,16 @@ in a callback method.
         }
     }
 
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
     var attrObj = function(bb, bbGun, dom, obj, isApply) {
         var hasHTMLText = false;
 
         for ( var k in obj ) {
-            if ( obj.hasOwnProperty(k) ) {
+            if ( obj.has(k) ) {
                 if ( k === 'text' || k === 'html' ) {
                     if ( hasHTMLText ) {
                         fail( "cannot use text and html at the same time", obj );
@@ -975,6 +995,105 @@ in a callback method.
             }
         }
     }
+
+
+
+-------------------------------------------------------------------------------
+
+### setText dom:Element text:string
+
+Sets the given string, to the dom element given. This is set to it's 
+textContent if it is a standard HTMLElement, and to it's value if it is a
+HTMLInput.
+
+@param dom The Element to set the text to.
+@param text A string of the text being set.
+@return The given dom, for function chaining of elements.
+
+-------------------------------------------------------------------------------
+
+        var setText = function( dom, text ) {
+            if ( dom instanceof HTMLInputElement ) {
+                dom.value = text;
+            } else {
+                dom.textContent = text;
+            }
+
+            <- dom;
+        }
+
+
+
+-------------------------------------------------------------------------------
+
+### combineStringOne text:array|string
+
+If an array is given, then the array is joined, and the result is returned. If
+the given value is a string, then this is just returned.
+
+Anything else will cause an error to be raised.
+
+This exists as a function for unifying strings and arrays of strings, as one.
+
+@param text The text to combine.
+@return Either the array of strings combined, or if given a string, it will 
+  just be returned.
+
+-------------------------------------------------------------------------------
+
+        var combineStringOne = function(text) {
+            if ( text instanceof Array ) {
+                <- combineStringArray( text, 0 );
+            } else if ( isString(text) ) {
+                <- text;
+            } else {
+                fail( "non-string given for text content", text );
+            }
+        }
+
+
+
+-------------------------------------------------------------------------------
+
+### combineStringArray args:array startI:int
+
+Given an array, and it should be an array, it will combine it's elements into
+one string. The array *must* contain either strings, or arrays of strings, and
+nothing else.
+
+The 'startI' is optional, and states where to start joining string from in the
+`args` array. So if it's 0, it will start from the first element, and 1 will
+start joining from the second element onwards.
+
+@param args An array of strings (or arrays of strings), to combine.
+@param startI Optional, where to start joining elements from in the array.
+@return All of the args combined into a single string.
+
+-------------------------------------------------------------------------------
+
+        var combineStringArray = function( args, startI ) {
+            if ( startI === undefined ) {
+                startI = 0;
+            }
+
+            var argsLen = args.length;
+
+            if ( startI > argsLen ) {
+                fail( "start index is greater than the array length" );
+            } else if ( startI === argsLen ) {
+                <- '';
+            } else {
+                var allText = combineStringOne( args[startI++] );
+
+                while( startI++ < argsLen ) {
+                    allText += combineStringOne( args[startI] );
+                }
+
+                <- allText;
+            }
+        }
+
+
 
 ===============================================================================
 
@@ -996,10 +1115,8 @@ Factory method for creating the bb module it's self. It's here for:
 
 ## bb()
 
-Runs 'createArray' with the values given,
-and then returns the result.
-
-This is shorthand for creating new DOM elements.
+Runs 'createArray' with the values given, and then returns the result. This is
+shorthand for creating new DOM elements.
 
 bb also has a tonne of methods added on top, like jQuery, it is both a library
 and a function.
@@ -1040,22 +1157,18 @@ Clones the bb module, giving you a fresh copy.
                         classPrefix: '',
 
                         /**
-                         *  Map< Element-Name, (Name) -> Element >
-                         *
                          * These contain alternative names for custom elements.
                          * At the time of writing, it's just shorthand for input
                          * types. So a name with 'checkbox' returns an input box
                          * of type 'checkbox'.
                          */
-                        elements: {},
+                        elements: listToDataMap( HTML_ELEMENTS ),
 
                         /**
-                         *  Map< Event-Name, (Element, Name, Callback) -> void >
-                         *
                          * Holds mappings of event names, to the functions that
                          * define them.
                          */
-                        events  : {}
+                        events  : listToDataMap( HTML_EVENTS )
                 },
 
                 /**
@@ -1075,6 +1188,29 @@ Clones the bb module, giving you a fresh copy.
                     }
                 },
 
+                getEvent: function( name ) {
+                    var ev = this.events[ name ];
+
+                    if ( ev !== undefined && ev !== null && ev.__isBBDataMapInfo__ === true ) {
+                        return ev;
+                    } else {
+                        return null;
+                    }
+                },
+
+                /**
+                 * 
+                 */
+                getElement: function( name ) {
+                    var ev = this.elements[ name ];
+
+                    if ( ev !== undefined && ev !== null && ev.__isBBDataMapInfo__ === true ) {
+                        return ev;
+                    } else {
+                        return null;
+                    }
+                },
+
                 /**
                  * Registers event building functions.
                  *
@@ -1087,24 +1223,23 @@ Clones the bb module, giving you a fresh copy.
                 event: newRegisterMethod( 'event', 'eventOne' ),
 
                 eventOne: function( name, fun ) {
-                    this.data.events[ name ] = fun;
+                    this.data.events[ name ] = newBBFunctionData( fun );
                 },
 
                 normalizeEventName: function( name ) {
                     return name.
                             toLowerCase().
-                            replace( /^webkit/, '' ).
-                            replace( /^moz/, '' );
+                            replace( /^(webkit|moz|ms)/, '' );
                 },
 
                 isEvent: function( name ) {
-                    return this.data.events.hasOwnProperty( name ) ||
-                           HTML_EVENTS.hasOwnProperty( name );
+                    var ev = this.data.events[ name ];
+                    return ev !== undefined && ev !== null && ev.__isBBDataMapInfo__ === true ;
                 },
 
                 isElement: function( name ) {
-                    return this.data.elements.hasOwnProperty(name) ||
-                            HTML_ELEMENTS.hasOwnProperty(name);
+                    var ev = this.data.elements[ name ];
+                    return ev !== undefined && ev !== null && ev.__isBBDataMapInfo__ === true ;
                 },
 
                 /**
@@ -1126,7 +1261,7 @@ Clones the bb module, giving you a fresh copy.
                 element: newRegisterMethod( 'element', 'elementOne' ),
                 
                 elementOne: function( name, fun ) {
-                    this.data.elements[ name ] = fun;
+                    this.data.elements[ name ] = newBBFunctionData( fun );
                 }
         }
 
@@ -1237,16 +1372,23 @@ These events include:
             return dom;
         }
 
+
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
         bb.once = function( dom, name, fun, useCapture ) {
             var self = this;
 
             var funWrap = function() {
-                self.unregister( dom, name, funWrap );
+                self.unregister( dom, name, funWrap, useCapture );
                 return fun.apply( this, arguments );
             }
 
             return this.on( don, name, funWrap, useCapture );
         }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -1384,45 +1526,83 @@ This is normally used internally, to work out what the given string is for.
 
 Creates just an element, of the given name.
 
-What makes this special is that it also hooks into
-the provided names, such as 'button' as shorthand
-the input with type button.
+What makes this special is that it also hooks into the provided names, such as
+'button' as shorthand the input with type button.
  
-@param name The name of the component to create.
+@param domName The name of the component to create.
 @return A Element for the name given.
 
 -------------------------------------------------------------------------------
 
-        bb.createElement = function( name ) {
+        bb.createElement = function( domName ) {
+            var name;
             if ( arguments.length === 0 ) {
                 name = DEFAULT_ELEMENT;
             } else {
-                assertString( name, "non-string provided for name", name );
-                assert( name !== '', "empty string given for name", name );
+                assertString( domName, "non-string provided for name", domName );
+                assert( domName !== '', "empty string given for name", domName );
+
+                name = domName.trim();
             }
 
-            if ( this.setup.data.elements.hasOwnProperty(name) ) {
-                var dom = this.setup.data.elements[name]( name );
+            var type = '';
+            var klass = '';
 
-                if ( dom.__isBBGun ) {
-                    return dom.dom();
-                }  else {
-                    assert( dom && dom.nodeType !== undefined, "html element event, must return a HTML Element, or BBGun", dom );
+            if ( name.charAt(0) !== '.' ) {
+                var seperatorDot = name.indexOf( '.' );
+                var seperatorSpace = name.indexOf( ' ' );
 
-                    return dom;
+                if ( seperatorDot === -1 ) {
+                    if ( seperatorSpace === -1 ) {
+                        type = name;
+                        klass = '';
+                    } else {
+                        type = name.substring( 0, seperatorSpace );
+                        klass = name.substring( seperatorSpace );
+                    }
+                } else if ( seperatorSpace === -1 || (seperatorDot < seperatorSpace) ) {
+                    type = name.substring( 0, seperatorDot );
+                    klass = name.substring( seperatorDot );
+                } else {
+                    type = name.substring( 0, seperatorSpace );
+                    klass = name.substring( seperatorSpace );
                 }
-            } else if ( HTML_ELEMENTS.hasOwnProperty(name) ) {
-                return document.createElement( name );
             } else {
-                return this.setClass(
-                        document.createElement( DEFAULT_ELEMENT ),
-                        name
-                )
+                type === DEFAULT_ELEMENT;
+                klass = name;
             }
+
+            var dom;
+            var elEv = this.setup.getElement( type );
+            if ( elEv !== null ) {
+                if ( elEv.isFunction ) {
+                    dom = elEv( type );
+
+                    if ( dom.__isBBGun ) {
+                        dom = dom.dom();
+                    }  else {
+                        assert( dom && dom.nodeType !== undefined, "html element event, must return a HTML Element, or BBGun", dom );
+                    }
+                } else {
+                    dom = document.createElement( type );
+                }
+            } else {
+                <- this.setClass( document.createElement(DEFAULT_ELEMENT), name )
+            }
+
+            <- ( klass !== '' ) ? this.setClass( dom, klass ) : dom ;
         }
 
         bb.hasClass = function( dom, klass ) {
-            return dom.classList.contains( klass );
+            if ( dom.classList !== undefined ) {
+                return dom.classList.contains( klass );
+            } else {
+                var className = dom.className;
+                return klass === className ||
+                        className.indexOf(      klass + ' ') === 0 ||
+                        className.indexOf(' ' + klass      ) === (className.length - (klass.length + 1)) ||
+                        className.indexOf(' ' + klass + ' ') !== -1 ;
+            }
         } 
 
         bb.hasClassArray = function( dom, klasses, i ) {
@@ -1594,7 +1774,7 @@ false for the removed fun.
 
         bb.setClass = function( dom ) {
             if ( arguments.length === 2 ) {
-                dom.className = arguments[1];
+                dom.className = arguments[1].replace('.', ' ');
                 return dom;
             } else {
                 return this.setClassArray( dom, arguments, 1 );
@@ -1628,7 +1808,7 @@ false for the removed fun.
                     }
                 } else if ( isObject(k) ) {
                     for ( var i in k ) {
-                        if ( k.hasOwnProperty(i) ) {
+                        if ( k.has(i) ) {
                             this.style( dom, i, k[i] );
                         }
                     }
@@ -1822,14 +2002,35 @@ Sets the HTML content within this element.
 
 ## bb.text
 
-Sets the text content within this dom,
-to the text values given.
+Sets the text content within this dom, to the text value(s) given.
+
+You can provide a string, multiple strings, or an array of strings, or a mix
+of arrays of strings and strings.
+
+For example
+
+```
+    // all of these examples do exactly the same,
+    // setting "text here" as the text within the dom element
+    bb.text( dom, "text here" );
+    bb.text( dom, "text", " ", "here" );
+    bb.text( dom, ["text", " ", "here"] );
+    bb.text( dom, ["text", "here"].join(" ") );
+    bb.text( dom, ["text", " "], "here" );
+
+If given a HTMLInputElement, then this will set it's value instead of the text
+within it.
+
+@param dom The dom element to set the text of.
+@return The 'dom' element given, so you can chain function calls.
 
 -------------------------------------------------------------------------------
 
         bb.text = function( dom ) {
-            return this.textArray( dom, arguments, 1 );
+            <- setText( dom, combineStringArray(arguments, 1) );
         }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -1838,16 +2039,10 @@ to the text values given.
 -------------------------------------------------------------------------------
 
         bb.textOne = function( dom, text ) {
-            if ( text instanceof Array ) {
-                this.textArray( dom, text, 0 );
-            } else if ( isString(text) ) {
-                dom.textContent = text;
-            } else {
-                fail( "non-string given for text content", text );
-            }
-
-            return dom;
+            return setText( dom, combineStringOne(text) );
         }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -1856,20 +2051,24 @@ to the text values given.
 -------------------------------------------------------------------------------
 
         bb.textArray = function( dom, args, startI ) {
-            if ( startI === undefined ) {
-                startI = 0;
-            }
-
-            for ( var i = startI; i < args.length; i++ ) {
-                this.textOne( dom, args[i] );
-            }
-
-            return dom;
+            <- setText( dom, combineStringArray(args, startI) );
         }
+
+
 
 -------------------------------------------------------------------------------
 
-## bb.attr
+## bb.attr dom
+
+The dom it takes, can be a query for a dom, a BBGun object, or a HTML Element.
+For example:
+
+```
+    // grab a title, and retrieve the text within it
+    var titleDom = bb.get( "h1.title" );
+    var mainTitleText = bb.attr( titleDom, "textContent" );
+    // the above could be shortened to just ...
+    var mainTitleText = bb.attr( "h1.title", "textContent" );
 
 ### Special Properties
 
@@ -1898,22 +2097,38 @@ Anything else is set as an attribute of the object.
         bb.attr = function( dom, obj, val ) {
             if ( arguments.length === 2 ) {
                 if ( isString(obj) ) {
+                    var realDom = bb.get( dom );
+
                     if ( obj === 'className' || obj === 'class' ) {
-                        return dom.className;
-                    } else if ( obj === 'value' ) {
+                        return realDom.className;
+                    } else if ( 
+                            obj === 'value' ||
+                            ( realDom instanceof HTMLInputElement && (
+                                    obj === 'text' ||
+                                    obj === 'textContent' 
+                            ) )
+                    ) {
                         return obj.value;
                     } else if ( obj === 'id' ) {
-                        return dom.id;
-                    } else if ( obj === 'html' ) {
-                        return dom.innerHTML;
-                    } else if ( obj === 'text' ) {
-                        return dom.textContent;
+                        return realDom.id;
+                    } else if (
+                            obj === 'html'      ||
+                            obj === 'innerHTML' ||
+                            obj === 'innerHtml' 
+                    ) {
+                        return realDom.innerHTML;
+                    } else if (
+                            obj === 'text'        ||
+                            obj === 'textContent' ||
+                           (obj === 'value' && realDom instanceof HTMLInputElement)
+                    ) {
+                        return realDom.textContent;
                     } else if ( obj === 'style' ) {
-                        return dom.style;
-                    } else if ( obj === TYPE_NAME_PROPERTY ) {
-                        return dom.nodeName;
+                        return realDom.style;
+                    } else if ( obj === "nodeName" || obj === "tagName" ) {
+                        return realDom.nodeName;
                     } else {
-                        return dom.getAttribute( obj );
+                        return realDom.getAttribute( obj );
                     }
                 } else if ( isObject(obj) ) {
                     attrObj( this, null, dom, obj, false );
@@ -1935,8 +2150,8 @@ Anything else is set as an attribute of the object.
         }
 
         for ( var k in HTML_ELEMENTS ) {
-            if ( HTML_ELEMENTS.hasOwnProperty(k) ) {
-                if ( bb.hasOwnProperty(k) ) {
+            if ( HTML_ELEMENTS.has(k) ) {
+                if ( bb.has(k) ) {
                     console.log( 'BB-Gun function clash: ' + k );
                 } else {
                     bb[k] = new Function( "return this.createArray('" + k + "', arguments, 0);" );
@@ -1954,8 +2169,8 @@ is pre-provided.
 
 ===============================================================================
 
-        var IS_TOUCH = !! ('ontouchstart' in window)  // works on most browsers 
-                    || !!('onmsgesturechange' in window); // works on IE 10
+        // test from Modernizer
+        var IS_TOUCH = !! (('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch);
 
         if ( IS_TOUCH ) {
             bb.setup.event( 'click', touchy.click );
