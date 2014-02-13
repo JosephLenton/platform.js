@@ -1,8 +1,7 @@
 "use strict";
 
 (function() {
-    var IS_TOUCH = !! ('ontouchstart' in window)  // works on most browsers 
-                || !!('onmsgesturechange' in window); // works on IE 10
+    var IS_TOUCH = !! (('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch);
 
     /**
      * How quickly someone must tap,
