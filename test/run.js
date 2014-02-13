@@ -31,6 +31,18 @@
     var fs     = require( 'fs' );
     var system = require( 'system' );
 
+    // change working directory to be the directory of this script
+    var thisScript = system.args[0];
+    var backSlash = thisScript.lastIndexOf('\\');
+    var forwardSlash = thisScript.lastIndexOf('/');
+
+    if ( backSlash > forwardSlash ) {
+        fs.changeWorkingDirectory( thisScript.substring(0, backSlash) );
+    } else if ( forwardSlash !== -1 ) {
+        fs.changeWorkingDirectory( thisScript.substring(0, forwardSlash) );
+    }
+
+    // setups for finding the test files to run
     var files = [];
     var notFoundFiles = [];
     var emptyFolders = [];
