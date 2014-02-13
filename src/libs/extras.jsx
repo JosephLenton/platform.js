@@ -661,6 +661,60 @@ expression 100%, or not.
     );
 
 
+
+-------------------------------------------------------------------------------
+
+### string.isInteger()
+
+Tests if this string looks like an integer, and if so, then returns true or 
+false accordingly.
+
+Note this does not take into account hexadecimal, or any other special notation.
+Numbers such as '0999' are also deemed to be not an integer, as it starts with
+a trailing zero.
+
+@return True if this string looks like an integer, and false if not.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( String.prototype,
+            'isInteger', function() {
+                var len;
+                if ( (len = this.length) === 0 ) {
+                    return false;
+                }
+
+                var i;
+                if ( this.charCodeAt(0) === 45 ) {
+                    // it's just '-' on it's own, return false
+                    if ( this.length === 1 ) {
+                        <- false;
+                    // it's '-0 ... something', such as '-0939', return false
+                    } else if ( this.length > 2 && this.charCodeAt(1) === '48' ) {
+                        <- false;
+                    } else {
+                        i = 1;
+                    }
+                // it's '0 ... something', such as '0939', return false
+                } else if ( this.length > 1 && this.charCodeAt(0) === '48' ) {
+                    <- false
+                } else {
+                    i = 0;
+                }
+
+                for ( ; i < this.length; i++ ) {
+                    var c = this.charCodeAt(0);
+
+                    // if not an ASCII number (before or after 0-9)
+                    if ( c < 48 || 57 < c ) {
+                        <- false;
+                    }
+                }
+
+                <- true;
+            }
+    );
+
 ===============================================================================
 
 ## Array
@@ -1036,6 +1090,95 @@ execute.
 
                     <- this.reduce( fun, sum );
                 }
+            }
+    );
+
+
+
+-------------------------------------------------------------------------------
+
+### array.first()
+
+@return The first element in this array, or undefined if not found.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Array.prototype,
+            'first', function() {
+                return this[0];
+            }
+    );
+
+
+
+-------------------------------------------------------------------------------
+
+### array.last()
+
+@return The last element in this array, or undefined if not found.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Array.prototype,
+            'last', function() {
+                return this[ this.length - 1 ];
+            }
+    );
+
+
+
+-------------------------------------------------------------------------------
+
+### array.get( index )
+
+Fetches the element at the given index. This is useful for currying.
+
+It also supports negative array indexes, allowing you to get the last element,
+or the one before last.
+
+```
+    var last = arr.get( -1 );
+    var penultimate = arr.get( -2 );
+
+If the index is out of bounds, it will return undefined.
+
+@param index The numeric index of the item to fetch from the array.
+@return The element stored at the given index, or undefined if not found.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Array.prototype,
+            'get', function( index ) {
+                <- ( index < 0 ) ?
+                        this[ this.length + index ] :
+                        this[ index ]               ;
+            }
+    );
+
+
+
+-------------------------------------------------------------------------------
+
+### array.set( index, value )
+
+Sets an element to this array, just like with standard array notation.
+This is useful for currying, and it also supports negative indexes.
+
+@param index Where to store the element in this array.
+@param value The value to store.
+@return This array, for method chaining.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Array.prototype,
+            'set', function( index, value ) {
+                if ( index < 0 ) {
+                    this[ this.length + index ] = value;
+                } else {
+                    this[ index ] = value;
+                }
+
+                <- this;
             }
     );
 
