@@ -12,26 +12,31 @@ This includes
 
 ===============================================================================
 
-    var objConstructor = ({}).constructor;
-    var objPrototype   = objConstructor.prototype;
-    
-    var argsConstructor = (function() {
-        return arguments.constructor;
+
+
+This should hold something like '[object Arguments]'
+
+    var ARGUMENTS_TYPE_NAME = (function() {
+        return '' + arguments;
     })();
+
+
 
 -------------------------------------------------------------------------------
 
 ## isObject
 
-Tests for a JSON object literal.
+Tests for a JSON object literal. Note that 'new Object()' will also pass this
+test as these share the same constructor and prototype as object literals.
 
 ```
-    isObject( {} ) // -> true
+    isObject( {}           ) // -> true
+    isObject( new Object() ) // -> true
+    isObject( []           ) // -> false
+    isObject( 'dkdkdkdkdk' ) // -> false
     isObject( new FooBar() ) // -> false
 
-Specifically it *only* does object literals, and not regular objects.
-
-For regular objects do ...
+For testing if it's some kind of object, do ...
 
 ```
     obj instanceof Object
@@ -42,14 +47,15 @@ For regular objects do ...
 -------------------------------------------------------------------------------
 
     var isObject = window.isObject = function( obj ) {
-        if ( obj !== undefined || obj !== null ) {
-            var proto = obj.constructor.prototype;
+        if ( obj !== undefined && obj !== null ) {
+            var constructor = obj.constructor;
 
-            if ( proto !== undefined && proto !== null ) {
-                return proto             === objPrototype   &&
-                       proto.constructor === objConstructor ;
+            if ( constructor === Object ) {
+                return constructor.prototype === Object.prototype;
             }
         }
+
+        return false;
     }
 
 
@@ -170,13 +176,7 @@ this.
 -------------------------------------------------------------------------------
 
     var isArrayArguments = window.isArrayArguments = function( arr ) {
-        return isArray(arr) ||
-               (
-                       arr !== undefined &&
-                       arr !== null &&
-                       arr.constructor === argsConstructor &&
-                       arr.length !== undefined
-               )
+        return isArray(arr) || isArguments(arr);
     }
 
 
@@ -198,6 +198,21 @@ include them, use 'isArrayArguments'.
             function( arr ) {
                 return ( arr instanceof Array );
             } ;
+
+
+
+-------------------------------------------------------------------------------
+
+## isArguments
+
+@return True if the object given is an arguments object, otherwise false.
+
+-------------------------------------------------------------------------------
+
+    var isArguments = window.isArguments = function( args ) {
+        return ('' + arr) === ARGUMENTS_TYPE_NAME ;
+    }
+
 
 
 
@@ -237,22 +252,25 @@ An Error type, specific for assertions.
             msg = "assertion failed";
         }
 
-        Error.call( this, msg );
-
         this.name = "AssertionError";
-        this.message = msg;
+        this.description = this.message = msg;
+
+        if (navigator.appName === 'Microsoft Internet Explorer') {
+            Error.call( this, 0, msg );
+        } else {
+            Error.call( this, msg );
+        }
 
         var errStr = '';
         var scriptLine;
         try {
-            var thisStack;
             if ( this.stack ) {
-                thisStack = this.stack;
+                scriptLine = this.stack.split( "\n" )[1];
 
-                scriptLine = thisStack.split( "\n" )[1];
                 if ( scriptLine ) {
                     scriptLine = scriptLine.replace( /:[0-9]+:[0-9]+$/, '' );
                     scriptLine = scriptLine.replace( /^.* /, '' );
+
                     throw new Error();
                 }
             }
