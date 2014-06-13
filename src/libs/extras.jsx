@@ -424,7 +424,153 @@ This is the same as 'hasOwnProperty', but is shorter, making it nicer to use.
 
     var stringHTMLElement = document.createElement( 'div' );
 
-    var escaprRegExpRegExp = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g;
+    var escapeRegExpRegExp = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g;
+
+    var repeatString = function( pattern, count ) {
+        if (count < 1) {
+            <- '';
+
+        } else if ( count === 1 ) {
+            <- pattern;
+
+        } else if ( count === 2 ) {
+            <- pattern + pattern ;
+
+        } else if ( count === 3 ) {
+            <- pattern + pattern + pattern ;
+
+        } else if ( count === 4 ) {
+            <- pattern + pattern + pattern + pattern ;
+
+        } else {
+            var result = '';
+
+            while (count > 1) {
+                if (count & 1) {
+                    result += pattern;
+                }
+
+                count >>= 1, pattern += pattern;
+            }
+
+            <- result + pattern;
+        }
+    }
+
+
+
+===============================================================================
+
+### String.KEY_CODES
+
+This is a full list of the majority of the keyboard character and key codes,
+supported in the current browser.
+
+===============================================================================
+
+    __setProp__( String, 'KEY_CODES', {
+
+            BACKSPACE   : 8,
+
+            TAB         : 9,
+            "\t"        : 9,
+
+            ENTER       : 13,
+            "\r"        : 13,
+            "\n"        : 13,
+
+            CTRL        : 17,
+
+            ALT         : 18,
+            SHIFT       : 16,
+
+            ESCAPE      : 27,
+
+            SPACE       : 32,
+            ' '         : 32,
+            
+            PAGE_UP     : 33,
+            PAGE_DOWN   : 34,
+            END         : 35,
+            HOME        : 36,
+
+            LEFT_ARROW  : 37,
+            UP_ARROW    : 38,
+            RIGHT_ARROW : 39,
+            DOWN_ARROW  : 40,
+            
+            INSERT      : 45,
+            DELETE      : 46,
+
+            0           : 48,
+            1           : 49,
+            2           : 50,
+            3           : 51,
+            4           : 52,
+            5           : 53,
+            6           : 54,
+            7           : 55,
+            8           : 56,
+            9           : 57,
+
+            A           : 65,
+            B           : 66,
+            C           : 67,
+            D           : 68,
+            E           : 69,
+            F           : 70,
+            G           : 71,
+            H           : 72,
+            I           : 73,
+            J           : 74,
+            K           : 75,
+            L           : 76,
+            M           : 77,
+            N           : 78,
+            O           : 79,
+            P           : 80,
+            Q           : 81,
+            R           : 82,
+            S           : 83,
+            T           : 84,
+            U           : 85,
+            V           : 86,
+            W           : 87,
+            X           : 88,
+            Y           : 89,
+            Z           : 90,
+
+            F1          : 112,
+            F2          : 113,
+            F3          : 114,
+            F4          : 115,
+
+            F5          : 116,
+            F6          : 117,
+            F7          : 118,
+            F8          : 119,
+
+            F9          : 120,
+            F10         : 121,
+            F11         : 122,
+            F12         : 123,
+
+            LESS_THAN   : 188,
+            '<'         : 188,
+            GREATER_THAN: 190,
+            '>'         : 190,
+
+            COMMA       : 188,
+            ','         : 188,
+            FULL_STOP   : 190,
+            '.'         : 190,
+
+            PLUS        : ( IS_MOZILLA ? 61  : 187 ),
+            '+'         : ( IS_MOZILLA ? 61  : 187 ),
+            MINUS       : ( IS_MOZILLA ? 173 : 189 ),
+            '-'         : ( IS_MOZILLA ? 173 : 189 )
+    });
+
 
 
 -------------------------------------------------------------------------------
@@ -441,7 +587,7 @@ expression, are escaped and made safe.
 
     __setProp__( String.prototype,
             'escapeRegExp', function() {
-                return this.replace(escapeRegExpRegExp, "\\$&");
+                return this.replace( escapeRegExpRegExp, "\\$&" );
             }
     )
 
@@ -467,7 +613,7 @@ However you can use this if you know better.
 
     __setProp__( String.prototype,
             'escapeHTML', function() {
-                stringHTMLElement.textContent = this;
+                stringHTMLElement.textContent = this.valueOf();
                 var html = stringHTMLElement.innerHTML;
                 stringHTMLElement.innerHTML = '';
 
@@ -501,7 +647,7 @@ Removes all of the strings given, from this string.
                         reg += ')|(' + arguments[i].escapeRegExp();
                     }
 
-                    return this.replace( new RegExp(reg + ')', 'g'), '' );
+                    return this.valueOf().replace( new RegExp(reg + ')', 'g'), '' );
                 }
             }
     );
@@ -528,12 +674,12 @@ everything after that occurance.
 
     __setProp__( String.prototype,
             'lastSplit', function( str ) {
-                var index = this.lastIndexOf( str );
+                var index = this.valueOf().lastIndexOf( str );
 
                 if ( index === -1 ) {
                     return '';
                 } else {
-                    return this.substring( index+1 );
+                    return this.valueOf().substring( index+1 );
                 }
             }
     );
@@ -562,7 +708,7 @@ is returned instead.
 
     __setProp__( String.prototype,
             'toHTML', function() {
-                stringHTMLElement.innerHTML = this;
+                stringHTMLElement.innerHTML = this.valueOf();
                 var child = stringHTMLElement.firstChild;
                 stringHTMLElement.innerHTML = '';
 
@@ -597,7 +743,7 @@ returned.
             'html', function() {
                 if ( window.bb ) {
                     var comp = bb.createArray( arguments[0], arguments, 1 );
-                    comp.innerHTML = this;
+                    comp.innerHTML = this.valueOf();
                     return comp;
                 } else {
                     throw new Error( 'bb not found, and is required for this method' );
@@ -627,7 +773,7 @@ instead of raw html.
             'text', function() {
                 if ( window.bb ) {
                     var comp = bb.createArray( arguments[0], arguments, 1 );
-                    comp.textContent = this;
+                    comp.textContent = this.valueOf();
                     return comp;
                 } else {
                     throw new Error( 'bb not found, and is required for this method' );
@@ -654,7 +800,7 @@ expression 100%, or not.
                 } else {
                     assert( regex instanceof RegExp, "non-regular expression given" );
 
-                    var matches = this.match( regex );
+                    var matches = this.valueOf().match( regex );
                     return (matches.length === 1) && (mathes[0] === this);
                 }
             }
@@ -679,31 +825,33 @@ a trailing zero.
 
     __setProp__( String.prototype,
             'isInteger', function() {
+                var thisVal = this.valueOf();
+
                 var len;
-                if ( (len = this.length) === 0 ) {
+                if ( (len = thisVal.length) === 0 ) {
                     return false;
                 }
 
                 var i;
-                if ( this.charCodeAt(0) === 45 ) {
+                if ( thisVal.charCodeAt(0) === 45 ) {
                     // it's just '-' on it's own, return false
-                    if ( this.length === 1 ) {
+                    if ( thisVal.length === 1 ) {
                         <- false;
                     // it's '-0 ... something', such as '-0939', return false
-                    } else if ( this.length > 2 && this.charCodeAt(1) === '48' ) {
+                    } else if ( thisVal.length > 2 && thisVal.charCodeAt(1) === '48' ) {
                         <- false;
                     } else {
                         i = 1;
                     }
                 // it's '0 ... something', such as '0939', return false
-                } else if ( this.length > 1 && this.charCodeAt(0) === '48' ) {
+                } else if ( thisVal.length > 1 && thisVal.charCodeAt(0) === '48' ) {
                     <- false
                 } else {
                     i = 0;
                 }
 
-                for ( ; i < this.length; i++ ) {
-                    var c = this.charCodeAt(0);
+                for ( ; i < thisVal.length; i++ ) {
+                    var c = thisVal.charCodeAt(0);
 
                     // if not an ASCII number (before or after 0-9)
                     if ( c < 48 || 57 < c ) {
@@ -714,6 +862,59 @@ a trailing zero.
                 <- true;
             }
     );
+
+
+
+-------------------------------------------------------------------------------
+
+## string.padLeft
+
+-------------------------------------------------------------------------------
+
+    __setProp__( String.prototype,
+        'padLeft', function( pad, strLen ) {
+            var thisVal = this.valueOf();
+            var diff = (strLen|0) - thisVal.length;
+
+            if ( diff <= 0 ) {
+                return thisVal;
+            } else {
+                var padLen = pad.length;
+
+                return repeatString( pad, 
+                        // fast positive division + ceiling
+                        ( (diff + padLen - 1) / padLen )|0
+                ) + thisVal ;
+            }
+        }
+    );
+
+
+
+-------------------------------------------------------------------------------
+
+## string.padRight
+
+-------------------------------------------------------------------------------
+
+    __setProp__( String.prototype,
+        'padRight', function( pad, strLen ) {
+            var thisVal = this.valueOf();
+            var diff = (strLen|0) - thisVal.length;
+
+            if ( diff <= 0 ) {
+                return thisVal;
+            } else {
+                var padLen = pad.length;
+
+                return thisVal + repeatString( pad,
+                        ( (diff + padLen - 1) / padLen )|0
+                )
+            }
+        }
+    );
+
+
 
 ===============================================================================
 
@@ -1286,6 +1487,50 @@ allowing function chaining.
                 <- this;
             }
     );
+
+
+
+===============================================================================
+
+## Console
+
+Redefines 'window.console' functions so they are bound to the 'console' object.
+Why? So it's easier to chain them into stuff.
+
+For example lets say we want to do ...
+
+```
+    document.body.onclick = function(ev) {
+        console.log( ev );
+    }
+
+This could be replaced with just ...
+
+```
+    document.body.onclick = console.log
+
+However the above will fail, because 'log' will not run within the context of
+the 'console' object by default.
+
+It also allows use of 'console.log' and similar console methods, within partial
+function application.
+
+===============================================================================
+
+    /*
+     * Apply this change to all functions in order, on the console object, if
+     * it is present.
+     */
+
+    if ( window && console in window ) {
+        for ( var k in console ) {
+            var fun = console[k];
+
+            if ( fun instanceof Function ) {
+                console[k] = fun.bind( console );
+            }
+        }
+    }
 
 
 
