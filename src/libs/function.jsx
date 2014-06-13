@@ -467,30 +467,30 @@ bind the constructor call and pass it around.
             var argsLen = arguments.length;
 
             if ( argsLen === 0 ) {
-                return new this();
+                return new Function();
             } else if ( argsLen === 1 ) {
-                return new this( arguments[0] );
+                return new Function( arguments[0] );
             } else if ( argsLen === 2 ) {
-                return new this( arguments[0], arguments[1] );
+                return new Function( arguments[0], arguments[1] );
             } else if ( argsLen === 3 ) {
-                return new this( arguments[0], arguments[1], arguments[2] );
+                return new Function( arguments[0], arguments[1], arguments[2] );
             } else if ( argsLen === 4 ) {
-                return new this( arguments[0], arguments[1], arguments[2], arguments[3] );
+                return new Function( arguments[0], arguments[1], arguments[2], arguments[3] );
             } else if ( argsLen === 5 ) {
-                return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4] );
+                return new Function( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4] );
             } else if ( argsLen === 6 ) {
-                return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5] );
+                return new Function( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5] );
             } else if ( argsLen === 7 ) {
-                return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6] );
+                return new Function( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6] );
             } else if ( argsLen === 8 ) {
-                return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7] );
+                return new Function( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7] );
             } else if ( argsLen === 9 ) {
-                return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8] );
+                return new Function( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8] );
             } else if ( argsLen === 10 ) {
-                return new this( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8], arguments[9] );
+                return new Function( arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8], arguments[9] );
             } else {
-                var obj  = Object.create( this.prototype );
-                var obj2 = this.apply( obj, arguments );
+                var obj  = Object.create( Function.prototype );
+                var obj2 = Function.apply( obj, arguments );
 
                 if ( Object(obj2) === obj2 ) {
                     return obj2;
@@ -748,7 +748,7 @@ they will be executed in turn.
                         var argsLen = args.length-1;
 
                         for ( var i = 0; i < argsLen; i++ ) {
-                            if ( slate.util.isFunction(args[i]) ) {
+                            if ( isFunction(args[i]) ) {
                                 allArgs[i] = args[i+1]();
                             } else {
                                 allArgs[i] = args[i+1];
@@ -1331,16 +1331,21 @@ This is a mix of call, and later.
 -------------------------------------------------------------------------------
 
     __setProp__( Function.prototype,
-        'applyLater', function( target, args ) {
+        'applyLater', function( target, args, timeout ) {
+            if ( arguments.length >= 3 ) {
+                assertNumber( timeout, 'non-number given for timeout' );
+            } else {
+                timeout = 0;
+            }
+
             if ( arguments.length <= 1 ) {
-                args = new Array(0);
+                args = null;
             }
 
             var self = this;
-
             <- setTimeout( function() {
                 self.apply( target, args );
-            }, 0 );
+            }, timeout );
         }
     );
 
@@ -1350,38 +1355,35 @@ This is a mix of call, and later.
 
 ### function.later
 
-Sets this function to be called later.  If a timeout is given, then that is how
-long it will wait for.
-
-If no timeout is given, it defaults to 0.
+Sets this function to be called later. This will call the function in 0 
+milliseconds; essentially some time in the future, as soon as possible.
 
 It returns the value used when creating the timeout, and this allows you to
 cancel the timeout using 'clearTimeout'.
 
-@param target Optional, a target object to bind this function to.
-@param timeout Optional, the timeout to wait before calling this function, defaults to 0.
+You can provide zero or more arguments, which will be passed to the function,
+when it is called.
+
 @return The setTimeout identifier token, allowing you to cancel the timeout.
 
 -------------------------------------------------------------------------------
 
     __setProp__( Function.prototype,
-        'later', function( timeout ) {
+        'later', function() {
             var fun = this;
+            var args = arguments;
 
             if ( arguments.length === 0 ) {
-                timeout = 0;
-            } else if ( ! (typeof timeout === 'number') ) {
-                // here the timeout is the target
-                fun = fun.bind( timeout );
-
-                if ( arguments.length > 1 ) {
-                    timeout = arguments[1];
-                } else {
-                    timeout = 0;
-                }
+                <- setTimeout( fun, 0 );
+            } else if ( arguments.length === 1 ) {
+                <- setTimeout( function() {
+                    fun(args[0]);
+                }, 0 );
+            } else {
+                <- setTimeout( function() {
+                    fun.apply( null, args );
+                }, 0 );
             }
-
-            <- setTimeout( fun, timeout );
         }
     );
 
@@ -1412,4 +1414,105 @@ Yes, it's as simple as that.
             }
         }
     );
+
+
+
+-------------------------------------------------------------------------------
+
+## function.methodize
+
+Turns a function into a method. This allows you to build generic functions,
+and then reuse them for various other classes.
+
+```
+    // a generic function for returning the name of an object
+    var getName = function( obj ) {
+        return obj.name.trim();
+    }
+
+```
+    // a prototype class using the 'getName' function as a method
+    var Person = function( name ) {
+        this.name = name;
+    }
+    Person.prototype.getName = getName.methodize();
+
+The first parameter of the function being methodized, will always hold 'this'.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Function.prototype,
+        'methodize', function() {
+            var fun = this;
+            
+            return function() {
+                var argsLen = arguments.length;
+
+                if ( argsLen === 0 ) {
+                    return fun.call( undefined, this );
+                } else if ( argsLen === 1 ) {
+                    return fun.call( undefined, this, arguments[0] );
+                } else if ( argsLen === 2 ) {
+                    return fun.call( undefined, this, arguments[1], arguments[2] );
+                } else if ( argsLen === 3 ) {
+                    return fun.call( undefined, this, arguments[1], arguments[2], arguments[3] );
+                } else {
+                    var args = new Array( argsLen+1 );
+                    args[0] = this;
+                    for ( var i = 1; 1 < argsLen; i++ ) {
+                        args[i] = arguments[i-1];
+                    }
+
+                    return fun.apply( undefined, args );
+                }
+            }
+        }
+    );
+
+
+
+-------------------------------------------------------------------------------
+
+## function.demethodize
+
+This turns a method into a function.
+
+```
+    // so you can take a method call like this ...
+    target.method( param1, param2, param3 );
+    // take the method away from it
+    var fun = target.method.demethodize();
+    // and use it like this, and it's the same as above ...
+    fun( target, param1, param2, param3 );
+
+There are times where you may want to do this, where the object is passed in as
+the first parameter.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Function.prototype,
+        'demethodize', function() {
+            var fun = this;
+
+            return function() {
+                var argsLen = arguments.length;
+
+                if ( argsLen === 0 ) {
+                    return fun.call( null );
+                } else if ( argsLen === 1 ) {
+                    return fun.call( arguments[0] );
+                } else if ( argsLen === 2 ) {
+                    return fun.call( arguments[0], arguments[1] );
+                } else if ( argsLen === 3 ) {
+                    return fun.call( arguments[0], arguments[1], arguments[2] );
+                } else if ( argsLen === 4 ) {
+                    return fun.call( arguments[0], arguments[1], arguments[2], arguments[3] );
+                } else {
+                    return fun.apply( arguments[0], args );
+                }
+            }
+        }
+    );
+
+
 
