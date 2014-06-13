@@ -130,26 +130,26 @@ Reference: http://es5.github.com/#x15.4.4.18
 
     __shim__( String.prototype,
             'toArray', function() {
-                return this.split( '' );
+                return this.valueOf().split( '' );
             }
     );
 
     __shim__( String.prototype,
             'trim', function(check) {
                 if ( arguments.length === 0 || ( arguments.length === 1 && str === ' ' ) ) {
-                    var str = this.replace(leftTrimSpaceRegex, '');
+                    var str = this.valueOf().replace(leftTrimSpaceRegex, '');
                     var i = str.length;
 
                     while (spaceRegex.test(str.charAt(--i)));
 
                     <- str.slice(0, i + 1);
                 } else if ( check.length === 0 ) {
-                    <- this;
+                    <- this.valueOf();
                 } else {
                     check = check.escapeRegExp();
                     var regex = new RegExp( "(^(" + check + ")(" + check + ")*)|((" + check + ")(" + check + ")*$)", 'i' );
 
-                    <- this.replace( regex, '' );
+                    <- this.valueOf().replace( regex, '' );
                 }
             }
     );
@@ -157,13 +157,13 @@ Reference: http://es5.github.com/#x15.4.4.18
     __shim__( String.prototype,
             'trimLeft', function(check) {
                 if ( arguments.length === 0 || ( arguments.length === 1 && str === ' ' ) ) {
-                    <- this.replace( leftTrimSpaceRegex, '' );
+                    <- this.valueOf().replace( leftTrimSpaceRegex, '' );
                 } else if ( check.length === 0 ) {
-                    <- this;
+                    <- this.valueOf();
                 } else {
                     var check = check.escapeRegExp();
 
-                    <- this.replace(
+                    <- this.valueOf().replace(
                             new RegExp( "^(" + check + ")(" + check + ")*" ),
                             ''
                     );
@@ -173,16 +173,18 @@ Reference: http://es5.github.com/#x15.4.4.18
 
     __shim__( String.prototype,
             'trimRight', function() {
+                var thisVal = this.valueOf();
+
                 if ( arguments.length === 0 || ( arguments.length === 1 && str === ' ' ) ) {
-                    var	i = this.length;
-                    while ( spaceRegex.test(this.charAt(--i)) );
-                    return this.slice( 0, i + 1 );
+                    var	i = thisVal.length;
+                    while ( spaceRegex.test(thisVal.charAt(--i)) );
+                    return thisVal.slice( 0, i + 1 );
                 } else if ( check.length === 0 ) {
-                    <- this;
+                    <- thisVal;
                 } else {
                     var check = check.escapeRegExp();
 
-                    <- this.replace(
+                    <- thisVal.replace(
                             new RegExp( "(" + check + ")(" + check + ")*$" ),
                             ''
                     );
@@ -192,25 +194,81 @@ Reference: http://es5.github.com/#x15.4.4.18
 
     __shim__( String.prototype,
             'contains', function( str, index ) {
-                if ( arguments.length === 1 ) {
-                    return this.indexOf(str) !== -1;
-                } else if ( arguments.length === 2 ) {
-                    return this.indexOf(str, index) !== -1;
-                } else if ( arguments.length === 0 ) {
+                var argsLen = arguments.length;
+
+                if ( argsLen === 1 ) {
+                    return this.valueOf().indexOf(str) !== -1;
+                } else if ( argsLen === 2 ) {
+                    return this.valueOf().indexOf(str, index) !== -1;
+                } else if ( argsLen === 0 ) {
                     throw new Error( "no search string provided" );
                 }
             }
     );
 
+
+-------------------------------------------------------------------------------
+
+## string.repeat
+
+Fast repeat, uses the `Exponentiation by squaring` algorithm.
+
+This is optimized for non-FF browsers, because FF already has a version 
+in-built.
+ 
+FireFox also has issues with the use of 'valueOf', where in other browsers it's
+use always yields a speedup. The short of it is that you can only use 'valueOf'
+to convert a String object to a literal string, if you intend to call a lot of
+methods or perform a lot of concatonation, on that string. Otherwise the cost
+of using 'valueOf' is greater than the cost of using a String object.
+
+We only optimize up to 'count' of 4, because it is at 4 or 3 counts and less
+where inlining it makes a large optimization. Above 4, it is either similar
+performance or worse.
+
+-------------------------------------------------------------------------------
+
     __shim__( String.prototype,
-            // Fast repeat, uses the `Exponentiation by squaring` algorithm.
-            'repeat', function(times) {
-              if (times < 1) return '';
-              if (times % 2) return this.repeat(times - 1) + this;
-              var half = this.repeat(times / 2);
-              return half + half;
+            'repeat', function(count) {
+                count = count|0;
+
+                if ( count < 1 ) {
+                    return '';
+
+                } else if ( count === 1 ) {
+                    return this.valueOf();
+
+                } else if ( count === 2 ) {
+                    var thisVal = this.valueOf();
+                    return thisVal + thisVal ;
+                    
+                } else if ( count === 3 ) {
+                    var thisVal = this.valueOf();
+                    return thisVal + thisVal + thisVal;
+
+                } else if ( count === 4 ) {
+                    var thisVal = this.valueOf();
+                    return thisVal + thisVal + thisVal + thisVal;
+
+                } else {
+                    var pattern = this.valueOf();
+                    var result = '';
+
+                    while ( count > 1 ) {
+                        if ( (count & 1) === 1 ) {
+                            result += pattern;
+                        }
+
+                        count >>= 1;
+                        pattern += pattern;
+                    }
+
+                    return result + pattern;
+                }
             }
     );
+
+
 
     __shim__( String.prototype,
             'startsWith', function(searchString) {
