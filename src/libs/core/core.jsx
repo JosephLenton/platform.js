@@ -142,6 +142,9 @@ Only rely on these sparingly; always feature detect where possible!
     } else if (userAgent.indexOf("Firefox/") !== -1) {
         IS_MOZILLA = getUAVersion( userAgent, "Firefox/" );
 
+    } else if (userAgent.indexOf("Iceweasel/") !== -1) {
+        IS_MOZILLA = getUAVersion( userAgent, "Iceweasel/" );
+
     } else if (userAgent.indexOf("Netscape/") !== -1) {
         IS_MOZILLA = getUAVersion( userAgent, "Netscape/" );
     }
