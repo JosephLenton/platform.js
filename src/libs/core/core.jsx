@@ -104,18 +104,19 @@ Only rely on these sparingly; always feature detect where possible!
     var IS_SAFARI   = false;
 
     var getUAVersion = function(userAgent, browserName) {
-        var test = new RegExp(browserName + "([\d.]+)", 'i');
+        var test = new RegExp(browserName + "([\\d.]+)", 'i');
         var match = userAgent.match( test );
 
-        if ( match.length > 0 ) {
-            var splitI = match.indexOf("/");
+        if ( match !== null && match.length > 0 ) {
+            var strMatch = match[0];
+            var splitI = strMatch.indexOf("/");
 
             if ( splitI === -1 ) {
-                splitI = match.indexOf(":");
+                splitI = strMatch.indexOf(":");
             }
 
             if ( splitI !== -1 ) {
-                return parseInt( match.substring(splitI+1) ) || -1;
+                return parseInt( strMatch.substring(splitI+1) ) || -1;
             }
         }
 
