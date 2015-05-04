@@ -200,6 +200,40 @@ If you wish to use the underscore for something else, you can use the value
 
 -------------------------------------------------------------------------------
 
+### applyToFun
+
+Used to call apply on a function and return it's result. It's needed because
+this actually fails on a whole host of functions; native functions!
+
+The apply will fail because native functions cannot take a non-undefined value
+for the target. They cannot have a target value.
+
+So this will try to call it normally and if that fails call without an object.
+
+-------------------------------------------------------------------------------
+
+    var applyToFun = function( fun, target, combinedArgs ) {
+        // if no target, native or otherwise
+        if ( target === undefined && target === null ) {
+            return fun.apply( undefined, combinedArgs );
+
+        } else {
+            // calling non-native function with a target
+            try {
+                return fun.apply( target, combinedArgs );
+
+            // calling an native function
+            } catch ( err ) {
+                return fun.apply( undefined, combinedArgs );
+
+            }
+        }
+    }
+
+
+
+-------------------------------------------------------------------------------
+
 ### newPartial
 
 -------------------------------------------------------------------------------
@@ -291,7 +325,7 @@ If you wish to use the underscore for something else, you can use the value
                         }
                     }
 
-                    return fun.apply( target, combinedArgs );
+                    return applyToFun( fun, target, combinedArgs );
                 });
     }
 
@@ -692,7 +726,6 @@ timer.
 
 -------------------------------------------------------------------------------
 
-
     __setProp__( Function.prototype,
         'throttle', function( delay ) {
             if ( delay === undefined ) {
@@ -707,7 +740,7 @@ timer.
                 var args = arguments;
 
                 if ( funTimeout !== null ) {
-                    cancelTimeout( funTimeout );
+                    clearTimeout( funTimeout );
                 }
 
                 funTimeout = setTimeout( function() {
@@ -718,6 +751,49 @@ timer.
             }
         }
     );
+
+
+
+-------------------------------------------------------------------------------
+
+### function.delay( delay )
+
+This is very similar to 'future' and 'throttle'. This will return a function 
+that wraps this function which when called will actually run in the future.
+
+With this the call is just delayed, and calling it multiple times will result
+in it being called multiple times in the future. The execution of the function
+is 'delayed' (hence the name).
+
+When the result is called it will call the function sometime in the future. 
+This is after a ceratain amount of milliseconds, which is provided by 'delay'.
+
+This is just like 'throttle', only this will call in the function in the future
+for *each* time it is called. So if you call the function 4 times in a row, 
+then it will be called 4 times in the future as well.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Function.prototype,
+        'delay', function(delay) {
+            if ( delay === undefined ) {
+                delay = 0;
+            }
+
+            var fun = this;
+
+            return function() {
+                var self = this;
+                var args = arguments;
+
+                setTimeout( function() {
+                    fun.apply( self, args );
+                }, delay );
+            }
+        }
+    );
+
+
 
 -------------------------------------------------------------------------------
 
@@ -1279,14 +1355,14 @@ with the given 'pre' function tacked on before it.
 
 -------------------------------------------------------------------------------
 
-### function.callLater
+### function.callFuture
 
-This is a mix of call, and later.
+This is a mix of call, and future.
 
 -------------------------------------------------------------------------------
 
     __setProp__( Function.prototype,
-        'callLater', function( target ) {
+        'callFuture', function( target ) {
             var argsLen = arguments.length;
             var self = this;
 
@@ -1316,7 +1392,7 @@ This is a mix of call, and later.
                     self.call( target, param1, param2, param3 );
                 }, 0 );
             } else {
-                <- this.applyLater( target, arguments );
+                <- this.applyFuture( target, arguments );
             }
         }
     );
@@ -1325,13 +1401,13 @@ This is a mix of call, and later.
 
 -------------------------------------------------------------------------------
 
-### function.applyLater
+### function.applyFuture
 
 
 -------------------------------------------------------------------------------
 
     __setProp__( Function.prototype,
-        'applyLater', function( target, args, timeout ) {
+        'applyFuture', function( target, args, timeout ) {
             if ( arguments.length >= 3 ) {
                 assertNumber( timeout, 'non-number given for timeout' );
             } else {
@@ -1353,9 +1429,9 @@ This is a mix of call, and later.
 
 -------------------------------------------------------------------------------
 
-### function.later
+### function.future
 
-Sets this function to be called later. This will call the function in 0 
+Sets this function to be called future. This will call the function in 0 
 milliseconds; essentially some time in the future, as soon as possible.
 
 It returns the value used when creating the timeout, and this allows you to
@@ -1369,7 +1445,7 @@ when it is called.
 -------------------------------------------------------------------------------
 
     __setProp__( Function.prototype,
-        'later', function() {
+        'future', function() {
             var fun = this;
             var args = arguments;
 
@@ -1391,7 +1467,7 @@ when it is called.
 
 -------------------------------------------------------------------------------
 
-### function.bindLater
+### function.bindFuture
 
 This returns a function, which when called, will call this function, in the
 future.
@@ -1404,13 +1480,13 @@ Yes, it's as simple as that.
 -------------------------------------------------------------------------------
 
     __setProp__( Function.prototype,
-        'bindLater', function( target, timeout ) {
+        'bindFuture', function( target, timeout ) {
             if ( arguments.length === 0 ) {
-                return this.method( 'later' );
+                return this.method( 'future' );
             } else if ( arguments.length === 1 ) {
-                return this.method( 'later', timeout );
+                return this.method( 'future', timeout );
             } else {
-                return this.method( 'later', target, timeout );
+                return this.method( 'future', target, timeout );
             }
         }
     );

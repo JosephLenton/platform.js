@@ -98,6 +98,7 @@ Only rely on these sparingly; always feature detect where possible!
 ===============================================================================
 
     var IS_IE       = false;
+    var IS_HTA      = false;
     var IS_OPERA    = false;
     var IS_MOZILLA  = false;
     var IS_CHROME   = false;
@@ -127,11 +128,20 @@ Only rely on these sparingly; always feature detect where possible!
 
     if (userAgent.indexOf("MSIE/") !== -1) {
         IS_IE = getUAVersion( userAgent, "MSIE/" );
+
+        if ( window.external === null || window.external === undefined ) {
+            IS_HTA = IS_IE;
+        }
+
     } else if (userAgent.indexOf("Trident/") !== -1) {
         if ( userAgent.indexOf(" rv:") !== -1 ) {
             IS_IE = getUAVersion( userAgent, "rv:" );
         } else {
             IS_IE = getUAVersion( userAgent, "Trident/" );
+        }
+
+        if ( window.external === null || window.external === undefined ) {
+            IS_HTA = IS_IE;
         }
 
     } else if (userAgent.indexOf("Chrome/") !== -1) {
@@ -156,12 +166,30 @@ Only rely on these sparingly; always feature detect where possible!
 
 ## IS_IE
 
-A global property, which is truthy, when this is running in IE, and false when 
-not. It will hold the version number of IE.
+A global property which is truthy when this is running in IE holding the 
+version of IE we are running on.
+
+When it's not IE this will hold false.
 
 -------------------------------------------------------------------------------
 
     window.IS_IE        = IS_IE         ;
+
+
+
+-------------------------------------------------------------------------------
+
+## IS_HTA
+
+This is truthy if this is running as a .hta application. .HTA applications are
+presumed to be IE powered (Trident, Chakra, etc).
+
+As a result this will either be false for when it is not a .HTA, or the same
+value as 'IS_IE'.
+
+-------------------------------------------------------------------------------
+
+    window.IS_HTA       = IS_HTA        ;
 
 
 

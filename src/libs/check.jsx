@@ -24,17 +24,17 @@ This should hold something like '[object Arguments]'
 
 -------------------------------------------------------------------------------
 
-## isObject
+## isObjectLiteral
 
 Tests for a JSON object literal. Note that 'new Object()' will also pass this
 test as these share the same constructor and prototype as object literals.
 
 ```
-    isObject( {}           ) // -> true
-    isObject( new Object() ) // -> true
-    isObject( []           ) // -> false
-    isObject( 'dkdkdkdkdk' ) // -> false
-    isObject( new FooBar() ) // -> false
+    isObjectLiteral( {}           ) // -> true
+    isObjectLiteral( new Object() ) // -> true
+    isObjectLiteral( []           ) // -> false
+    isObjectLiteral( 'dkdkdkdkdk' ) // -> false
+    isObjectLiteral( new FooBar() ) // -> false
 
 For testing if it's some kind of object, do ...
 
@@ -46,7 +46,7 @@ For testing if it's some kind of object, do ...
 
 -------------------------------------------------------------------------------
 
-    var isObject = window.isObject = function( obj ) {
+    var isObjectLiteral = window.isObjectLiteral = function( obj ) {
         if ( obj !== undefined && obj !== null ) {
             var constructor = obj.constructor;
 
@@ -121,6 +121,21 @@ This is either an actual number, or a string which represents one.
 
     var isString = window.isString = function( str ) {
         return ( typeof str === 'string' ) || ( str instanceof String );
+    }
+
+
+
+-------------------------------------------------------------------------------
+
+## isBoolean
+
+@param bool The boolean value to test.
+@return True if the value is true or false, otherwise false.
+
+-------------------------------------------------------------------------------
+
+    var isBoolean = window.isBoolean = function( bool ) {
+        return bool === true || bool === false ;
     }
 
 
@@ -245,11 +260,28 @@ assertion fails.
 
 An Error type, specific for assertions.
 
+The 'extraMsgArray' may just be the arguments value from a function. As a 
+result it could have values already at the start. For this reason the 
+startIndex parameter is provided so you could skip these elements at the start
+of the array.
+
+@param msg Optional The main message for the assertion.
+@param secondMsg Optional A secondary message. For many assertions this may be 
+the test performed.
+@param extraMsgArray Optional An array containing any other extra message 
+things to display.
+@param startIndex Optional Where to start taking bits from the extraMsgArray, 
+defaults to 0.
+
 -------------------------------------------------------------------------------
 
-    var AssertionError = function( msg ) {
+    var AssertionError = function( msg, secondMsg, extraMsgArray, startIndex ) {
         if ( ! msg ) {
             msg = "assertion failed";
+        }
+
+        if ( startIndex === undefined ) {
+            startIndex = 0;
         }
 
         this.name = "AssertionError";
@@ -273,6 +305,18 @@ An Error type, specific for assertions.
 
                     throw new Error();
                 }
+
+            // IE
+            } else {
+                var currentFunction = arguments.callee.caller;
+
+                while ( currentFunction ) {
+                    var fn = currentFunction.toString();
+                    var fname = fn.substring(fn.indexOf('function') + 8, fn.indexOf('')) || 'anonymous';
+
+                    errStr += fname + '\n';
+                    currentFunction = currentFunction.caller;
+                }
             }
         } catch ( err ) {
             var errStack = err.stack.split("\n");
@@ -290,42 +334,25 @@ An Error type, specific for assertions.
         }
 
         console.error( 'Assertion Error, ' + msg );
-        for ( var i = 1; i < arguments.length; i++ ) {
-            console.log( arguments[i] );
+        for ( var i = startIndex; i < extraMsgArray.length; i++ ) {
+            console.log( extraMsgArray[i] );
         }
+
         if ( errStr !== '' ) {
             console.error( "\n" + errStr );
+
+            if ( window.IS_HTA ) {
+                alert( errStr );
+            }
         }
     }
 
-    AssertionError.prototype = new Error();
-    AssertionError.prototype.constructor = AssertionError;
 
--------------------------------------------------------------------------------
 
-### newAssertion
 
-A helper method, for building the AssertionError object.
+Assign the original Error prototype *not* new Error().
 
-It is used, to move the parameters around, from the format the assertion
-functions use, to match that of the AssertionError.
-
-In the error, the msg is the first parameter, and in the functions, it is the
-second.
-
-@param args The arguments for the new AssertionError.
-
--------------------------------------------------------------------------------
-
-    var newAssertionError = function( args, altMsg ) {
-        var msg = args[1];
-        args[1] = args[0];
-        args[0] = msg || altMsg;
-
-        var err = Object.create( AssertionError );
-        AssertionError.apply( err, args );
-        return err;
-    }
+    AssertionError.prototype = Error.prototype;
 
 
 
@@ -358,14 +385,12 @@ arguments given, before it throws the error.
 This allows you to have console.log +
 throw new Error, built together, as one.
 
-@param msg The message to display in the error.
+@param msg Optional The message to display in the error.
 
 -------------------------------------------------------------------------------
 
     var fail = window["fail"] = function( msg ) {
-        var err = Object.create( AssertionError.prototype );
-        AssertionError.apply( err, arguments );
-        throw err;
+        throw new AssertionError( msg || "Failure is reported.", 'Fail()', arguments, 1 );
     }
 
 
@@ -374,16 +399,16 @@ throw new Error, built together, as one.
 
 ## assert
 
-Note that 0 and empty strings, will not cause failure.
+Note that 0 and empty strings will not cause failure.
 
 @param test
-@param msg
+@param msg Optional
 
 -------------------------------------------------------------------------------
 
     var assert = window["assert"] = function( test, msg ) {
         if ( test === undefined || test === null || test === false ) {
-            throw newAssertionError( arguments );
+            throw new AssertionError( msg || "Assertion has failed.", test, arguments, 2 );
         }
     }
 
@@ -393,12 +418,12 @@ Note that 0 and empty strings, will not cause failure.
 
 ## assertNot
 
-Throws an assertion error, if what is given if truthy.
+Throws an assertion error if what is given if truthy.
 
-Note that 0 and empty strings, will cause failure.
+Note that 0 and empty strings will cause failure.
 
 @param test
-@param msg
+@param msg Optional
 
 -------------------------------------------------------------------------------
 
@@ -408,7 +433,7 @@ Note that 0 and empty strings, will cause failure.
                 test !== null &&
                 test !== undefined
         ) {
-            throw newAssertionError( arguments, "item is truthy" );
+            throw new AssertionError( msg || "Item is truthy.", test, arguments, 2 );
         }
     }
 
@@ -423,6 +448,8 @@ to be unreachable. So something has gone wrong.
 
 This always throws an assertion error.
 
+@param msg Optional The message to display.
+
 -------------------------------------------------------------------------------
 
     var assertUnreachable = window["assertUnreachable"] = function( msg ) {
@@ -433,17 +460,20 @@ This always throws an assertion error.
 
 -------------------------------------------------------------------------------
 
-## assertObject
+## assertObjectLiteral
 
 Throws an assertion error, if the object given is *not* a JSON Object literal.
 So regular objects, they will throw an assertion. It's only the '{ }' style
 objects that this allows.
 
+@param obj The object to test.
+@param msg Optional The message to display if this assertion fails.
+
 -------------------------------------------------------------------------------
 
-    var assertObject = window["assertObject"] = function( obj, msg ) {
-        if ( ! isObject(obj) ) {
-            throw newAssertionError( arguments, "code expected a JSON object literal" );
+    var assertObjectLiteral = window["assertObjectLiteral"] = function( obj, msg ) {
+        if ( ! isObjectLiteral(obj) ) {
+            throw new AssertionError( msg || "Code expected an JSON object literal.", obj, arguments, 2 );
         }
     }
 
@@ -453,17 +483,19 @@ objects that this allows.
 
 ## assertLiteral
 
-Throws an AssertionError if the value given is not
-a literal value.
+Throws an AssertionError if the value given is not a literal value.
+
+Note that literals do not include object literals. Just strings, numbers,
+booleans, null, and undefined.
 
 @param obj
-@param msg
+@param msg Optional
 
 -------------------------------------------------------------------------------
 
     var assertLiteral = window["assertLiteral"] = function( obj, msg ) {
         if ( ! isLiteral(obj) ) {
-            throw newAssertionError( arguments, "primitive value expected" );
+            throw new AssertionError( msg || "Primitive value expected.", obj, arguments, 2 );
         }
     }
 
@@ -473,14 +505,14 @@ a literal value.
 
 ## assertFunction
 
-@param f A function object to test.
-@param msg The message to display if the test fails.
+@param fun A function object to test.
+@param msg Optional The message to display if the test fails.
 
 -------------------------------------------------------------------------------
 
-    var assertFunction = window["assertFunction"] = function( f, msg ) {
-        if ( typeof f !== 'function' && !(f instanceof Function) ) {
-            throw newAssertionError( arguments, "function expected" );
+    var assertFunction = window["assertFunction"] = function( fun, msg ) {
+        if ( typeof fun !== 'function' && !(fun instanceof Function) ) {
+            throw new AssertionError( msg || "Function expected.", fun, arguments, 2 );
         }
     }
 
@@ -488,16 +520,16 @@ a literal value.
 
 -------------------------------------------------------------------------------
 
-## assertBool
+## assertBoolean
 
-@param f The boolean value to test.
-@param msg The error message on failure.
+@param bool The boolean value to test.
+@param msg Optional The error message on failure.
 
 -------------------------------------------------------------------------------
 
-    var assertBool = window["assertBool"] = function( f, msg ) {
-        if ( f !== true && f !== false ) {
-            throw newAssertionError( arguments, "boolean expected" );
+    var assertBoolean = window["assertBoolean"] = function( bool, msg ) {
+        if ( bool !== true && bool !== false ) {
+            throw new AssertionError( msg || "Boolean expected.", bool, arguments, 2 );
         }
     }
 
@@ -508,13 +540,13 @@ a literal value.
 ## assertArray
 
 @param arr The array to test.
-@param msg The error message.
+@param msg Optional The error message.
 
 -------------------------------------------------------------------------------
 
     var assertArray = window["assertArray"] = function( arr, msg ) {
         if ( ! isArray(arr) && (arr.length === undefined) ) {
-            throw newAssertionError( arguments, "array expected" );
+            throw new AssertionError( msg || "Array expected.", arr, arguments, 2 );
         }
     }
 
@@ -525,13 +557,13 @@ a literal value.
 ## assertString
 
 @param str The string to test against.
-@param msg The error message to show.
+@param msg Optional The error message to show.
 
 -------------------------------------------------------------------------------
 
     var assertString = window["assertString"] = function( str, msg ) {
         if ( typeof str !== 'string' && !(str instanceof String) ) {
-            throw newAssertionError( arguments, "string expected" );
+            throw new AssertionError( msg || "String expected.", str, arguments, 2 );
         }
     }
 
@@ -543,15 +575,16 @@ a literal value.
 
 This includes both number primitives, and Number objects.
 
-@param n The number to check.
-@param msg An optional error message.
+@param num The number to check.
+@param msg Optional An optional error message.
 
 -------------------------------------------------------------------------------
 
-    var assertNumber = window["assertNumber"] = function( n, msg ) {
+    var assertNumber = window["assertNumber"] = function( num, msg ) {
         if ( typeof n !== 'number' && !(n instanceof Number) ) {
-            throw newAssertionError( arguments, "number expected" );
+            throw new AssertionError( msg || "Number expected.", num, arguments, 2 );
         }
     }
+
 
 

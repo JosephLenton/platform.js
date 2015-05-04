@@ -11,13 +11,56 @@ more array-like fashion.
 
 
 
+
+    var __setProp__ = window.__setProp__;
+
+
+
 ===============================================================================
 
 ## Object
 
 ===============================================================================
 
-    var __setProp__ = window.__setProp__;
+-------------------------------------------------------------------------------
+
+### Object.clone
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Object,
+        'clone', function( obj ) {
+            if (obj) {
+                if (obj instanceof Array) {
+                    return obj.splice(0);
+                } else {
+                    var type = typeof obj;
+
+                    if ( type === 'number' || type === 'string' ) {
+                        return obj;
+                    } else {
+                        var copy = Object.create( obj.constructor.prototype );
+                        var keys = Object.keys( obj );
+                        var keysLen = keys.length;
+
+                        // copy all attributes across,
+                        // but skip prototype items
+                        for ( var i = 0; i < keysLen; i++ ) {
+                            var k = keys[i];
+
+                            copy[k] = obj[k];
+                        }
+
+                        return copy;
+                    }
+                }
+            } else {
+                return obj;
+            }
+        }
+    );
+
+
 
 -------------------------------------------------------------------------------
 
@@ -265,7 +308,7 @@ It can also take an object of values, to set multiple values to the object.
     __setProp__( Object.prototype,
             'setProp', function( obj, value ) {
                 if ( arguments.length === 1 ) {
-                    if ( ! isObject(obj) ) {
+                    if ( ! isObjectLiteral(obj) ) {
                         throw new Error("non-object given for multiple property assignment");
                     }
 
@@ -415,6 +458,24 @@ This is the same as 'hasOwnProperty', but is shorter, making it nicer to use.
     __setProp__( Object.prototype,
             'has', Object.hasOwnProperty
     );
+
+
+
+-------------------------------------------------------------------------------
+
+### clone
+
+@return a copy of this object.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( Object.prototype,
+            'clone', function() {
+                return Object.clone( this );
+            }
+    );
+
+
 
 ===============================================================================
 
@@ -575,6 +636,36 @@ supported in the current browser.
 
 -------------------------------------------------------------------------------
 
+### map
+
+Same as array.map, but for String objects.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( String.prototype,
+            'map', function( fun ) {
+                if ( typeof fun === 'string' || (fun instanceof String) ) {
+                    var args = new Array( arguments.length+1 );
+                    for ( var i = 2; i < args.length; i++ ) {
+                        args[i] = arguments[i-1];
+                    }
+
+                    return oldMap.call( this, function(obj, i) {
+                        args[0] = obj;
+                        args[1] = i;
+
+                        return obj[fun].apply( obj, args );
+                    } );
+                } else {
+                    return oldMap.apply( this, arguments );
+                }
+            }
+    )
+
+
+
+-------------------------------------------------------------------------------
+
 ### escapeRegExp
 
 Returns a version of this string, where all special characters from a regular
@@ -588,6 +679,23 @@ expression, are escaped and made safe.
     __setProp__( String.prototype,
             'escapeRegExp', function() {
                 return this.replace( escapeRegExpRegExp, "\\$&" );
+            }
+    )
+
+
+
+-------------------------------------------------------------------------------
+
+### hasString
+
+@param str The string to search for.
+@return True if the string given is present in this string, and false if not.
+    
+-------------------------------------------------------------------------------
+
+    __setProp__( String.prototype,
+            'hasString', function(str) {
+                return this.indexOf(str) !== -1 ;
             }
     )
 
@@ -653,6 +761,40 @@ Removes all of the strings given, from this string.
     );
 
 
+-------------------------------------------------------------------------------
+
+### firstSplit
+
+This will return everthing in the string from the start up until the string
+sequence provided.
+
+It is the equivalent of doing
+
+@example
+    var firstSplit = str.split( seperator )[0];
+
+However if the seperator is not found in the string then it returns an empty
+string.
+
+@param seperator The search string used.
+@return Everthing from the start of the string up to the search string, or an
+empty string.
+
+-------------------------------------------------------------------------------
+
+    __setProp__( String.prototype,
+            'firstSplit', function( seperator ) {
+                var index = this.valueOf().indexOf( seperator );
+
+                if ( index === -1 ) {
+                    return '';
+                } else {
+                    return this.valueOf().substring( 0, index );
+                }
+            }
+    );
+
+
 
 -------------------------------------------------------------------------------
 
@@ -667,14 +809,14 @@ What it does, is find the last occurance of
 'str', and then returns a substring of
 everything after that occurance.
 
-@param str The string to look for.
+@param seperator The string to look for.
 @return The string found, or an empty string if not found.
 
 -------------------------------------------------------------------------------
 
     __setProp__( String.prototype,
-            'lastSplit', function( str ) {
-                var index = this.valueOf().lastIndexOf( str );
+            'lastSplit', function( seperator ) {
+                var index = this.valueOf().lastIndexOf( seperator );
 
                 if ( index === -1 ) {
                     return '';

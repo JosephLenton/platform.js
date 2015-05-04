@@ -1,51 +1,131 @@
 
-===============================================================================
-
-# JSX Compiler
-
-JSX are the language extensions on top of JavaScript, which most of platform.js
-is written in (most at the time of writing).
-
-This file contains the code to attach in the JSX compiler, so JSX can compile 
-JSX.
-
-### autocompile jsx files
-
-If you set 'data-autocompile="true"' on the platform.js script tag, for example
-
-```
-    <script src="platform.js" data-autocompile="true"></script>
-
-then all of your jsx scripts will be extracted from the head, compiled, and
-then executed automatically.
+jsx.jsx
 
 ===============================================================================
-
--------------------------------------------------------------------------------
-
-## jsx( code )
-
-The jsx module is a self executing function, which also has properties on it
-you can execute. Like the $ in jQuery.
-
-Given JSX code, this will return it compiled into JS.
-
--------------------------------------------------------------------------------
 
     var jsx = window['jsx'] = function( code ) {
         return jsx.compile( code );
     }
 
--------------------------------------------------------------------------------
+    /**
+     * ASCII codes for characters.
+     *
+     * @type {number}
+     * @const
+     */
+    var TAB = 9, // \t
+        SLASH_N = 10, // \n
+        SLASH_R = 13, // \r
 
-## orderCallbacks
+        SPACE = 32,
+        EXCLAMATION = 33,
+        DOUBLE_QUOTE = 34,
+        HASH = 35,
+        DOLLAR = 36,
+        PERCENT = 37,
+        AMPERSAND = 38,
+        SINGLE_QUOTE = 39,
+        LEFT_PAREN = 40,
+        RIGHT_PAREN = 41,
+        STAR = 42, // *
+        PLUS = 43,
+        COMMA = 44,
+        MINUS = 45,
+        FULL_STOP = 46,
+        SLASH = 47,
 
-Helper function, which pushes callbacks into an array, and then returns a 
-function to replace that callback. This function ensures that when the function
-is called, the callbacks in the array are called in the order they were placed
-there.
+        ZERO = 48,
+        ONE = 49,
+        TWO = 50,
+        THREE = 51,
+        FOUR = 52,
+        FIVE = 53,
+        SIX = 54,
+        SEVEN = 55,
+        EIGHT = 56,
+        NINE = 57,
 
--------------------------------------------------------------------------------
+        COLON = 58,
+        SEMI_COLON = 59,
+
+        LESS_THAN = 60,
+        EQUAL = 61,
+        GREATER_THAN = 62,
+        QUESTION_MARK = 63,
+        AT = 64,
+
+        UPPER_A = 65,
+        UPPER_F = 70,
+        UPPER_Z = 90,
+
+        LEFT_SQUARE = 91,
+        BACKSLASH = 92,
+        RIGHT_SQUARE = 93,
+        CARET = 94,
+        UNDERSCORE = 95,
+
+        LOWER_A = 97,
+        LOWER_B = 98,
+        LOWER_C = 99,
+        LOWER_D = 100,
+        LOWER_E = 101,
+        LOWER_F = 102,
+        LOWER_G = 103,
+        LOWER_H = 104,
+        LOWER_I = 105,
+        LOWER_J = 106,
+        LOWER_K = 107,
+        LOWER_L = 108,
+        LOWER_M = 109,
+        LOWER_N = 110,
+        LOWER_O = 111,
+        LOWER_P = 112,
+        LOWER_Q = 113,
+        LOWER_R = 114,
+        LOWER_S = 115,
+        LOWER_T = 116,
+        LOWER_U = 117,
+        LOWER_V = 118,
+        LOWER_W = 119,
+        LOWER_X = 120,
+        LOWER_Y = 121,
+        LOWER_Z = 122,
+
+        LEFT_BRACE = 123,
+        BAR = 124,
+        RIGHT_BRACE = 125,
+        TILDA = 126;
+
+
+
+    /**
+     * Note this doesn't tell you in full if something is numeric because it
+     * also depends on the context of the whole word. 
+     *
+     * For example 'b' will fail with this test, however '0b1111' is numeric.
+     * Only rely on this for checking a single character and not the whole word.
+     *
+     * @return True or False if the code is for an ASCII character between 0 and 9.
+     */
+    var isNumeric = function( code ) {
+        return ( code >= ZERO && code <= NINE ) ;
+    }
+
+
+
+    /**
+     *
+     */
+    var isAlphaNumeric = function( code ) {
+        return (
+            ( code >= LOWER_A && code <= LOWER_Z ) || // lower case letter
+            ( code >= UPPER_A && code <= UPPER_Z ) || // upper case letter
+            ( code === UNDERSCORE ) ||
+            ( code >= ZERO && code <= NINE )     // a number
+            );
+    }
+
+
 
     var scriptOrderArray = [];
 
@@ -71,12 +151,6 @@ there.
         }
     }
 
--------------------------------------------------------------------------------
-
-## jsx.executeScripts
-
--------------------------------------------------------------------------------
-
     jsx.executeScripts = function() {
         setTimeout( function() {
             var scripts = document.getElementsByTagName( 'script' );
@@ -97,15 +171,6 @@ there.
     }
 
 
--------------------------------------------------------------------------------
-
-## jsx.executeUrl( url )
-
-Note that you can provide a single url as a string, or multiple urls in an 
-array.
-
--------------------------------------------------------------------------------
-
     jsx.executeUrl = function( url ) {
         if ( typeof url === 'string' ) {
             jsx.compileUrl( url, orderCallbacks(scriptOrderArray, function(err, code) {
@@ -125,13 +190,6 @@ array.
     }
 
 
--------------------------------------------------------------------------------
-
-## jsx.executeCode( code )
-
-Parses the given code, and then inserts it into a script tag.
-
--------------------------------------------------------------------------------
 
     jsx.executeCode = function( code ) {
         setTimeout( orderCallbacks(scriptOrderArray, function() {
@@ -139,28 +197,6 @@ Parses the given code, and then inserts it into a script tag.
         }), 0);
     }
 
-
--------------------------------------------------------------------------------
-
-## jsx.compileUrl( url, callback )
-
-Callback must take the form
-
-```
-    function( ex:Error, code:string, url:string, ajaxObj:XMLHttpRequest )
-
- * 'Ex' will be null if there was no error, and non-null if there was an error.
-
- * 'url' is the url you gave to the compileUrl function.
-
- * 'code' is the compiled code, which will only be present if the request was
-   successful. It will be null if it was not successful.
-
- * 'ajaxObj' is the object used to make the request, and is provided for 
-   completeness. If for some reason the ajax object failed to be created, then
-   this will be null.
-
--------------------------------------------------------------------------------
 
     jsx.compileUrl = function( url, callback ) {
         try {
@@ -227,19 +263,69 @@ Callback must take the form
         }
     };
 
--------------------------------------------------------------------------------
 
-## jsx.compile( srcCode )
+    var replaceIndentationWithOpenDoubleQuote = function(match) {
+        var strLen = match.length;
 
--------------------------------------------------------------------------------
+        if ( strLen === 4 ) {
+            return '    "';
+        } else if ( strLen > 4 ) {
+            // concat on all indentation spaces, but remove 1, which is replaced with a quote
+            // i.e. '     ' -> '    "'
+            var newStr = '';
+            for ( ; strLen > 2; strLen-- ) {
+                newStr += ' ';
+            }
 
-    jsx.compile = function( srcCode, injectedVariables ) {
+            return newStr + '"';
+        } else {
+            return match;
+        }
+    };
+
+    var replaceIndentationWithOpenSingleQuote = function(match) {
+        var strLen = match.length;
+
+        if ( strLen === 4 ) {
+            return "    '";
+        } else if ( strLen > 4 ) {
+            // concat on all indentation spaces, but remove 1, which is replaced with a quote
+            // i.e. '     ' -> '    "'
+            var newStr = '';
+            for ( ; strLen > 2; strLen-- ) {
+                newStr += ' ';
+            }
+
+            return newStr + "'";
+        } else {
+            return match;
+        }
+    };
+
+    var parseInjectedVariables = function( injectedVariables ) {
+        var str = '';
+
+        for ( var k in injectedVariables ) {
+            if ( injectedVariables.hasOwnProperty(k) ) {
+                str += 
+                        "window['" +
+                                k.replace(/'/g, "\\'").replace(/\\/g, "\\\\") +
+                        "'] = " + 
+                        injectedVariables[k] +
+                        ";";
+            }
+        }
+
+        return str;
+    }
+
+    jsx.compile = function( code, injectedVariables ) {
         var injectedCode = '';
         if ( injectedVariables ) {
             injectedCode = parseInjectedVariables( injectedVariables );
         }
 
-        var lines = srcCode.split(/\n\r|\r\n|\n|\r/);
+        var lines = code.split(/\n\r|\r\n|\n|\r/);
 
         var isMarkdown      = true,
             commentStarted  = false,
@@ -449,7 +535,6 @@ Callback must take the form
                                 inDoubleString = true;
                             } else if ( c === "'" ) {
                                 inSingleString = true;
-
                             } else if ( c === '/' ) {
                                 // todo
                                 // replace with '#' for ecmascript 6
@@ -487,6 +572,7 @@ Callback must take the form
                             ) {
                                 l = l.substring( 0, k ) + 'return' + l.substring( k+2 );
                                 k += 6 - 1; // length of 'return' - 1
+
                              // ?? -> arguments[arguments.i = ++arguments.i || 0]
                             } else if (
                                                 c === '?' &&
@@ -497,7 +583,73 @@ Callback must take the form
                                 var newString = '(arguments[arguments.i = ++arguments.i||0])';
                                 l = l.substring( 0, k ) + newString + l.substring( k+2 );
                                 k += newString.length + 1;
+
+                            // 0b010101 number literal
+                            } else if (
+                                                    c === '0' &&
+                                    l.charCodeAt(k+1) === LOWER_B &&
+                                    ! isAlphaNumeric(l.charCodeAt(k-1))
+                            ) {
+                                // +2 is to skip the '0b' we have already seen
+                                var charI = k + 2;
+                                while ( charI < lLen ) {
+                                    var charC = l.charCodeAt( charI++ );
+
+                                    if ( charC !== ZERO && charC !== ONE ) {
+                                        break;
+                                    }
+                                }
+
+                                if ( charI > k + 3 ) {
+                                    var num = l.substring( k+2, charI );
+                                    var numString = parseInt( num, 2 ) + '';
+                                    l = l.substring( 0, k ) + numString + l.substring( charI );
+
+                                    k += numString.length;
+                                }
+
+                            // numbers that are actually strings
+                            //  i.e. 100%, 10px
+                            } else if ( isNumeric(l.charCodeAt(k)) ) {
+                                var charI = k+1;
+                                var isString = false;
+
+                                while ( charI < lLen ) {
+                                    var charC = l.charCodeAt( charI++ );
+
+                                    if (
+                                            charC === SPACE ||
+                                            charC === TAB   ||
+                                            charC === SLASH_N ||
+                                            charC === SLASH_R
+                                    ) {
+                                        break;
+
+                                    } else if ( ! isNumeric(charC) ) {
+                                        isString = true;
+
+                                    }
+                                }
+
+                                if ( isString ) {
+                                    var newStr = '"' + l.substring( k+2, charI ) + '"' ;
+                                    l = l.substring( 0, k ) + newStr + l.substring( charI );
+                                    k += newStr.length;
+                                }
+
+                            // for css colours like #aaa
+                            } else if ( c === '#' ) {
+                                var charI = k+1;
+
+                                while ( charI < lLen && isBreakCharCode(l.charCodeAt(charI)) ) {
+                                    charI++
+                                }
+
+                                var newStr = '"' + l.substring( k+2, charI ) + '"' ;
+                                l = l.substring( 0, k ) + newStr + l.substring( charI );
+                                k += newStr.length;
                             }
+
                         }
                     } // for c in line
 
@@ -511,69 +663,6 @@ Callback must take the form
 
         return code.join( "\n" );
     }
-
-    var replaceIndentationWithOpenDoubleQuote = function(match) {
-        var strLen = match.length;
-
-        if ( strLen === 4 ) {
-            return '    "';
-        } else if ( strLen > 4 ) {
-            // concat on all indentation spaces, but remove 1, which is replaced with a quote
-            // i.e. '     ' -> '    "'
-            var newStr = '';
-            for ( ; strLen > 2; strLen-- ) {
-                newStr += ' ';
-            }
-
-            return newStr + '"';
-        } else {
-            return match;
-        }
-    };
-
-    var replaceIndentationWithOpenSingleQuote = function(match) {
-        var strLen = match.length;
-
-        if ( strLen === 4 ) {
-            return "    '";
-        } else if ( strLen > 4 ) {
-            // concat on all indentation spaces, but remove 1, which is replaced with a quote
-            // i.e. '     ' -> '    "'
-            var newStr = '';
-            for ( ; strLen > 2; strLen-- ) {
-                newStr += ' ';
-            }
-
-            return newStr + "'";
-        } else {
-            return match;
-        }
-    };
-
-    var parseinjectedvariables = function( injectedvariables ) {
-        var str = '';
-
-        for ( var k in injectedvariables ) {
-            if ( injectedvariables.hasownproperty(k) ) {
-                str += 
-                        "window['" +
-                                k.replace(/'/g, "\\'").replace(/\\/g, "\\\\") +
-                        "'] = " + 
-                        injectedvariables[k] +
-                        ";";
-            }
-        }
-
-        return str;
-    }
-
--------------------------------------------------------------------------------
-
-### newScriptCode( code:string, src:string )
-
-Creates a new script tag, and adds it to the head, for it to be executed.
-
--------------------------------------------------------------------------------
 
     var newScriptCode = function( code, src ) {
         src = src || "<anonymous script tag>";
@@ -601,8 +690,6 @@ Creates a new script tag, and adds it to the head, for it to be executed.
         }
     }
 
--------------------------------------------------------------------------------
--------------------------------------------------------------------------------
 
     var isListTest = function( line ) {
         return (
@@ -628,19 +715,6 @@ Creates a new script tag, and adds it to the head, for it to be executed.
                 );
     }
 
-
--------------------------------------------------------------------------------
-
-### isJSXScriptType( type:string )
-
-Used to test if the 'type' attribute of a script tag, is the correct type for
-a JSX file.
-
-@param The type returned from calling 'getAttribute("type")' on a script tag.
-@return True if there is a type, and it's a JSX type, otherwise false.
-
--------------------------------------------------------------------------------
-
     var isJSXScriptType = function( type ) {
         if ( type !== null && type !== undefined && type !== '' ) {
             type = type.toLowerCase();
@@ -656,13 +730,6 @@ a JSX file.
             return false;
         }
     }
-
--------------------------------------------------------------------------------
-
-Automatically parse scripts if the 'data-autocompile="true"' is set on this
-script tag.
-
--------------------------------------------------------------------------------
 
     var script = document.currentScript;
     if ( ! script ) {

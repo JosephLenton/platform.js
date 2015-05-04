@@ -1,13 +1,16 @@
-"use strict";
 
-/**
- * The higher level DOM alternative, BB-Gun.
- * It wraps doms, allowing you to do slightly more.
- *
- * It is intended that you would extend this,
- * to create your own nodes.
- */
-window['BBGun'] = (function() {
+===============================================================================
+
+# BBGun
+
+The higher level DOM alternative, BB-Gun.
+It wraps doms, allowing you to do slightly more.
+
+It is intended that you would extend this,
+to create your own nodes.
+
+===============================================================================
+
     var newBBGunType = function( bb ) {
         bb = bb || window['bb'];
         assert( bb, "bb.js is not loaded." );
@@ -20,13 +23,18 @@ window['BBGun'] = (function() {
             }
         }
 
-        /**
-         * The event handler.
-         *
-         * It works in two levels:
-         *  - events do *not* propagate to parents by default.
-         *  - events are passed to those on the same level, unless they return false.
-         */
+
+
+-------------------------------------------------------------------------------
+
+#EventsManager
+
+It works in two levels:
+ - events do *not* propagate to parents by default.
+ - events are passed to those on the same level, unless they return false.
+
+-------------------------------------------------------------------------------
+
         var EventsManager = function( xe ) {
             this.xe = xe;
             this.events = {};
@@ -209,6 +217,14 @@ window['BBGun'] = (function() {
             }
         }
 
+
+
+-------------------------------------------------------------------------------
+
+## BBGun
+
+-------------------------------------------------------------------------------
+
         var BBGun = function( domType ) {
             this.__xeEvents = null;
             this.__isBBGun  = true;
@@ -221,11 +237,18 @@ window['BBGun'] = (function() {
             )
         }
 
-        /**
-         * Clones the whole module, provided you with another copy.
-         *
-         * @param Optional, the BB library copy this will be working with.
-         */
+
+
+-------------------------------------------------------------------------------
+
+## BBGun.clone( bb )
+
+Clones the whole module, provided you with another copy.
+
+@param Optional, the BB library copy this will be working with.
+
+-------------------------------------------------------------------------------
+
         BBGun.clone = function( bb ) {
             return newBBGunType( bb );
         }
@@ -349,9 +372,10 @@ window['BBGun'] = (function() {
         }
 
         BBGun.prototype = {
-            /**
-             * A list of all 'legal' events.
-             */
+
+
+A list of all 'legal' events.
+
             __eventList: {
                     'replace': true,
                     'beforereplace': true,
@@ -360,52 +384,48 @@ window['BBGun'] = (function() {
                     'beforeremove': true
             },
 
-            /**
-             *      parent() -> BBGun | null
-             *
-             * Returns the BBGun parent of this object, or
-             * null if this has no parent.
-             *
-             * @return The BBGun parent above this one,
-             *         or null.
-             *
-             *      parent( BBGun ) -> boolean
-             *
-             * Given a BBGun instance, this returns true
-             * if it is the parent of this object, and false
-             * if not.
-             *
-             * @param bbgun A BBGun object to test against.
-             * @return True if the BBGun given is the parent
-             *         of this, otherwise false.
-             *
-             *      parent( (BBGun) -> any ) -> BBGun | null | any
-             *
-             * Given a function, it will call the function,
-             * if this has a parent. If there is no parent,
-             * then null is returned.
-             *
-             * If the function returns a value other than
-             * undefined, this will be returned instead of
-             * the parent.
-             *
-             * This means if the function returns 'false'
-             * or 'null', then 'false' or 'null' will be
-             * returned.
-             *
-             *      parent( string ) -> BBGun | null
-             *
-             * Given a string description of a node, this will
-             * search for it, and return the first parent that
-             * matches, if found.
-             *
-             * If not found, then this will return null.
-             *
-             *      parent( string, (BBGun) -> any ) -> BBGun | null | any
-             *
-             * This is a mix of the function and string version
-             * of parent.
-             */
+
+
+-------------------------------------------------------------------------------
+
+### bbgun.parent() -> BBGun | null
+
+Returns the BBGun parent of this object, or null if this has no parent.
+
+@return The BBGun parent above this one, or null.
+
+### bbgun.parent( BBGun ) -> boolean
+
+Given a BBGun instance, this returns true if it is the parent of this object, 
+and false if not.
+
+@param bbgun A BBGun object to test against.
+@return True if the BBGun given is the parent of this, otherwise false.
+
+### bbgun.parent( (BBGun) -> any ) -> BBGun | null | any
+
+Given a function, it will call the function, if this has a parent. If there is 
+no parent, then null is returned.
+
+If the function returns a value other than undefined, this will be returned 
+instead of the parent.
+
+This means if the function returns 'false' or 'null', then 'false' or 'null' 
+will be returned.
+
+### bbgun.parent( string ) -> BBGun | null
+
+Given a string description of a node, this will search for it, and return the 
+first parent that matches, if found.
+
+If not found, then this will return null.
+
+### bbgun.parent( string, (BBGun) -> any ) -> BBGun | null | any
+
+This is a mix of the function and string version of parent.
+
+-------------------------------------------------------------------------------
+
             parent: function( f, f2 ) {
                 var argsLen = arguments.length;
 
@@ -472,13 +492,18 @@ window['BBGun'] = (function() {
                 return null;
             },
 
-            /**
-             *      children() -> [ BBGun ]
-             *
-             *      children( (BBGun) -> any ) -> [ BBGun ]
-             *
-             * @return An array containing all of the children of this BBGun.
-             */
+
+
+-------------------------------------------------------------------------------
+
+### bbgun.children() -> [ BBGun ]
+
+### bbgun.children( (BBGun) -> any ) -> [ BBGun ]
+
+@return An array containing all of the children of this BBGun.
+
+-------------------------------------------------------------------------------
+
             children: function( f, f2 ) {
                 var argsLen = arguments.length;
 
@@ -643,7 +668,7 @@ window['BBGun'] = (function() {
                 return this;
             },
 
-            /**
+            /*
              * The event is called *before* the replacement.
              * This allows you to cancel the replacelement,
              * by returning false.
@@ -661,52 +686,57 @@ window['BBGun'] = (function() {
                 return this;
             },
 
-            /**
-             * Replaces this node with the one given,
-             * or replaces one child with another.
-             *
-             *      replace( newNode ) -> this
-             *
-             * Replaces this node, with the one given,
-             * in the DOM.
-             *
-             *      replace( childNode, newNode ) -> this
-             *
-             * Replaces the childNode given, with the nodeNode.
-             * The child must be a child of this node.
-             *
-             *      replace( (newNode, newDom:Element) -> any ) -> this 
-             *
-             * Adds a function to be called, when this node
-             * is replaced by another.
-             *
-             *      foo.replace( function(newNode) {
-             *          // on 'replace' event here
-             *      } );
-             *
-             *      replace( (newNode, newDom:Element) -> any,
-             *               (newNode, newDom:Element) -> any ) -> this 
-             *
-             *      foo.replace(
-             *          function(newNode) {
-             *              // on 'beforeReplace' event here
-             *          },
-             *          function(newNode) {
-             *              // on 'replace' event here
-             *          }
-             *      );
-             *
-             * The first parameter is whatever was given, for
-             * the replacement. This could be text, an object
-             * description, a BBGun node, or whatever.
-             *
-             * The second parameter is the DOM node for that
-             * newNode.
-             *
-             * If an Element was given, then 'newNode' and 'newDom'
-             * will be identical.
-             *
-             */
+
+
+-------------------------------------------------------------------------------
+
+Replaces this node with the one given,
+or replaces one child with another.
+
+### bbgun.replace( newNode ) -> this
+
+Replaces this node, with the one given,
+in the DOM.
+
+### bbgun.replace( childNode, newNode ) -> this
+
+Replaces the childNode given, with the nodeNode.
+The child must be a child of this node.
+
+### bbgun.replace( (newNode, newDom:Element) -> any ) -> this 
+
+Adds a function to be called, when this node
+is replaced by another.
+
+@example
+     foo.replace( function(newNode) {
+         // on 'replace' event here
+     } );
+
+### bbgun.replace( (newNode, newDom:Element) -> any, (newNode, newDom:Element) -> any ) -> this 
+
+@example
+     foo.replace(
+         function(newNode) {
+             // on 'beforeReplace' event here
+         },
+         function(newNode) {
+             // on 'replace' event here
+         }
+     );
+
+The first parameter is whatever was given, for
+the replacement. This could be text, an object
+description, a BBGun node, or whatever.
+
+The second parameter is the DOM node for that
+newNode.
+
+If an Element was given, then 'newNode' and 'newDom'
+will be identical.
+
+-------------------------------------------------------------------------------
+
             replace: function( oldNode, newNode ) {
                 var argsLen = arguments.length;
                 assert( argsLen > 0, "not enough arguments given" );
@@ -759,6 +789,8 @@ window['BBGun'] = (function() {
                 return this;
             },
 
+
+
             beforeRemove: function( f ) {
                 assert( arguments.length === 1, "number of parameters is incorrect" );
                 assertFunction( f );
@@ -766,29 +798,35 @@ window['BBGun'] = (function() {
                 return this.on( 'beforeremove', f );
             },
 
-            /**
-             * remove()
-             *
-             *  Removes this from it's parent DOM node.
-             *
-             * remove( Event )
-             *
-             *  Removes this from it's parent DOM node,
-             *  and passes the event to any listeners.
-             *
-             * remove( node )
-             *
-             *  Removes the node given, from this.
-             *  If it is not found, then an error is raised.
-             *
-             * remove( function(ev) {
-             *      // on remove code here
-             * } )
-             *
-             *  Adds an event to be called, when this node is
-             *  removed. Note that it only works if you are
-             *  working through BBGun objects API.
-             */
+
+
+-------------------------------------------------------------------------------
+
+## remove()
+
+Removes this from it's parent DOM node.
+
+## remove( Event )
+
+Removes this from it's parent DOM node,
+and passes the event to any listeners.
+
+## remove( node )
+
+Removes the node given, from this.
+If it is not found, then an error is raised.
+
+@example
+    remove( function(ev) {
+        // on remove code here
+    } )
+
+Adds an event to be called, when this node is
+removed. Note that it only works if you are
+working through BBGun objects API.
+
+-------------------------------------------------------------------------------
+
             remove: function() {
                 var argsLen = arguments.length;
 
@@ -888,7 +926,7 @@ window['BBGun'] = (function() {
                 } else if (argsLen === 1) {
                     if (isString(obj)) {
                         return this.dom().style[obj];
-                    } else if (isObject(obj)) {
+                    } else if (isObjectLiteral(obj)) {
                         bb.style(this.dom(), obj);
                     } else {
                         fail("invalid style parameter", obj);
@@ -999,5 +1037,7 @@ window['BBGun'] = (function() {
         return BBGun;
     }
 
-    return newBBGunType();
-})();
+    window['BBGun'] = newBBGunType();
+
+
+
