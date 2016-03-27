@@ -1,0 +1,36 @@
+#!/bin/bash
+
+DIR="$(cd "$( dirname "$0" )" && pwd )"
+
+JSX="node ./build/jsx-client.js"
+
+SRC="./src"
+DIST="./dist"
+
+pushd $DIR/..
+
+# 
+# The files are listed manually as their order of compilation does matter.
+# Core must come first, and bb must be imported before bbGun.
+#
+$JSX                                                                          \
+    --verbose                                                                 \
+    --src                                                                     \
+      $SRC/libs/core/core.jsx                                                 \
+      $SRC/libs/shim.jsx                                                      \
+      $SRC/libs/check.jsx                                                     \
+      $SRC/libs/abc.jsx                                                       \
+      $SRC/libs/extras.jsx                                                    \
+      $SRC/libs/function.jsx                                                  \
+      $SRC/libs/math.jsx                                                      \
+      $SRC/libs/touchy.js                                                     \
+                                                                              \
+      $SRC/jsx.jsx                                                            \
+      $SRC/compiler.jsx                                                       \
+      $SRC/bb.jsx                                                             \
+      $SRC/bb-gun.jsx                                                         \
+                                                                              \
+    --out $DIST/platform.js
+
+popd
+
