@@ -18,20 +18,20 @@ it will be of this type by default.
 
 ## about events
 
-Custom events can be created. When the event goes to be placed on the DOM 
+Custom events can be created. When the event goes to be placed on the DOM
 element, these custom events will be called instead.
 
 They can replace existing events, including HTML events, or can add entirely
 new events (for example adding custom touch events).
 
-The custom events are a function callback which should have the following 
+The custom events are a function callback which should have the following
 signature ...
 
 @example
-    function( 
+    function(
         dom:DOMElement,
         fun:EventCallback,
-        useCapture:boolean, 
+        useCapture:boolean,
         bb:BB,
         evName:string,
         eventParams:string[],
@@ -40,7 +40,7 @@ signature ...
 
 @param dom The dom element that the event is being set to.
 @param fun The function being set by the user for this event.
-@param useCapture A boolean to say if this should capture the events of 
+@param useCapture A boolean to say if this should capture the events of
 child nodes or not.
 @param bb The BB instance used to create this event.
 @param evName The name of the event being set.
@@ -51,7 +51,7 @@ this is the index you should start taking the parameters from. So if it's 0,
 you start from the first element. If it's 1, you ignore the first element.
 (At the time of writing this is always 1, but this may not always be the case).
 
-Most events will have the name like 'touch' or 'mousedown' or something like 
+Most events will have the name like 'touch' or 'mousedown' or something like
 that. You can however add in extra parameters. For example 'mousedown left'.
 
 In that example the 'left' part will be removed and put into the 'eventParams'
@@ -78,14 +78,14 @@ set to the same BROWSER_PROVIDED_DEFAULT object.
     var BROWSER_PROVIDED_DEFAULT = {
             /**
              * A blank function that does nothing.
-             * 
-             * This is here to avoid 'null', so this value is always not-null 
+             *
+             * This is here to avoid 'null', so this value is always not-null
              * in all cases.
              */
             fun: function() { },
 
             /**
-             * True when you should call the function set on this object. 
+             * True when you should call the function set on this object.
              * Otherwise false.
              */
             isFunction: false,
@@ -93,8 +93,8 @@ set to the same BROWSER_PROVIDED_DEFAULT object.
             /**
              * Denotes if there is a native version of this provided by thead
              * browser.
-             * 
-             * Even if this has been wrapped by something custom this should 
+             *
+             * Even if this has been wrapped by something custom this should
              * still be true.
              */
             isBrowserProvided: true
@@ -118,8 +118,8 @@ set to the same BROWSER_PROVIDED_DEFAULT object.
 
 
     var newBBFunctionData = function( callback, oldEvent ) {
-        if ( 
-                ((typeof callback) === 'function') || 
+        if (
+                ((typeof callback) === 'function') ||
                 (callback instanceof Function)
         ) {
             return {
@@ -266,7 +266,7 @@ All of the HTML events available.
 
             // this is added manually as a custom event,
             // to deal with prefixes.
-            
+
             'transitionend',
             'animationstart',
             'animationend',
@@ -307,7 +307,7 @@ All of the HTML events available.
             'reset',
             'show',
             'submit',
-                
+
             /* L3 Dom Events */
             'DOMActivate',
             'load',
@@ -539,7 +539,7 @@ before this code is called.
 -------------------------------------------------------------------------------
 
     var setOnInner = function( bb, evFun, dom, evName, evParams, fun, useCapture ) {
-        if ( dom instanceof Array ) {
+        if ( dom instanceof Array || dom instanceof NodeList ) {
             for ( var i = 0; i < dom.length; i++ ) {
                 setOnInner( bb, evFun, dom[i], evName, evParams, fun, useCapture );
             }
@@ -779,7 +779,7 @@ before this code is called.
          */
         if ( isString(obj) ) {
             return createString( bb, obj );
-            
+
         /*
          * An array of classes.
          */
@@ -907,7 +907,7 @@ before this code is called.
 
 -------------------------------------------------------------------------------
 
-Takes a boolean flag and an array, and sets all the klasses in the array on or 
+Takes a boolean flag and an array, and sets all the klasses in the array on or
 off depending on the flag.
 
 -------------------------------------------------------------------------------
@@ -1197,16 +1197,16 @@ so it's DRY'd up and placed here.
                     var inputType = newDom.getAttribute('type');
 
                     if (
-                            inputType === 'button' || 
-                            inputType === 'submit' || 
-                            inputType === 'checkbox' 
+                            inputType === 'button' ||
+                            inputType === 'submit' ||
+                            inputType === 'checkbox'
                     ) {
                         newDom.addEventListener( 'click', val );
                     } else {
                         fail(
                                 "function given for object description for new input of " +
                                 inputType +
-                                " (don't know what to do with it)" 
+                                " (don't know what to do with it)"
                         );
                     }
                 } else {
@@ -1228,8 +1228,8 @@ so it's DRY'd up and placed here.
 
 -------------------------------------------------------------------------------
 
-@param isApply This is true when 'attrOne' is being called repeteadly over the 
-same DOM element. Namely this is done when DOM elements are described and 
+@param isApply This is true when 'attrOne' is being called repeteadly over the
+same DOM element. Namely this is done when DOM elements are described and
 created.
 
 -------------------------------------------------------------------------------
@@ -1272,17 +1272,17 @@ created.
             }
 
             if ( k === "nodeName" || k === "tagName" ) {
-                /* 
+                /*
                  * do nothing,
-                 * 
+                 *
                  * Do not fail, because this can be used through an outer method,
                  * where the nodeName/tagName was used to create this element.
                  */
 
             } else if ( k === 'className' ) {
                 if ( isApply ) {
-                    // String check is there because most of the time 'val' 
-                    // will being a string. So just check for that and then 
+                    // String check is there because most of the time 'val'
+                    // will being a string. So just check for that and then
                     // decide if it's an object literal laterz.
                     if ( (typeof val !== 'string') && isObjectLiteral(val) ) {
                         toggleClassObj( dom, val, null, null );
@@ -1350,8 +1350,8 @@ created.
 
             /* custom BBGun Event */
             } else if (
-                    bbGun !== null && 
-                    bbGun.constructor.prototype.__eventList[k] === true 
+                    bbGun !== null &&
+                    bbGun.constructor.prototype.__eventList[k] === true
             ) {
                 bbGun.on( k, val );
 
@@ -1402,7 +1402,7 @@ created.
 
 ### setText dom:Element text:string
 
-Sets the given string, to the dom element given. This is set to it's 
+Sets the given string, to the dom element given. This is set to it's
 textContent if it is a standard HTMLElement, and to it's value if it is a
 HTMLInput.
 
@@ -1436,7 +1436,7 @@ Anything else will cause an error to be raised.
 This exists as a function for unifying strings and arrays of strings, as one.
 
 @param text The text to combine.
-@return Either the array of strings combined, or if given a string, it will 
+@return Either the array of strings combined, or if given a string, it will
   just be returned.
 
 -------------------------------------------------------------------------------
@@ -1724,10 +1724,10 @@ adding new custom events which you can use on DOM elements.
                  *      classPrefix( prefix ) -> this
                  */
 
-                 /* 
+                 /*
                   * It was built for CSS namespacing, but I don't know if this
                   * is ever used?
-                  * 
+                  *
                   * Maybe in BBGun???
                   */
                 classPrefix: function( prefix ) {
@@ -1743,7 +1743,7 @@ adding new custom events which you can use on DOM elements.
                     var ev = this.data.events[ name ];
 
                     if (
-                            ev !== undefined && 
+                            ev !== undefined &&
                             ev !== null
                     ) {
                         return ev;
@@ -1753,13 +1753,13 @@ adding new custom events which you can use on DOM elements.
                 },
 
                 /**
-                 * 
+                 *
                  */
                 getElement: function( name ) {
                     var ev = this.data.elements[ name ];
 
-                    if ( 
-                            ev !== undefined && 
+                    if (
+                            ev !== undefined &&
                             ev !== null
                     ) {
                         return ev;
@@ -1776,8 +1776,8 @@ adding new custom events which you can use on DOM elements.
                  *
                  * For example, you could over-write 'click' for touch devices,
                  * or add new events such as 'taponce'.
-                 * 
-                 * Events should use the event callback signature which is 
+                 *
+                 * Events should use the event callback signature which is
                  * documented at the top of this file.
                  */
                 event: newRegisterMethod( 'event', 'eventOne' ),
@@ -1795,7 +1795,7 @@ adding new custom events which you can use on DOM elements.
                 isEvent: function( name ) {
                     var ev = this.data.events[ name ];
 
-                    return ev !== undefined && 
+                    return ev !== undefined &&
                            ev !== null
                 },
 
@@ -1823,7 +1823,7 @@ adding new custom events which you can use on DOM elements.
                  * @param fun A function callback which creates, and returns, the element.
                  */
                 element: newRegisterMethod( 'element', 'elementOne' ),
-                
+
                 elementOne: function( name, fun ) {
                     this.data.elements[ name ] = newBBFunctionData( fun, this.data.elements[name] );
                 }
@@ -1842,12 +1842,12 @@ adding new custom events which you can use on DOM elements.
                 /**
                  * If you create an element, which is named with one of those
                  * below, then it will be created as an input with that type.
-                 * 
+                 *
                  * For example:
-                 * 
+                 *
                  *      // returns <input type="submit"></input>
-                 *      bb.createElement( 'submit' ); 
-                 * 
+                 *      bb.createElement( 'submit' );
+                 *
                  */
                 element( [
                                 'button',
@@ -1929,14 +1929,16 @@ These events include:
         bb.on = function( dom, name, fun, useCapture ) {
             assert(
                     dom === window ||
-                    (dom instanceof HTMLElement) ||
+                    (dom instanceof HTMLElement ) ||
                     (dom instanceof HTMLDocument) ||
+                    (dom instanceof NodeList    ) ||
+                    (dom instanceof Array       ) ||
                     dom.__isBBGun,
-                
-                    "HTML Element expected in bb.on."
-            );
 
-            var argsLen = arguments.length;
+                    "HTML Element expected in bb.on."
+            )
+
+            var argsLen = arguments.length
 
             if ( argsLen === 4 ) {
                 setOnOff( bb, setOnInner, bb.setup.data.events, dom, name, fun, !! useCapture )
@@ -1988,10 +1990,22 @@ These events include:
 -------------------------------------------------------------------------------
 
         bb.removeOn = function( dom, name, fun, useCapture ) {
-            var argsLen = arguments.length;
+            assert(
+                    dom === window ||
+                    (dom instanceof HTMLElement ) ||
+                    (dom instanceof HTMLDocument) ||
+                    (dom instanceof NodeList    ) ||
+                    (dom instanceof Array       ) ||
+                    dom.__isBBGun,
+
+                    "HTML Element expected in bb.on."
+            )
+
+            var argsLen = arguments.length
 
             if ( argsLen === 4 ) {
                 setOnOff( bb, setOffInner, bb.setup.data.events, dom, name, fun, !! useCapture )
+
             } else if ( argsLen === 3 ) {
                 if ( fun === true ) {
                     setOnOffObject( bb, setOffInner, bb.setup.data.events, dom, name, true )
@@ -2000,8 +2014,10 @@ These events include:
                 } else {
                     setOnOff( bb, setOffInner, bb.setup.data.events, dom, name, fun, false )
                 }
+
             } else if ( argsLen === 2 ) {
                 setOnOffObject( bb, setOffInner, bb.setup.data.events, dom, name, false )
+
             } else {
                 fail( "unknown parameters given", arguments )
             }
@@ -2024,7 +2040,7 @@ This does 2 things:
 
 -------------------------------------------------------------------------------
 
-        bb.onInternal = function( dom, evName, origFun, evCallback, useCapture ) { 
+        bb.onInternal = function( dom, evName, origFun, evCallback, useCapture ) {
             var funCallback = { orig: origFun, callback: evCallback };
             var map;
 
@@ -2069,14 +2085,14 @@ This does 2 things:
                                     dom.removeEventListener(
                                             evName,
                                             callback[j],
-                                            useCapture 
+                                            useCapture
                                     );
                                 }
                             } else if ( isFunction(callback) ) {
                                 dom.removeEventListener(
                                         evName,
                                         callback,
-                                        useCapture 
+                                        useCapture
                                 );
                             } else {
                                 fail( "unknown callback found in 'bb.onRemoveInternal' from the dom" );
@@ -2113,7 +2129,7 @@ This does 2 things:
 
 ## bb.create
 
-Used as the standard way to 
+Used as the standard way to
 
 ```
       bb.create( html-element,
@@ -2255,7 +2271,7 @@ Creates just an element, of the given name.
 
 What makes this special is that it also hooks into the provided names, such as
 'button' as shorthand the input with type button.
- 
+
 @param domName The name of the component to create.
 @return A Element for the name given.
 
@@ -2288,8 +2304,8 @@ What makes this special is that it also hooks into the provided names, such as
                         klass = name.substring( seperatorSpace );
                     }
                 } else if (
-                        seperatorSpace === -1 || 
-                        (seperatorDot < seperatorSpace) 
+                        seperatorSpace === -1 ||
+                        (seperatorDot < seperatorSpace)
                 ) {
                     type = name.substring( 0, seperatorDot );
                     klass = name.substring( seperatorDot );
@@ -2314,7 +2330,7 @@ What makes this special is that it also hooks into the provided names, such as
                         assert(
                                 dom && dom.nodeType !== undefined,
                                 "html element event, must return a HTML Element, or BBGun",
-                                dom 
+                                dom
                         );
                     }
                 } else {
@@ -2338,7 +2354,7 @@ What makes this special is that it also hooks into the provided names, such as
                         className.indexOf(' ' + klass      ) === (className.length - (klass.length + 1)) ||
                         className.indexOf(' ' + klass + ' ') !== -1 ;
             }
-        } 
+        }
 
         bb.hasClassArray = function( dom, klasses, i ) {
             if ( i === undefined ) {
@@ -2386,7 +2402,7 @@ You can also toggle multiple classes on or off ...
 ```
      bb.toggleClass( dom, 'foobar', 'bar' );
 
-A function can be provided for 
+A function can be provided for
 
 ```
      bb.toggleClass( dom, 'show', function( isAdded ) {
@@ -2403,7 +2419,7 @@ uniformity. It is just always true for the added fun, and
 false for the removed fun.
 
 ```
-     bb.toggleClass( dom, 'show', 
+     bb.toggleClass( dom, 'show',
              function( isAdded ) {
                  // show was added
              },
@@ -2441,13 +2457,13 @@ This is useful for using conditions to set a class on or off.
 
             } else {
 
-                // 
+                //
                 // check for the last param being a function,
                 //      bb.toggleClass( dom, klasses .... onAddFun)
-                // 
+                //
                 // or last two being 2 functions:
                 //      bb.toggleClass( dom, klasses .... onAddFun, onRemoveFun)
-                // 
+                //
 
                 var onAdd    = null;
                 var onRemove = null;
@@ -2475,11 +2491,11 @@ This is useful for using conditions to set a class on or off.
                     onAdd = null;
                 }
 
-                // bb.toggleClass div, isShowBool, "show" ... potentially more classes ... 
+                // bb.toggleClass div, isShowBool, "show" ... potentially more classes ...
                 if ( isBoolean(arguments[1]) ) {
                     assert( argsLen > 2, "not enough arguments provided" );
 
-                    if ( 
+                    if (
                             ( argsLen === 3 && onAdd === null                   ) ||
                             ( argsLen === 4 && onAdd !== null && onRemove === null ) ||
                             ( argsLen === 5 && onAdd !== null && onRemove !== null )
@@ -2508,20 +2524,20 @@ This is useful for using conditions to set a class on or off.
                 // bb.toggleClass div, klass, toggleFlag:boolean, onAdd?, onRemove?
                 } else if ( isBoolean(arguments[2]) ) {
 
-                    // 
+                    //
                     // this motherfucker is to check ensures that the parameters went ...
-                    // 
+                    //
                     //      div,
                     //      klass,
                     //      boolean,
                     //      maybe onAdd function,
                     //      maybe onRemove function
-                    assert( 
+                    assert(
                             ( argsLen === 3 && onAdd === null                   ) ||
                             ( argsLen === 4 && onAdd !== null && onRemove === null ) ||
                             ( argsLen === 5 && onAdd !== null && onRemove !== null ),
 
-                            "too many parameters provided for toggleClass." 
+                            "too many parameters provided for toggleClass."
                     );
 
                     return toggleClassBoolean( dom,
@@ -2738,7 +2754,7 @@ buttons, and so on.
 
 ### bb.previous dom query skip
 
-The same as bb.next, but instead of searching forward, this will search 
+The same as bb.next, but instead of searching forward, this will search
 backwards.
 
 This stops searching when it gets to the start of the element, unless 'wrap' is
@@ -3046,7 +3062,7 @@ For example:
  - value,   Sets the value within this element. This applies to inputs and
    textareas.
 
- - stopPropagation For the events named, they are set, with a function which 
+ - stopPropagation For the events named, they are set, with a function which
    will simply stop propagation of that event.
  - preventDefault  For the events named, this will set a function, which
    prevents the default action from taking place.
@@ -3065,11 +3081,11 @@ Anything else is set as an attribute of the object.
 
                     if ( obj === 'className' || obj === 'class' ) {
                         return realDom.className;
-                    } else if ( 
+                    } else if (
                             obj === 'value' ||
                             ( realDom instanceof HTMLInputElement && (
                                     obj === 'text' ||
-                                    obj === 'textContent' 
+                                    obj === 'textContent'
                             ) )
                     ) {
                         return obj.value;
@@ -3078,7 +3094,7 @@ Anything else is set as an attribute of the object.
                     } else if (
                             obj === 'html'      ||
                             obj === 'innerHTML' ||
-                            obj === 'innerHtml' 
+                            obj === 'innerHtml'
                     ) {
                         return realDom.innerHTML;
                     } else if (
@@ -3151,7 +3167,7 @@ Events for click, and hold, under touch interface, is pre-provided.
 Pre-provided Keyboard Events
 ----------------------------
 
-These events will bind when these keypresses have been pressed. If you want 
+These events will bind when these keypresses have been pressed. If you want
 something more sophisticated, build it yourself.
 
 ===============================================================================
@@ -3181,67 +3197,67 @@ alternative names for keys. For example 'esc' will be changed to 'escape', and
 
                 } else if ( key === 'enter' ) {
                     return '\r';
-                
+
                 } else if ( key === 'space' ) {
                     return ' ';
-                    
+
                 } else if ( key === 'comma' ) {
                     return ',';
-                    
+
                 } else if ( key === 'fullstop' ) {
                     return '.';
 
-                    
+
                 } else if ( key === 'singlequote' ) {
                     return "'";
-                    
+
                 } else if ( key === 'doublequote' ) {
                     return '"';
-                    
+
                 } else if ( key === 'plus' ) {
                     return '+';
-                    
+
                 } else if ( key === 'multiply' ) {
                     return '*';
 
-                    
+
                 } else if ( key === 'del' ) {
                     return 'delete';
-                    
+
                 } else if ( key === 'menu' ) {
                     return 'contextmenu';
-                    
+
                 } else if ( key === 'esc' ) {
                     return 'escape';
-                    
+
                 } else if ( key === 'ctrl' ) {
                     return 'control';
 
-                    
+
                 } else if ( key === 'left' ) {
                     return 'arrowleft';
-                    
+
                 } else if ( key === 'leftarrow' ) {
                     return 'arrowleft';
 
-                    
+
                 } else if ( key === 'right' ) {
                     return 'arrowright';
-                    
+
                 } else if ( key === 'rightarrow' ) {
                     return 'arrowright';
 
-                    
+
                 } else if ( key === 'down' ) {
                     return 'arrowdown';
-                    
+
                 } else if ( key === 'downarrow' ) {
                     return 'arrowdown';
 
-                    
+
                 } else if ( key === 'up' ) {
                     return 'arrowup';
-                    
+
                 } else if ( key === 'uparrow' ) {
                     return 'arrowup';
 
@@ -3405,10 +3421,10 @@ It can also take an array of values which in turn is just the previous two.
 
 @example
     // sets two functions to the keypress
-    bb.on( dom, 'keypress', [ someFun, anotherFun ] ); 
+    bb.on( dom, 'keypress', [ someFun, anotherFun ] );
     // one function for keypress enter, another for escape
-    bb.on( dom, 'keypress', [{ enter: startFun }, { esc: cancelFun }] ); 
-    
+    bb.on( dom, 'keypress', [{ enter: startFun }, { esc: cancelFun }] );
+
 The event name can also take keys within that. For example:
 
 @example
@@ -3580,7 +3596,7 @@ or not.
 
                 /*
                  * Test the modifier keys, either ...
-                 * 
+                 *
                  *  * the bit mask is set to 'any',
                  *  * or the ev modifier is false and the bit in test state is 0
                  *  * or the ev modifier is true and the bit in test state is 1
@@ -3588,23 +3604,23 @@ or not.
                 if (
                         // the bitmask is set to any
                         t === ANY || (
-                                (!!ev.shiftDown || !!ev.shiftKey) === ((t & SHIFT) === 1) && 
-                                (!!ev.ctrlDown  || !!ev.ctrlKey ) === ((t & CTRL ) === 1) && 
-                                (!!ev.altDown   || !!ev.altKey  ) === ((t & ALT  ) === 1) && 
+                                (!!ev.shiftDown || !!ev.shiftKey) === ((t & SHIFT) === 1) &&
+                                (!!ev.ctrlDown  || !!ev.ctrlKey ) === ((t & CTRL ) === 1) &&
+                                (!!ev.altDown   || !!ev.altKey  ) === ((t & ALT  ) === 1) &&
                                 (!!ev.metaDown  || !!ev.metaKey ) === ((t & META ) === 1)
                         )
                 ) {
 
                     /*
                      * Now test the actual key.
-                     * 
+                     *
                      * These tests are ...
                      *  - there is a charCode, and it matches test
                      *  - there is a keyCode, and it matches test
                      *  - there is a named key, and it matches test
                      *  - there is a char, and it matches test
                      */
-                    if ( 
+                    if (
                         ( ev.charCode !== 0 && ev.charCode === keyTest.charCode ) ||
                         ( ev.keyCode  !== 0 && ev.keyCode  === keyTest.keyCode  )
                     ) {
