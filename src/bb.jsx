@@ -1311,7 +1311,7 @@ created.
             } else if ( k === 'text' || k === 'textContent' ) {
                 setText( dom, combineStringOne(val), true )
             } else if ( k === 'html' || k === 'innerHTML' || k === 'innerHtml' ) {
-                bb.htmlOne( dom, val );
+                setHTML( bb, dom, el, false )
             } else if ( k === 'value' ) {
                 if ( val === undefined || val === null ) {
                     dom.value = '';
@@ -1398,9 +1398,41 @@ created.
 
 
 
+===============================================================================
+
+### setHTML bb:BB dom:Element el:string|Element|string[]|Element[] append:boolean
+
+===============================================================================
+
+    var setHTML = function( bb, dom, el, append ) {
+        assert( el, "given element is not valid" );
+
+        if ( isString(el) ) {
+            if ( append ) {
+                dom.insertAdjacentHTML( 'beforeend', content )
+            } else {
+                dom.innerHTML = el
+            }
+        } else if ( el.nodeType !== undefined ) {
+            dom.appendChild( el );
+        } else if ( el.__isBBGun ) {
+            dom.appendChild( el.dom() )
+        } else if ( el instanceof Array ) {
+            bb.htmlArray( dom, el, 0 )
+        } else if ( isObjectLiteral(el) ) {
+            dom.appendChild( bb.describe(el) )
+        } else {
+            fail( "Unknown html value given", el );
+        }
+
+        return dom;
+    }
+
+
+
 -------------------------------------------------------------------------------
 
-### setText dom:Element text:string
+### setText dom:Element text:string append:boolean
 
 Sets the given string, to the dom element given. This is set to it's
 textContent if it is a standard HTMLElement, and to it's value if it is a
@@ -2930,27 +2962,11 @@ Sets the HTML content within this element.
 -------------------------------------------------------------------------------
 
         bb.html = function( dom ) {
-            return bb.htmlArray( dom, arguments, 1 );
+            return bb.htmlArray( dom, arguments, 1 )
         }
 
         bb.htmlOne = function( dom, el ) {
-            assert( el, "given element is not valid" );
-
-            if ( isString(el) ) {
-                dom.innerHTML = el;
-            } else if ( el.nodeType !== undefined ) {
-                dom.appendChild( el );
-            } else if ( el.__isBBGun ) {
-                dom.appendChild( el.dom() )
-            } else if ( el instanceof Array ) {
-                bb.htmlArray( dom, el, 0 )
-            } else if ( isObjectLiteral(el) ) {
-                dom.appendChild( bb.describe(el) )
-            } else {
-                fail( "Unknown html value given", el );
-            }
-
-            return dom;
+            setHTML( bb, dom, el, false )
         }
 
         bb.htmlArray = function( dom, htmls, i ) {
@@ -2964,38 +2980,40 @@ Sets the HTML content within this element.
              * Content is cached, so multiple HTML strings
              * are inserted once.
              */
-            var content = '',
-                children = [];
+            var content = ''
+
             for ( ; i < htmls.length; i++ ) {
-                var el = htmls[i];
+                var el = htmls[i]
 
                 if ( isString(el) ) {
-                    content += el;
-                } else if ( el instanceof Array ) {
-                    bb.htmlArray( dom, el, 0 );
+                    content += el
+
                 } else {
                     if ( content !== '' ) {
-                        dom.insertAdjacentHTML( 'beforeend', content );
-                        content = '';
+                      dom.insertAdjacentHTML( 'beforeend', content )
+                      content = ''
                     }
 
-                    if ( el.nodeType !== undefined ) {
-                        dom.appendChild( el );
+                    if ( el instanceof Array ) {
+                        bb.htmlArray( dom, el, 0 )
+
+                    } else if ( el.nodeType !== undefined ) {
+                        dom.appendChild( el )
+
                     } else if ( el.__isBBGun ) {
-                        dom.appendChild( el.dom() );
+                        dom.appendChild( el.dom() )
+
                     } else if ( isObjectLiteral(el) ) {
-                        dom.appendChild(
-                                bb.describe(el)
-                        );
+                        dom.appendChild( bb.describe(el) )
                     }
                 }
             }
 
             if ( content !== '' ) {
-                dom.insertAdjacentHTML( 'beforeend', content );
+                dom.insertAdjacentHTML( 'beforeend', content )
             }
 
-            return dom;
+            return dom
         }
 
 -------------------------------------------------------------------------------
