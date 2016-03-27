@@ -1414,12 +1414,12 @@ HTMLInput.
 
     var setText = function( dom, text ) {
         if ( dom instanceof HTMLInputElement ) {
-            dom.value = text;
+            dom.value = text
         } else {
-            dom.textContent = text;
+            dom.textContent = text
         }
 
-        <- dom;
+        return dom
     }
 
 
@@ -1441,13 +1441,16 @@ This exists as a function for unifying strings and arrays of strings, as one.
 
 -------------------------------------------------------------------------------
 
-    var combineStringOne = function(text) {
+    var combineStringOne = function( text ) {
         if ( text instanceof Array ) {
-            <- combineStringArray( text, 0 );
+            return combineStringArray( text, 0 )
+
         } else if ( isString(text) ) {
-            <- text;
+            return text
+
         } else {
-            fail( "non-string given for text content", text );
+            fail( "non-string given for text content", text )
+
         }
     }
 
@@ -1473,23 +1476,25 @@ start joining from the second element onwards.
 
     var combineStringArray = function( args, startI ) {
         if ( startI === undefined ) {
-            startI = 0;
+            startI = 0
         }
 
-        var argsLen = args.length;
+        var argsLen = args.length
 
         if ( startI > argsLen ) {
-            fail( "start index is greater than the array length" );
+            fail( "start index is greater than the array length" )
+
         } else if ( startI === argsLen ) {
-            <- '';
+            return ''
+
         } else {
-            var allText = combineStringOne( args[startI++] );
+            var allText = combineStringOne( args[startI++] )
 
             while( startI++ < argsLen ) {
-                allText += combineStringOne( args[startI] );
+                allText += combineStringOne( args[startI] )
             }
 
-            <- allText;
+            return allText
         }
     }
 
@@ -1503,11 +1508,13 @@ start joining from the second element onwards.
 
     var addClassOne = function( dom, klass ) {
         if ( isString(klass) ) {
-            return addClassOneString( dom, klass );
+            return addClassOneString( dom, klass )
+
         } else if ( isArray(klass) ) {
-            return addClassArray( dom, klass, 0 );
+            return addClassArray( dom, klass, 0 )
+
         } else {
-            fail("Unknown klass value given for adding a class");
+            fail("Unknown klass value given for adding a class")
         }
     }
 
@@ -1522,7 +1529,7 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
 -------------------------------------------------------------------------------
 
     var addClassOneString = function( dom, klass ) {
-        assertString( klass, "Given class names are not a string." );
+        assertString( klass, "Given class names are not a string." )
 
         /*
          * Take the class apart, and then append the pieces indevidually.
@@ -1530,43 +1537,43 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
          */
         if ( klass.length > 0 ) {
             if ( klass.indexOf(' ') !== -1 ) {
-                var parts = klass.split( ' ' );
+                var parts = klass.split( ' ' )
 
                 for ( var i = 0; i < parts.length; i++ ) {
-                    var part = parts[i];
+                    var part = parts[i]
 
                     if ( part.length > 0 ) {
                         if ( part.indexOf('.') !== -1 ) {
-                            var partParts = part.split('.');
+                            var partParts = part.split('.')
 
                             for ( var j = 0; j < partParts.length; j++ ) {
-                                var partPart = partParts[j];
+                                var partPart = partParts[j]
 
                                 if ( partPart.length > 0 ) {
-                                    dom.classList.add( partPart );
+                                    dom.classList.add( partPart )
                                 }
                             }
                         } else {
-                            dom.classList.add( part );
+                            dom.classList.add( part )
                         }
                     }
                 }
             } else if ( klass.indexOf('.') !== -1 ) {
-                var parts = klass.split( '.' );
+                var parts = klass.split( '.' )
 
                 for ( var i = 0; i < parts.length; i++ ) {
-                    var part = parts[i];
+                    var part = parts[i]
 
                     if ( part.length > 0 ) {
-                        dom.classList.add( part );
+                        dom.classList.add( part )
                     }
                 }
             } else if ( klass.length > 0 ) {
-                dom.classList.add( klass );
+                dom.classList.add( klass )
             }
         }
 
-        return dom;
+        return dom
     }
 
 
@@ -1576,14 +1583,14 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
 
     var addClassArray = function( dom, args, i ) {
         if ( i === undefined ) {
-            i = 0;
+            i = 0
         }
 
         iterateClasses( args, i, args.length, function(klass) {
-            dom.classList.add( klass );
+            dom.classList.add( klass )
         } )
 
-        return dom;
+        return dom
     }
 
 
@@ -1593,21 +1600,23 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
 
     var setClassOne = function( dom, klass ) {
         if ( typeof klass === 'string' ) {
-            dom.className = klass.replace(/\./g, ' ');
+            dom.className = klass.replace(/\./g, ' ')
+
         } else if ( klass instanceof Array ) {
             // sub arrays will also get joined but with a comma
             // so we use the replace to remove the comma as well as the dots
-            dom.className = klass.join(' ').replace(/\.|,/g, ' ');
+            dom.className = klass.join(' ').replace(/\.|,/g, ' ')
+
         } else if ( isObjectLiteral(klass) ) {
-            dom.className = '';
+            dom.className = ''
 
             for ( var k in klass ) {
                 if ( klass.has(k) && klass[k] ) {
-                    dom.classList.add( k );
+                    dom.classList.add( k )
                 }
             }
         } else {
-            fail( "Expected ClassName to be a string or array of strings, but it's something else." );
+            fail( "Expected ClassName to be a string or array of strings, but it's something else." )
         }
     }
 
@@ -1618,10 +1627,10 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
 
     var removeClassOne = function( dom, klasses ) {
         iterateClassesString( klasses, function(klass) {
-            dom.classList.remove( klass );
+            dom.classList.remove( klass )
         } )
 
-        return dom;
+        return dom
     }
 
 
@@ -2337,15 +2346,16 @@ What makes this special is that it also hooks into the provided names, such as
                     dom = document.createElement( type );
                 }
             } else {
-                <- bb.setClass( document.createElement(DEFAULT_ELEMENT), name )
+                return bb.setClass( document.createElement(DEFAULT_ELEMENT), name )
             }
 
-            <- ( klass !== '' ) ? bb.setClass( dom, klass ) : dom ;
+            return ( klass !== '' ) ? bb.setClass( dom, klass ) : dom ;
         }
 
         bb.hasClass = function( dom, klass ) {
             if ( dom.classList !== undefined ) {
                 return dom.classList.contains( klass );
+
             } else {
                 var className = dom.className;
 
@@ -2358,18 +2368,19 @@ What makes this special is that it also hooks into the provided names, such as
 
         bb.hasClassArray = function( dom, klasses, i ) {
             if ( i === undefined ) {
-                i = 0;
+                i = 0
             }
 
-            var isRemoved = false;
+            var isRemoved = false
             iterateClasses( klasses, i, klasses.length, function(klass) {
                 if ( ! isRemoved && dom.classList.contains(klass) ) {
-                    isRemoved = true;
-                    return false;
-                }
-            } );
+                    isRemoved = true
 
-            return isRemoved;
+                    return false
+                }
+            } )
+
+            return isRemoved
         }
 
         bb.removeClass = function( dom ) {
@@ -3007,7 +3018,7 @@ within it.
 -------------------------------------------------------------------------------
 
         bb.text = function( dom ) {
-            <- setText( dom, combineStringArray(arguments, 1) );
+            return setText( dom, combineStringArray(arguments, 1) )
         }
 
 
@@ -3019,7 +3030,7 @@ within it.
 -------------------------------------------------------------------------------
 
         bb.textOne = function( dom, text ) {
-            return setText( dom, combineStringOne(text) );
+            return setText( dom, combineStringOne(text) )
         }
 
 
@@ -3031,7 +3042,7 @@ within it.
 -------------------------------------------------------------------------------
 
         bb.textArray = function( dom, args, startI ) {
-            <- setText( dom, combineStringArray(args, startI) );
+            return setText( dom, combineStringArray(args, startI) )
         }
 
 
@@ -3622,14 +3633,20 @@ or not.
                         ( ev.keyCode  !== 0 && ev.keyCode  === keyTest.keyCode  )
                     ) {
                         return true;
-                    } else if ( keyTest.letter !== undefined ) {
-                        var evKey = ev.key;
 
-                        if ( evKey.length > 1 ) {
-                            return ( evKey.toLowerCase() === keyTest.letter || ev.char.toLowerCase() === keyTest.letter );
-                        } else {
-                            return ( evKey === keyTest.letter || ev.char === keyTest.letter );
+                    } else if ( keyTest.letter !== undefined ) {
+                        var evKey = ev.key || ev.keyIdentifier
+
+                        if ( isString(evKey) && evKey.toLowerCase() === keyTest.letter ) {
+                          return true
                         }
+
+                        var c = ev.char
+                        if ( isString(c) && c.toLowerCase() === keyTest.letter ) {
+                          return true
+                        }
+
+                        return false
                     }
                 }
             }
