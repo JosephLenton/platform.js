@@ -3591,9 +3591,6 @@ or not.
             } else {
                 var t = keyTest.modifierBitmask;
 
-                if ( keyTest.letter === 'f12' ) {
-                }
-
                 /*
                  * Test the modifier keys, either ...
                  *
