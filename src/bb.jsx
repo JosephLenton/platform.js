@@ -1309,7 +1309,7 @@ created.
                 }
 
             } else if ( k === 'text' || k === 'textContent' ) {
-                bb.textOne( dom, val );
+                setText( dom, combineStringOne(val), true )
             } else if ( k === 'html' || k === 'innerHTML' || k === 'innerHtml' ) {
                 bb.htmlOne( dom, val );
             } else if ( k === 'value' ) {
@@ -1408,18 +1408,27 @@ HTMLInput.
 
 @param dom The Element to set the text to.
 @param text A string of the text being set.
+@param append True if the text should be appended, false to replace.
 @return The given dom, for function chaining of elements.
 
 -------------------------------------------------------------------------------
 
-    var setText = function( dom, text ) {
+    var setText = function( dom, text, append ) {
         if ( dom instanceof HTMLInputElement ) {
-            dom.value = text
+            if ( append ) {
+                dom.value += text;
+            } else {
+                dom.value = text;
+            }
+
+        } else if ( append ) {
+            dom.appendChild( document.createTextNode(text) )
+
         } else {
-            dom.textContent = text
+            dom.textContent = text;
         }
 
-        return dom
+        return dom;
     }
 
 
@@ -3018,7 +3027,7 @@ within it.
 -------------------------------------------------------------------------------
 
         bb.text = function( dom ) {
-            return setText( dom, combineStringArray(arguments, 1) )
+            return setText( dom, combineStringArray(arguments, 1), false )
         }
 
 
@@ -3030,7 +3039,7 @@ within it.
 -------------------------------------------------------------------------------
 
         bb.textOne = function( dom, text ) {
-            return setText( dom, combineStringOne(text) )
+            return setText( dom, combineStringOne(text), false )
         }
 
 
@@ -3042,7 +3051,7 @@ within it.
 -------------------------------------------------------------------------------
 
         bb.textArray = function( dom, args, startI ) {
-            return setText( dom, combineStringArray(args, startI) )
+            return setText( dom, combineStringArray(args, startI), false )
         }
 
 
