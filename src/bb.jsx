@@ -3155,6 +3155,28 @@ Anything else is set as an attribute of the object.
 
 ===============================================================================
 
+Normalize Transition End Event
+------------------------------
+
+
+
+===============================================================================
+
+        bb.setup.event( 'transitionend', function( el, callback, useCapture, bb, eventName, rest ) {
+            var handleTransitionEnd = function( ev ) {
+                callback.call( el, ev )
+            }
+
+            el.addEventListener( 'webkitTransitionEnd', handleTransitionEnd, useCapture )
+            el.addEventListener( 'transitionend'      , handleTransitionEnd, useCapture )
+            el.addEventListener( 'msTransitionEnd'    , handleTransitionEnd, useCapture )
+            el.addEventListener( 'oTransitionEnd'     , handleTransitionEnd, useCapture )
+        })
+
+
+
+===============================================================================
+
 Pre-provided Touch Events
 -------------------------
 
