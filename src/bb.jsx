@@ -680,28 +680,23 @@ before this code is called.
         return klass;
     }
 
-    var applyArray = function(bb, bbGun, dom, args, startI) {
+    var applyArray = function(bb, dom, args, startI) {
         if ( args !== null ) {
             var argsLen = args.length;
 
             for (var i = startI; i < argsLen; i++) {
-                applyOne(bb, bbGun, dom, args[i], false);
+                applyOne( bb, dom, args[i], false )
             }
         }
 
         return dom;
     }
 
-    var runAttrFun = function( bb, bbGun, dom, arg ) {
-        bb.__doms[ bb.__domsI ] = dom;
-        bb.__domsI++;
+    var runAttrFun = function( bb, dom, arg ) {
+        bb.__doms[ bb.__domsI ] = dom
+        bb.__domsI++
 
-        var r;
-        if ( bbGun !== null ) {
-            r = arg.call( bbGun );
-        } else {
-            r = arg.call( dom );
-        }
+        var r = arg.call( dom )
 
         /*
          * Any non-undefined result is appended.
@@ -709,54 +704,42 @@ before this code is called.
 
         if ( r !== undefined ) {
             if ( isArray(r) ) {
-                addArray( bb, dom, r, 0 );
+                addArray( bb, dom, r, 0 )
             } else {
-                addOne( bb, dom, r );
+                addOne( bb, dom, r )
             }
         }
 
-        bb.__domsI--;
-        bb.__doms[ bb.__domsI ] = null;
+        bb.__domsI--
+        bb.__doms[ bb.__domsI ] = null
     }
 
-    var applyOne = function(bb, bbGun, dom, arg, stringsAreContent) {
+    var applyOne = function( bb, dom, arg, stringsAreContent ) {
         if (arg instanceof Array) {
-            applyArray( bb, bbGun, dom, arg, 0 );
+            applyArray( bb, dom, arg, 0 )
+
         } else if ( arg.nodeType !== undefined ) {
-            dom.appendChild( arg );
-        } else if ( arg.__isBBGun ) {
-            dom.appendChild( arg.dom() );
+            dom.appendChild( arg )
+
         /*
          * - html
          * - class names
          */
         } else if ( isString(arg) ) {
             if ( stringsAreContent || arg.trim().charAt(0) === '<' ) {
-                dom.insertAdjacentHTML( 'beforeend', arg );
+                dom.insertAdjacentHTML( 'beforeend', arg )
             } else {
-                addClassOneString( dom, arg );
+                addClassOneString( dom, arg )
             }
         } else if ( isObjectLiteral(arg) ) {
-            attrObj( bb, bbGun, dom, arg, true );
+            attrObj( bb, dom, arg, true )
         } else if ( isFunction(arg) ) {
-            runAttrFun( bb, bbGun, dom, arg );
+            runAttrFun( bb, dom, arg )
         } else {
-            fail( "invalid argument given", arg );
+            fail( "invalid argument given", arg )
         }
 
         return dom
-    }
-
-    var createOneBBGun = function( bb, bbgun, obj ) {
-        if ( isObjectLiteral(obj) ) {
-            return createObj( bb, bbgun, obj );
-        } else {
-            var dom = createOne( bb, obj );
-            assert( ! dom.__isBBGun, "BBGun given as basis for new BBGun" );
-            bbgun.dom( dom );
-        }
-
-        return dom;
     }
 
     var createOne = function( bb, obj ) {
@@ -795,27 +778,21 @@ before this code is called.
             }
         } else if ( obj.nodeType !== undefined ) {
             return obj;
-        } else if ( obj.__isBBGun ) {
-            return obj;
         } else if ( isObjectLiteral(obj) ) {
-            return createObj( bb, null, obj );
+            return createObj( bb, obj );
         } else {
             fail( "unknown parameter given", obj );
         }
     }
 
-    var createObj = function( bb, bbGun, obj ) {
+    var createObj = function( bb, obj ) {
         var dom = obj.has("nodeName") ? bb.createElement( obj["nodeName"] ) :
                   obj.has("tagName")  ? bb.createElement( obj["tagName"]  ) :
                                         bb.createElement()                  ;
 
-        if ( bbGun !== null ) {
-            bbGun.dom( dom );
-        }
-
         for ( var k in obj ) {
             if ( obj.has(k) ) {
-                attrOne( bb, bbGun, dom, k, obj[k], false );
+                attrOne( bb, dom, k, obj[k], false );
             }
         }
 
@@ -1070,12 +1047,10 @@ so it's DRY'd up and placed here.
                 }
             } else if ( arg.nodeType !== undefined ) {
                 parentDom.insertBefore( arg, dom );
-            } else if ( arg.__isBBGun ) {
-                parentDom.insertBefore( arg.dom(), dom );
             } else if ( isString(arg) ) {
                 dom.insertAdjacentHTML( 'beforebegin', arg );
             } else if ( isObjectLiteral(arg) ) {
-                parentDom.insertBefore( createObj(bb, null, arg), dom );
+                parentDom.insertBefore( createObj(bb, arg), dom );
             } else {
                 fail( "invalid argument given", arg );
             }
@@ -1092,12 +1067,10 @@ so it's DRY'd up and placed here.
                 }
             } else if ( arg.nodeType !== undefined ) {
                 parentDom.insertAfter( arg, dom );
-            } else if ( arg.__isBBGun ) {
-                parentDom.insertAfter( arg.dom(), dom );
             } else if ( isString(arg) ) {
                 dom.insertAdjacentHTML( 'afterend', arg );
             } else if ( isObjectLiteral(arg) ) {
-                parentDom.insertAfter( createObj(bb, null, arg), dom );
+                parentDom.insertAfter( createObj(bb, arg), dom );
             } else {
                 fail( "invalid argument given", arg );
             }
@@ -1115,14 +1088,10 @@ so it's DRY'd up and placed here.
             } else if ( arg.nodeType !== undefined ) {
                 assert( arg.parentNode === null, "adding element, which already has a parent" );
                 dom.appendChild( arg );
-            } else if ( arg.__isBBGun ) {
-                var argDom = arg.dom();
-                assert( argDom.parentNode === null, "adding element, which already has a parent" );
-                dom.appendChild( argDom );
             } else if ( isString(arg) ) {
                 dom.insertAdjacentHTML( 'beforeend', arg );
             } else if ( isObjectLiteral(arg) ) {
-                dom.appendChild( createObj(bb, null, arg) );
+                dom.appendChild( createObj(bb, arg) );
             } else {
                 fail( "invalid argument given", arg );
             }
@@ -1152,7 +1121,7 @@ so it's DRY'd up and placed here.
      *      '.className'
      *
      */
-    var attrOneNewChild = function( bb, bbGun, dom, k, val, dotI ) {
+    var attrOneNewChild = function( bb, dom, k, val, dotI ) {
         assert( k.length > 1, "empty description given" );
 
         var className = k.substring(dotI+1);
@@ -1160,32 +1129,32 @@ so it's DRY'd up and placed here.
                     k.substring( 0, dotI ) :
                     'div'                  ;
 
-        var newDom = newOneNewChildInner( bb, bbGun, dom, domType, val, k );
+        var newDom = newOneNewChildInner( bb, dom, domType, val, k )
 
         addClassOneString( newDom, className );
     }
 
-    var newOneNewChildInner = function( bb, bbGun, dom, domType, val, debugVal ) {
-        var newDom;
+    var newOneNewChildInner = function( bb, dom, domType, val, debugVal ) {
+        var newDom
 
         if ( isObjectLiteral(val) ) {
-            assert( bb.setup.isElement(domType), "invalid element type given, " + domType );
-            val["nodeName"] = domType;
+            assert( bb.setup.isElement(domType), "invalid element type given, " + domType )
+            val["nodeName"] = domType
 
-            newDom = createObj( bb, null, val );
+            newDom = createObj( bb, val )
+
         } else {
-            newDom = bb.createElement( domType );
+            newDom = bb.createElement( domType )
 
             if ( val.nodeType !== undefined ) {
-                newDom.appendChild( val );
-            } else if ( val.__isBBGun ) {
-                newDom.appendChild( val.dom() );
+                newDom.appendChild( val )
+
             } else if ( isString(val) ) {
-                newDom.innerHTML = val;
+                newDom.innerHTML = val
+
             } else if ( isArray(val) ) {
                 applyArray(
                         this,
-                        null,
                         newDom,
                         val,
                         0
@@ -1234,12 +1203,13 @@ created.
 
 -------------------------------------------------------------------------------
 
-    var attrOne = function(bb, bbGun, dom, k, val, isApply) {
+    var attrOne = function( bb, dom, k, val, isApply ) {
         var dotI = k.indexOf( '.' );
         var ev;
 
         if ( dotI !== -1 ) {
-            attrOneNewChild( bb, bbGun, dom, k, val, dotI );
+            attrOneNewChild( bb, dom, k, val, dotI )
+
         } else {
             var spaceI = k.indexOf(' '),
                 rest = '';
@@ -1326,38 +1296,24 @@ created.
                 setOnOff( bb, setOnInner, bb.setup.data.events, dom, val, PREVENT_DEFAULT_FUN, false )
 
             } else if ( k === 'init' ) {
-                assertFunction( val, "none function given for 'init' attribute" );
-
-                if ( bbGun !== null ) {
-                    val.call( bbGun, bbGun );
-                } else {
-                    val.call( dom, dom );
-                }
+                assertFunction( val, "none function given for 'init' attribute" )
+                val.call( dom, dom )
 
             } else if ( k === 'addTo' ) {
-                assert( dom.parentNode === null, "dom element already has a parent" );
-                createOne( bb, val ).appendChild( dom );
+                assert( dom.parentNode === null, "dom element already has a parent" )
+                createOne( bb, val ).appendChild( dom )
 
             /* Events, includes HTML and custom  */
             } else if ( (ev = bb.setup.getEvent(k)) !== null ) {
-                if ( bbGun !== null ) {
-                    bbGun.on( k, val );
-                } else if ( ev.isFunction ) {
+                if ( ev.isFunction ) {
                     ev.fun( dom, val, false, bb, k, rest );
                 } else {
                     dom.addEventListener( k, val, false )
                 }
 
-            /* custom BBGun Event */
-            } else if (
-                    bbGun !== null &&
-                    bbGun.constructor.prototype.__eventList[k] === true
-            ) {
-                bbGun.on( k, val );
-
             /* new objet creation */
             } else if ( bb.setup.isElement(k) ) {
-                newOneNewChildInner( bb, bbGun, dom, k, val, k );
+                newOneNewChildInner( bb, dom, k, val, k );
 
             /* Arribute */
             } else {
@@ -1378,7 +1334,7 @@ created.
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
-    var attrObj = function(bb, bbGun, dom, obj, isApply) {
+    var attrObj = function(bb, dom, obj, isApply) {
         var hasHTMLText = false;
 
         for ( var k in obj ) {
@@ -1391,7 +1347,7 @@ created.
                     }
                 }
 
-                attrOne( bb, bbGun, dom, k, obj[k], isApply );
+                attrOne( bb, dom, k, obj[k], isApply );
             }
         }
     }
@@ -1415,8 +1371,6 @@ created.
             }
         } else if ( el.nodeType !== undefined ) {
             dom.appendChild( el );
-        } else if ( el.__isBBGun ) {
-            dom.appendChild( el.dom() )
         } else if ( el instanceof Array ) {
             bb.htmlArray( dom, el, 0 )
         } else if ( isObjectLiteral(el) ) {
@@ -1982,8 +1936,7 @@ These events include:
                     (dom instanceof HTMLElement ) ||
                     (dom instanceof HTMLDocument) ||
                     (dom instanceof NodeList    ) ||
-                    (dom instanceof Array       ) ||
-                    dom.__isBBGun,
+                    (dom instanceof Array       ),
 
                     "HTML Element expected in bb.on."
             )
@@ -2045,8 +1998,7 @@ These events include:
                     (dom instanceof HTMLElement ) ||
                     (dom instanceof HTMLDocument) ||
                     (dom instanceof NodeList    ) ||
-                    (dom instanceof Array       ) ||
-                    dom.__isBBGun,
+                    (dom instanceof Array       ),
 
                     "HTML Element expected in bb.on."
             )
@@ -2199,42 +2151,6 @@ Used as the standard way to
             }
         }
 
--------------------------------------------------------------------------------
-
-## bb.createBBGun
-
--------------------------------------------------------------------------------
-
-        bb.createBBGun = function(bbGun, obj, args, i) {
-            if ( i === undefined ) {
-                i = 0
-            }
-
-            return applyArray(
-                    bb,
-                    bbGun,
-                    createOneBBGun( bb, bbGun, obj ),
-                    args,
-                    i
-            )
-        }
-
-        bb.initBBGun = function( bbGun ) {
-            var dom = bbGun.dom();
-
-            if ( arguments.length === 1 ) {
-                return bbGun.dom();
-            } else {
-                return applyArray(
-                        bb,
-                        bbGun,
-                        bbGun.dom(),
-                        arguments,
-                        1
-                );
-            }
-        }
-
         bb.createArray = function( obj, args, i ) {
             if ( i === undefined ) {
                 i = 0
@@ -2242,7 +2158,6 @@ Used as the standard way to
 
             return applyArray(
                     bb,
-                    null,
                     createOne( bb, obj ),
                     args,
                     i
@@ -2252,7 +2167,6 @@ Used as the standard way to
         bb.apply = function( dom ) {
             return applyArray(
                     bb,
-                    null,
                     bb.get( dom, true ),
                     arguments,
                     1
@@ -2266,7 +2180,6 @@ Used as the standard way to
 
             return applyArray(
                     bb,
-                    null,
                     bb.get( dom, true ),
                     args,
                     startI
@@ -2296,7 +2209,7 @@ arguments-add-class stuff.
         bb.createObj = function( obj ) {
             assertObjectLiteral( obj );
 
-            return createObj( bb, null, obj );
+            return createObj( bb, obj );
         }
 
 -------------------------------------------------------------------------------
@@ -2372,19 +2285,15 @@ What makes this special is that it also hooks into the provided names, such as
             var elEv = bb.setup.getElement( type );
             if ( elEv !== null ) {
                 if ( elEv.isFunction ) {
-                    dom = elEv.fun( type );
+                    dom = elEv.fun( type )
 
-                    if ( dom.__isBBGun ) {
-                        dom = dom.dom();
-                    }  else {
-                        assert(
-                                dom && dom.nodeType !== undefined,
-                                "html element event, must return a HTML Element, or BBGun",
-                                dom
-                        );
-                    }
+                    assert(
+                            dom && dom.nodeType !== undefined,
+                            "html element event must return a HTML Element",
+                            dom
+                    )
                 } else {
-                    dom = document.createElement( type );
+                    dom = document.createElement( type )
                 }
             } else {
                 return bb.setClass( document.createElement(DEFAULT_ELEMENT), name )
@@ -2724,9 +2633,7 @@ previous classes are gone.
             } else if ( dom.nodeType !== undefined ) {
                 return dom;
             } else if ( isObjectLiteral(dom) ) {
-                return createObj( bb, null, dom );
-            } else if ( dom.__isBBGun ) {
-                return dom.dom()
+                return createObj( bb, dom );
             } else {
                 fail( "unknown object given", dom );
             }
@@ -2762,12 +2669,8 @@ buttons, and so on.
                 assert( skip >= 0, "negative index given for bb.next" );
             }
 
-            var dom = bb.get( dom );
-            if ( dom.__isBBGun ) {
-                dom = dom.dom();
-            }
-
-            var next = dom.nextSibling;
+            var dom = bb.get( dom )
+            var next = dom.nextSibling
 
             do {
                 if ( next === null ) {
@@ -2826,12 +2729,8 @@ Otherwise, it is exactly the same.
                 assert( skip >= 0, "negative index given for bb.previous" );
             }
 
-            var dom = bb.get( dom );
-            if ( dom.__isBBGun ) {
-                dom = dom.dom();
-            }
-
-            var next = dom.previousSibling;
+            var dom = bb.get( dom )
+            var next = dom.previousSibling
 
             do {
                 if ( next === null ) {
@@ -3000,9 +2899,6 @@ Sets the HTML content within this element.
                     } else if ( el.nodeType !== undefined ) {
                         dom.appendChild( el )
 
-                    } else if ( el.__isBBGun ) {
-                        dom.appendChild( el.dom() )
-
                     } else if ( isObjectLiteral(el) ) {
                         dom.appendChild( bb.describe(el) )
                     }
@@ -3078,7 +2974,7 @@ within it.
 
 ## bb.attr dom
 
-The dom it takes, can be a query for a dom, a BBGun object, or a HTML Element.
+The dom it takes, can be a query for a dom, or a HTML Element.
 For example:
 
 ```
@@ -3149,13 +3045,13 @@ Anything else is set as an attribute of the object.
                         return realDom.getAttribute( obj );
                     }
                 } else if ( isObjectLiteral(obj) ) {
-                    attrObj( bb, null, dom, obj, false );
+                    attrObj( bb, dom, obj, false );
                 } else {
                     fail( "invalid parameter given", obj );
                 }
             } else if ( arguments.length === 3 ) {
                 assertString( obj, "non-string given as key for attr", obj );
-                attrOne( this, null, dom, obj, val, false );
+                attrOne( this, dom, obj, val, false );
             } else {
                 if ( arguments.length < 2 ) {
                     throw new Error( "not enough parameters given" );

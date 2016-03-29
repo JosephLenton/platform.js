@@ -28,7 +28,6 @@ $JSX                                                                          \
       $SRC/jsx.jsx                                                            \
       $SRC/compiler.jsx                                                       \
       $SRC/bb.jsx                                                             \
-      $SRC/bb-gun.jsx                                                         \
                                                                               \
     --out $DIST/platform.js
 
