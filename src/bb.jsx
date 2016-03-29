@@ -1143,6 +1143,14 @@ so it's DRY'd up and placed here.
 
             newDom = createObj( bb, val )
 
+        } else if ( val instanceof Element ) {
+            assert(
+                domType === '' || domType.toLowerCase() === val.nodeName.toLowerCase(),
+                "Type of dom node does not match the type stated in the identifier"
+            )
+
+            newDom = val
+
         } else {
             newDom = bb.createElement( domType )
 
