@@ -249,6 +249,40 @@ and some built by me, which add support for missing JS features.
 
     var __shim__ = window.__shim__;
 
+
+/* ===============================================================================
+
+## window
+
+===============================================================================
+
+
+
+
+===============================================================================
+
+### requestIdleCallback
+
+New function for being called when the browser is idle and can process work.
+The fallback is just to use animation frame sometime in the future.
+
+We call multiple times to avoid being on the next frame where there may be work
+from a legit 'requestAnimationFrame' call.
+
+=============================================================================== */
+
+    __shim__( window,
+        'requestIdleCallback', function(f) {
+            window.requestAnimationFrame(function() {
+                window.requestAnimationFrame(function() {
+                    window.requestAnimationFrame( f )
+                })
+            })
+        }
+    )
+
+
+
 /* ===============================================================================
 
 ## Object
@@ -292,7 +326,7 @@ in the 'extras' file.
 
 Production steps of ECMA-262, Edition 5, 15.4.4.18
 Reference: http://es5.github.com/#x15.4.4.18
-    
+
 ------------------------------------------------------------------------------- */
 
     __shim__( Array.prototype,
@@ -452,9 +486,9 @@ Reference: http://es5.github.com/#x15.4.4.18
 
 Fast repeat, uses the `Exponentiation by squaring` algorithm.
 
-This is optimized for non-FF browsers, because FF already has a version 
+This is optimized for non-FF browsers, because FF already has a version
 in-built.
- 
+
 FireFox also has issues with the use of 'valueOf', where in other browsers it's
 use always yields a speedup. The short of it is that you can only use 'valueOf'
 to convert a String object to a literal string, if you intend to call a lot of
@@ -480,7 +514,7 @@ performance or worse.
                 } else if ( count === 2 ) {
                     var thisVal = this.valueOf();
                     return thisVal + thisVal ;
-                    
+
                 } else if ( count === 3 ) {
                     var thisVal = this.valueOf();
                     return thisVal + thisVal + thisVal;
@@ -615,7 +649,7 @@ performance or worse.
 =============================================================================== */
 
     var div = document.createElement('div');
-    if ( 
+    if (
             div.textContent === undefined &&
             div.innerText !== undefined
     ) {
@@ -629,7 +663,7 @@ performance or worse.
                     addProps( children[i] );
                 }
             }
-        }; 
+        };
 
         var textDesc = {
                 get: function() {
@@ -701,7 +735,7 @@ performance or worse.
             return addProps( oldCreate(name) );
         }
 
-        // add properties to any existing elements 
+        // add properties to any existing elements
         var doms = document.querySelectorAll('*');
         for ( var i = 0; i < doms.length; i++ ) {
             addProps( doms[i] );
@@ -749,7 +783,7 @@ These do *not* use __shim__, as it breaks in IE 8!
 
 ### element.matchesSelector()
 
-A new W3C selection tester, for testing if a node matches a selection. Very 
+A new W3C selection tester, for testing if a node matches a selection. Very
 new, so it's either browser specific, or needs a shim.
 
 @author termi https://gist.github.com/termi
@@ -763,7 +797,7 @@ new, so it's either browser specific, or needs a shim.
                 Element.prototype.webkitMatchesSelector ||
                 Element.prototype.mozMatchesSelector ||
                 Element.prototype.msMatchesSelector ||
-                Element.prototype.oMatchesSelector || 
+                Element.prototype.oMatchesSelector ||
                 function(selector) {
                     if(!selector)return false;
                     if(selector === "*")return true;
@@ -798,7 +832,7 @@ new, so it's either browser specific, or needs a shim.
                     }
 
                     parent = thisObj.parentNode;
-                  
+
                     if (parent && parent.querySelector) {
                         match = parent.querySelector(selector) === thisObj;
                     }
@@ -840,15 +874,15 @@ NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
 @source http://purl.eligrey.com/github/classList.js/blob/master/classList.js
 
 ------------------------------------------------------------------------------- */
-  
+
     if (typeof document !== "undefined" && !("classList" in document.createElement("a"))) {
         (function (view) {
             "use strict";
-             
+
             if ( !('HTMLElement' in view) && !('Element' in view) ) {
                 return;
             }
-             
+
             var
                   classListProp = "classList"
                 , protoProp = "prototype"
@@ -935,7 +969,7 @@ NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
                     }
                 }
                 while (++i < l);
-             
+
                 if (updated) {
                     this._updateClassName();
                 }
@@ -958,7 +992,7 @@ NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
                     }
                 }
                 while (++i < l);
-             
+
                 if (updated) {
                     this._updateClassName();
                 }
@@ -966,7 +1000,7 @@ NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
 
             classListProto.toggle = function (token, forse) {
                 token += "";
-             
+
                 var
                       result = this.contains(token)
                     , method = result ?
@@ -974,18 +1008,18 @@ NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
                     :
                         forse !== false && "add"
                 ;
-             
+
                 if (method) {
                     this[method](token);
                 }
-             
+
                 return result;
             };
 
             classListProto.toString = function () {
                 return this.join(" ");
             };
-             
+
             if (objCtr.defineProperty) {
                 var classListPropDesc = {
                       get: classListGetter
@@ -2245,7 +2279,7 @@ it.
 ```
     obj.invoke( 'doWork' );
 
-You may also send a function object as an alternative, which will be called 
+You may also send a function object as an alternative, which will be called
 with the object as it's this context.
 
 ```
@@ -2337,14 +2371,12 @@ only the items *directly* stored are included; prototype items are skipped.
 
 The function is in the form:
 
- function( value, k )
+ function( k, value, i )
 
 'value' is each value stored in turn, whilst 'k' is the key which the value is
 stored under.
 
 'this' is also bound to the value.
-
-This is so that it matches up with Array.map.
 
 @param fun The function to apply against this object's properties.
 
@@ -2352,61 +2384,17 @@ This is so that it matches up with Array.map.
 
     __setProp__( Object.prototype,
             'map', function( fun ) {
-                var rs = [];
+                var rs = []
+                var count = 0
 
-                if ( (typeof fun === 'string') || (fun instanceof String) ) {
-                    if ( arguments.length === 1 ) {
-                        for ( var k in this ) {
-                            if ( this.has(k) ) {
-                                var val = this[k];
-                                rs.push( val[fun].call(val, val, k) );
-                            }
-                        }
-                    } else {
-                        var args = new Array( arguments.length+1 );
-                        for ( var i = 2; i < args.length; i++ ) {
-                            args[i] = arguments[i-1];
-                        }
-
-                        for ( var k in this ) {
-                            if ( this.has(k) ) {
-                                var val = this[k];
-
-                                args[0] = val;
-                                args[1] = k;
-
-                                rs.push( val[fun].apply(val, args) );
-                            }
-                        }
-                    }
-                } else {
-                    if ( arguments.length === 1 ) {
-                        for ( var k in this ) {
-                            if ( this.has(k) ) {
-                                var val = this[k];
-                                rs.push( fun.call(val, val, k) );
-                            }
-                        }
-                    } else {
-                        var args = new Array( arguments.length+1 );
-                        for ( var i = 2; i < args.length; i++ ) {
-                            args[i] = arguments[i-1];
-                        }
-
-                        for ( var k in this ) {
-                            if ( this.has(k) ) {
-                                var val = this[k];
-
-                                args[0] = val;
-                                args[1] = k;
-
-                                rs.push( fun.apply(val, args) );
-                            }
-                        }
+                for ( var k in this ) {
+                    if ( this.has(k) ) {
+                        var val = this[k]
+                        rs.push( fun.call(val, k, val, count++) )
                     }
                 }
 
-                return rs;
+                return rs
             }
     );
 
@@ -2537,7 +2525,7 @@ This also supports currying.
              2
      )
 
-#### currying with underscore 
+#### currying with underscore
 
 It also supports use of the _ variable, to leave variables open for use later.
 
@@ -2720,7 +2708,7 @@ supported in the current browser.
 
             SPACE       : 32,
             ' '         : 32,
-            
+
             PAGE_UP     : 33,
             PAGE_DOWN   : 34,
             END         : 35,
@@ -2730,7 +2718,7 @@ supported in the current browser.
             UP_ARROW    : 38,
             RIGHT_ARROW : 39,
             DOWN_ARROW  : 40,
-            
+
             INSERT      : 45,
             DELETE      : 46,
 
@@ -2815,21 +2803,7 @@ Same as array.map, but for String objects.
 
     __setProp__( String.prototype,
             'map', function( fun ) {
-                if ( typeof fun === 'string' || (fun instanceof String) ) {
-                    var args = new Array( arguments.length+1 );
-                    for ( var i = 2; i < args.length; i++ ) {
-                        args[i] = arguments[i-1];
-                    }
-
-                    return oldMap.call( this, function(obj, i) {
-                        args[0] = obj;
-                        args[1] = i;
-
-                        return obj[fun].apply( obj, args );
-                    } );
-                } else {
-                    return oldMap.apply( this, arguments );
-                }
+                return Array.prototype.map.apply( this, arguments );
             }
     )
 
@@ -2842,7 +2816,7 @@ Same as array.map, but for String objects.
 Returns a version of this string, where all special characters from a regular
 expression, are escaped and made safe.
 
-@return This string, with all RegExp characters escaped, so they no longer 
+@return This string, with all RegExp characters escaped, so they no longer
   affect any RegExp.
 
 ------------------------------------------------------------------------------- */
@@ -2861,7 +2835,7 @@ expression, are escaped and made safe.
 
 @param str The string to search for.
 @return True if the string given is present in this string, and false if not.
-    
+
 ------------------------------------------------------------------------------- */
 
     __setProp__( String.prototype,
@@ -3125,7 +3099,7 @@ expression 100%, or not.
 
 ### string.isInteger()
 
-Tests if this string looks like an integer, and if so, then returns true or 
+Tests if this string looks like an integer, and if so, then returns true or
 false accordingly.
 
 Note this does not take into account hexadecimal, or any other special notation.
@@ -3194,7 +3168,7 @@ a trailing zero.
             } else {
                 var padLen = pad.length;
 
-                return repeatString( pad, 
+                return repeatString( pad,
                         // fast positive division + ceiling
                         ( (diff + padLen - 1) / padLen )|0
                 ) + thisVal ;
@@ -3235,91 +3209,10 @@ a trailing zero.
 
 ===============================================================================
 
+
+
+
 -------------------------------------------------------------------------------
-
-### map shim
-
-This is a shim for the Array.map method, *if* it is not yet implemented.
-
-We fallback onto the old map for some of our behaviour, or define a new one, if
-missing (IE 8).
-
-@see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Array/map#Compatibility
-
-------------------------------------------------------------------------------- */
-
-    var oldMap = Array.prototype.map;
-    if ( ! ('map' in Array.prototype) ) {
-        oldMap = function(callback, thisArg) {
-            var T, A, k;
-
-            if (this === null) {
-              throw new TypeError(" this is null or not defined");
-            }
-
-            // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
-            var O = Object(this);
-
-            // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
-            // 3. Let len be ToUint32(lenValue).
-            var len = O.length >>> 0;
-
-            // 4. If IsCallable(callback) is false, throw a TypeError exception.
-            // See: http://es5.github.com/#x9.11
-            if (typeof callback !== "function") {
-              throw new TypeError(callback + " is not a function");
-            }
-
-            // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
-            if (thisArg) {
-              T = thisArg;
-            }
-
-            // 6. Let A be a new array created as if by the expression new Array(len) where Array is
-            // the standard built-in constructor with that name and len is the value of len.
-            A = new Array(len);
-
-            // 7. Let k be 0
-            k = 0;
-
-            // 8. Repeat, while k < len
-            while(k < len) {
-              var kValue, mappedValue;
-
-              // a. Let Pk be ToString(k).
-              //   This is implicit for LHS operands of the in operator
-              // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
-              //   This step can be combined with c
-              // c. If kPresent is true, then
-              if (k in O) {
-
-                // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
-                kValue = O[ k ];
-
-                // ii. Let mappedValue be the result of calling the Call internal method of callback
-                // with T as the this value and argument list containing kValue, k, and O.
-                mappedValue = callback.call(T, kValue, k, O);
-
-                // iii. Call the DefineOwnProperty internal method of A with arguments
-                // Pk, Property Descriptor {Value: mappedValue, : true, Enumerable: true, Configurable: true},
-                // and false.
-
-                // In browsers that support Object.defineProperty, use the following:
-                // Object.defineProperty(A, Pk, { value: mappedValue, writable: true, enumerable: true, configurable: true });
-
-                // For best browser support, use the following:
-                A[ k ] = mappedValue;
-              }
-              // d. Increase k by 1.
-              k++;
-            }
-
-            // 9. return A
-            return A;
-        };      
-    }
-
-/* -------------------------------------------------------------------------------
 
 ### filterOutMethod
 
@@ -3523,72 +3416,6 @@ returned.
 
 
 
-/* -------------------------------------------------------------------------------
-
-### map
-
-Maps a function, against all elements in the given array. If the function given
-is a function object, then it is run against each element in turn.
-
-```
-    // each unit is updated, with a delta-time given to each one
-    units.map( function(unit, i) {
-        unit.update( delta );
-    } );
-
-The 'this' value is also bound to the value given. This allows the same to be
-written as ...
-
-```
-    // each unit is updated, with a delta-time given to each one
-    units.map( function() {
-        this.update( delta );
-    } );
-
-You can also create and pass in a function to call instead.
-
-```
-    var updateFun = function() {
-        this.update( delta );
-    }
-    units.map( updateFun );
-
-If however it is a string given, then that function is called on each element 
-in turn.
-
-```
-    // each unit is updated, with a delta-time given to each one
-    units.map( 'update', delta );
-
-One or more parameters can be given after the function, as extra parameters to
-execute.
-
-@param fun The function to perform on each element.
-@return A new array, containing the result from each value.
-
-------------------------------------------------------------------------------- */
-
-    __setProp__( Array.prototype,
-            'map', function( fun ) {
-                if ( typeof fun === 'string' || (fun instanceof String) ) {
-                    var args = new Array( arguments.length+1 );
-                    for ( var i = 2; i < args.length; i++ ) {
-                        args[i] = arguments[i-1];
-                    }
-
-                    return oldMap.call( this, function(obj, i) {
-                        args[0] = obj;
-                        args[1] = i;
-
-                        return obj[fun].apply( obj, args );
-                    } );
-                } else {
-                    return oldMap.apply( this, arguments );
-                }
-            }
-    );
-
-
 
 /* -------------------------------------------------------------------------------
 ------------------------------------------------------------------------------- */
@@ -3703,7 +3530,7 @@ This is useful for currying, and it also supports negative indexes.
 ### array.drop( index )
 
 Removes the item at the index given. This can be a negative or positive index.
-The element is deleted from this array, and this array is then returned, 
+The element is deleted from this array, and this array is then returned,
 allowing function chaining.
 
 @param index The index of where to delete an item from this array.
@@ -3737,22 +3564,22 @@ allowing function chaining.
 
                     this.length = len-1;
                 } else {
-                    /* 
+                    /*
                      * This brute-force searches through the indexes given, and
                      * with each lowest index in turn, shuffles all the elements
                      * down the array. This is from 'last+1' to 'delIndex'.
-                     * 
-                     * It then does it once more after the loop, to include 
+                     *
+                     * It then does it once more after the loop, to include
                      * those following the highest 'delIndex'.
-                     * 
+                     *
                      * The lowest index for each, is skipped.
-                     * 
+                     *
                      * Whilst brute force is generally considered bad, it's
                      * best *on very small data sets!* This is because things
-                     * like array construction and function calls, would 
+                     * like array construction and function calls, would
                      * suddenly take up a lot more performance when compared
                      * to O( n^2 ) on a data set with 2 or 3 elements.
-                     * 
+                     *
                      * If lots of people want to delete 20 or more elements,
                      * then it would become a problem.
                      */
@@ -7734,20 +7561,20 @@ it will be of this type by default.
 
 ## about events
 
-Custom events can be created. When the event goes to be placed on the DOM 
+Custom events can be created. When the event goes to be placed on the DOM
 element, these custom events will be called instead.
 
 They can replace existing events, including HTML events, or can add entirely
 new events (for example adding custom touch events).
 
-The custom events are a function callback which should have the following 
+The custom events are a function callback which should have the following
 signature ...
 
 @example
-    function( 
+    function(
         dom:DOMElement,
         fun:EventCallback,
-        useCapture:boolean, 
+        useCapture:boolean,
         bb:BB,
         evName:string,
         eventParams:string[],
@@ -7756,7 +7583,7 @@ signature ...
 
 @param dom The dom element that the event is being set to.
 @param fun The function being set by the user for this event.
-@param useCapture A boolean to say if this should capture the events of 
+@param useCapture A boolean to say if this should capture the events of
 child nodes or not.
 @param bb The BB instance used to create this event.
 @param evName The name of the event being set.
@@ -7767,7 +7594,7 @@ this is the index you should start taking the parameters from. So if it's 0,
 you start from the first element. If it's 1, you ignore the first element.
 (At the time of writing this is always 1, but this may not always be the case).
 
-Most events will have the name like 'touch' or 'mousedown' or something like 
+Most events will have the name like 'touch' or 'mousedown' or something like
 that. You can however add in extra parameters. For example 'mousedown left'.
 
 In that example the 'left' part will be removed and put into the 'eventParams'
@@ -7794,14 +7621,14 @@ set to the same BROWSER_PROVIDED_DEFAULT object. */
     var BROWSER_PROVIDED_DEFAULT = {
             /**
              * A blank function that does nothing.
-             * 
-             * This is here to avoid 'null', so this value is always not-null 
+             *
+             * This is here to avoid 'null', so this value is always not-null
              * in all cases.
              */
             fun: function() { },
 
             /**
-             * True when you should call the function set on this object. 
+             * True when you should call the function set on this object.
              * Otherwise false.
              */
             isFunction: false,
@@ -7809,14 +7636,62 @@ set to the same BROWSER_PROVIDED_DEFAULT object. */
             /**
              * Denotes if there is a native version of this provided by thead
              * browser.
-             * 
-             * Even if this has been wrapped by something custom this should 
+             *
+             * Even if this has been wrapped by something custom this should
              * still be true.
              */
             isBrowserProvided: true
     };
 
+    var __initFunsArr = []
+    var __initFunsI = 0
+    var InitFuns_create = function() {
+      if ( __initFunsI > 0 ) {
+        return __initFunsArr[ --__initFunsI ]
 
+      } else {
+        return {
+            length: 0,
+            arr: []
+        }
+      }
+    }
+
+    var InitFuns_callAndFree = function( initFuns ) {
+      var arr = initFuns.arr
+      var len = initFuns.length
+
+      for ( var i = 0; i < len; i++ ) {
+        var initFun = arr[i]
+        var dom = initFun.dom
+
+        initFun.fun.call( dom, dom )
+
+        // clear
+        initFun.dom = initFun.fun = null
+      }
+
+      initFuns.length = 0
+      __initFunsArr[ __initFunsI++ ] = initFuns
+    }
+
+    var InitFuns_add = function( initFuns, dom, f ) {
+      assert( dom !== null, "null init dom given" )
+      assert( f !== null, "null init function given" )
+
+      var i = initFuns.length++
+      var arr = initFuns.arr
+
+      var initFun;
+      if ( i < arr.length ) {
+        initFun = arr[ i ]
+        initFun.dom = dom
+        initFun.fun = f
+      } else {
+        initFun = { dom: dom, fun: f }
+        arr[ i ] = initFun
+      }
+    }
 
     var listToDataMap = function( arr ) {
         var map = {};
@@ -7834,8 +7709,8 @@ set to the same BROWSER_PROVIDED_DEFAULT object. */
 
 
     var newBBFunctionData = function( callback, oldEvent ) {
-        if ( 
-                ((typeof callback) === 'function') || 
+        if (
+                ((typeof callback) === 'function') ||
                 (callback instanceof Function)
         ) {
             return {
@@ -7982,7 +7857,7 @@ All of the HTML events available.
 
             // this is added manually as a custom event,
             // to deal with prefixes.
-            
+
             'transitionend',
             'animationstart',
             'animationend',
@@ -8023,7 +7898,7 @@ All of the HTML events available.
             'reset',
             'show',
             'submit',
-                
+
             /* L3 Dom Events */
             'DOMActivate',
             'load',
@@ -8255,7 +8130,7 @@ before this code is called.
 ------------------------------------------------------------------------------- */
 
     var setOnInner = function( bb, evFun, dom, evName, evParams, fun, useCapture ) {
-        if ( dom instanceof Array ) {
+        if ( dom instanceof Array || dom instanceof NodeList ) {
             for ( var i = 0; i < dom.length; i++ ) {
                 setOnInner( bb, evFun, dom[i], evName, evParams, fun, useCapture );
             }
@@ -8396,96 +8271,45 @@ before this code is called.
         return klass;
     }
 
-    var applyArray = function(bb, bbGun, dom, args, startI) {
+    var applyArray = function( bb, dom, args, startI, initFuns ) {
         if ( args !== null ) {
             var argsLen = args.length;
 
             for (var i = startI; i < argsLen; i++) {
-                applyOne(bb, bbGun, dom, args[i], false);
+                applyOne( bb, dom, args[i], false, initFuns )
             }
         }
 
         return dom;
     }
 
-    var runAttrFun = function( bb, bbGun, dom, arg ) {
-        bb.__doms[ bb.__domsI ] = dom;
-        bb.__domsI++;
-
-        var r;
-        if ( bbGun !== null ) {
-            r = arg.call( bbGun );
-        } else {
-            r = arg.call( dom );
-        }
-
-        /*
-         * Any non-undefined result is appended.
-         */
-
-        if ( r !== undefined ) {
-            if ( isArray(r) ) {
-                addArray( bb, dom, r, 0 );
-            } else {
-                addOne( bb, dom, r );
-            }
-        }
-
-        bb.__domsI--;
-        bb.__doms[ bb.__domsI ] = null;
-    }
-
-    var applyOne = function(bb, bbGun, dom, arg, stringsAreContent) {
+    var applyOne = function( bb, dom, arg, stringsAreContent, initFuns ) {
         if (arg instanceof Array) {
-            applyArray( bb, bbGun, dom, arg, 0 );
+            applyArray( bb, dom, arg, 0, initFuns )
+
         } else if ( arg.nodeType !== undefined ) {
-            dom.appendChild( arg );
-        } else if ( arg.__isBBGun ) {
-            dom.appendChild( arg.dom() );
+            dom.appendChild( arg )
+
         /*
          * - html
          * - class names
          */
         } else if ( isString(arg) ) {
             if ( stringsAreContent || arg.trim().charAt(0) === '<' ) {
-                dom.insertAdjacentHTML( 'beforeend', arg );
+                dom.insertAdjacentHTML( 'beforeend', arg )
             } else {
-                addClassOneString( dom, arg );
+                addClassOneString( dom, arg )
             }
         } else if ( isObjectLiteral(arg) ) {
-            attrObj( bb, bbGun, dom, arg, true );
-        } else if ( isFunction(arg) ) {
-            runAttrFun( bb, bbGun, dom, arg );
+            attrObj( bb, dom, arg, true, initFuns )
         } else {
-            fail( "invalid argument given", arg );
+            fail( "invalid argument given", arg )
         }
 
         return dom
     }
 
-    var createOneBBGun = function( bb, bbgun, obj ) {
-        if ( isObjectLiteral(obj) ) {
-            return createObj( bb, bbgun, obj );
-        } else {
-            var dom = createOne( bb, obj );
-            assert( ! dom.__isBBGun, "BBGun given as basis for new BBGun" );
-            bbgun.dom( dom );
-        }
-
-        return dom;
-    }
-
-    var createOne = function( bb, obj ) {
-        if ( bb.__domsI === 0 ) {
-            return createOneInner( bb, obj );
-        } else {
-            var newDom = createOneInner( bb, obj );
-            bb.__doms[ bb.__domsI-1 ].appendChild( newDom );
-            return newDom;
-        }
-    }
-
-    var createOneInner = function( bb, obj ) {
+    var createOne = function( bb, obj, initFuns ) {
         /*
          * A String ...
          *  <html element="description"></html>
@@ -8495,7 +8319,7 @@ before this code is called.
          */
         if ( isString(obj) ) {
             return createString( bb, obj );
-            
+
         /*
          * An array of classes.
          */
@@ -8511,27 +8335,21 @@ before this code is called.
             }
         } else if ( obj.nodeType !== undefined ) {
             return obj;
-        } else if ( obj.__isBBGun ) {
-            return obj;
         } else if ( isObjectLiteral(obj) ) {
-            return createObj( bb, null, obj );
+            return createObj( bb, obj, initFuns );
         } else {
             fail( "unknown parameter given", obj );
         }
     }
 
-    var createObj = function( bb, bbGun, obj ) {
+    var createObj = function( bb, obj, initFuns ) {
         var dom = obj.has("nodeName") ? bb.createElement( obj["nodeName"] ) :
                   obj.has("tagName")  ? bb.createElement( obj["tagName"]  ) :
                                         bb.createElement()                  ;
 
-        if ( bbGun !== null ) {
-            bbGun.dom( dom );
-        }
-
         for ( var k in obj ) {
             if ( obj.has(k) ) {
-                attrOne( bb, bbGun, dom, k, obj[k], false );
+                attrOne( bb, dom, k, obj[k], false, initFuns );
             }
         }
 
@@ -8623,7 +8441,7 @@ before this code is called.
 
 /* -------------------------------------------------------------------------------
 
-Takes a boolean flag and an array, and sets all the klasses in the array on or 
+Takes a boolean flag and an array, and sets all the klasses in the array on or
 off depending on the flag.
 
 ------------------------------------------------------------------------------- */
@@ -8786,12 +8604,10 @@ so it's DRY'd up and placed here.
                 }
             } else if ( arg.nodeType !== undefined ) {
                 parentDom.insertBefore( arg, dom );
-            } else if ( arg.__isBBGun ) {
-                parentDom.insertBefore( arg.dom(), dom );
             } else if ( isString(arg) ) {
                 dom.insertAdjacentHTML( 'beforebegin', arg );
             } else if ( isObjectLiteral(arg) ) {
-                parentDom.insertBefore( createObj(bb, null, arg), dom );
+                parentDom.insertBefore( createObj(bb, arg), dom );
             } else {
                 fail( "invalid argument given", arg );
             }
@@ -8808,12 +8624,10 @@ so it's DRY'd up and placed here.
                 }
             } else if ( arg.nodeType !== undefined ) {
                 parentDom.insertAfter( arg, dom );
-            } else if ( arg.__isBBGun ) {
-                parentDom.insertAfter( arg.dom(), dom );
             } else if ( isString(arg) ) {
                 dom.insertAdjacentHTML( 'afterend', arg );
             } else if ( isObjectLiteral(arg) ) {
-                parentDom.insertAfter( createObj(bb, null, arg), dom );
+                parentDom.insertAfter( createObj(bb, arg), dom );
             } else {
                 fail( "invalid argument given", arg );
             }
@@ -8831,14 +8645,10 @@ so it's DRY'd up and placed here.
             } else if ( arg.nodeType !== undefined ) {
                 assert( arg.parentNode === null, "adding element, which already has a parent" );
                 dom.appendChild( arg );
-            } else if ( arg.__isBBGun ) {
-                var argDom = arg.dom();
-                assert( argDom.parentNode === null, "adding element, which already has a parent" );
-                dom.appendChild( argDom );
             } else if ( isString(arg) ) {
                 dom.insertAdjacentHTML( 'beforeend', arg );
             } else if ( isObjectLiteral(arg) ) {
-                dom.appendChild( createObj(bb, null, arg) );
+                dom.appendChild( createObj(bb, arg) );
             } else {
                 fail( "invalid argument given", arg );
             }
@@ -8868,43 +8678,52 @@ so it's DRY'd up and placed here.
      *      '.className'
      *
      */
-    var attrOneNewChild = function( bb, bbGun, dom, k, val, dotI ) {
+    var attrOneNewChild = function( bb, dom, k, val, dotI, initFuns ) {
         assert( k.length > 1, "empty description given" );
 
         var className = k.substring(dotI+1);
-        var domType = ( dotI > 0 ) ?
-                    k.substring( 0, dotI ) :
-                    'div'                  ;
+        var domType =
+                ( dotI > 0               ) ? k.substring( 0, dotI ) :
+                ( val instanceof Element ) ? val.nodeName           :
+                                            'div'                   ;
 
-        var newDom = newOneNewChildInner( bb, bbGun, dom, domType, val, k );
+        var newDom = newOneNewChildInner( bb, dom, domType, val, k, initFuns )
 
         addClassOneString( newDom, className );
     }
 
-    var newOneNewChildInner = function( bb, bbGun, dom, domType, val, debugVal ) {
-        var newDom;
+    var newOneNewChildInner = function( bb, dom, domType, val, debugVal, initFuns ) {
+        var newDom
 
         if ( isObjectLiteral(val) ) {
-            assert( bb.setup.isElement(domType), "invalid element type given, " + domType );
-            val["nodeName"] = domType;
+            assert( bb.setup.isElement(domType), "invalid element type given, " + domType )
+            val["nodeName"] = domType
 
-            newDom = createObj( bb, null, val );
+            newDom = createObj( bb, val, initFuns )
+
+        } else if ( val instanceof Element ) {
+            if ( domType !== '' && domType.toLowerCase() !== val.nodeName.toLowerCase() ) {
+                fail( "Type of dom node does not match the type stated in the identifier, given '" + domType + "', got '" + val.nodeName + "'" )
+            }
+
+            newDom = val
+
         } else {
-            newDom = bb.createElement( domType );
+            newDom = bb.createElement( domType )
 
             if ( val.nodeType !== undefined ) {
-                newDom.appendChild( val );
-            } else if ( val.__isBBGun ) {
-                newDom.appendChild( val.dom() );
+                newDom.appendChild( val )
+
             } else if ( isString(val) ) {
-                newDom.innerHTML = val;
+                newDom.innerHTML = val
+
             } else if ( isArray(val) ) {
                 applyArray(
                         this,
-                        null,
                         newDom,
                         val,
-                        0
+                        0,
+                        initFuns
                 )
             } else if ( isFunction(val) ) {
                 if ( domType === 'a' ) {
@@ -8913,16 +8732,16 @@ so it's DRY'd up and placed here.
                     var inputType = newDom.getAttribute('type');
 
                     if (
-                            inputType === 'button' || 
-                            inputType === 'submit' || 
-                            inputType === 'checkbox' 
+                            inputType === 'button' ||
+                            inputType === 'submit' ||
+                            inputType === 'checkbox'
                     ) {
                         newDom.addEventListener( 'click', val );
                     } else {
                         fail(
                                 "function given for object description for new input of " +
                                 inputType +
-                                " (don't know what to do with it)" 
+                                " (don't know what to do with it)"
                         );
                     }
                 } else {
@@ -8944,18 +8763,19 @@ so it's DRY'd up and placed here.
 
 /* -------------------------------------------------------------------------------
 
-@param isApply This is true when 'attrOne' is being called repeteadly over the 
-same DOM element. Namely this is done when DOM elements are described and 
+@param isApply This is true when 'attrOne' is being called repeteadly over the
+same DOM element. Namely this is done when DOM elements are described and
 created.
 
 ------------------------------------------------------------------------------- */
 
-    var attrOne = function(bb, bbGun, dom, k, val, isApply) {
+    var attrOne = function( bb, dom, k, val, isApply, initFuns ) {
         var dotI = k.indexOf( '.' );
         var ev;
 
         if ( dotI !== -1 ) {
-            attrOneNewChild( bb, bbGun, dom, k, val, dotI );
+            attrOneNewChild( bb, dom, k, val, dotI, initFuns )
+
         } else {
             var spaceI = k.indexOf(' '),
                 rest = '';
@@ -8988,17 +8808,17 @@ created.
             }
 
             if ( k === "nodeName" || k === "tagName" ) {
-                /* 
+                /*
                  * do nothing,
-                 * 
+                 *
                  * Do not fail, because this can be used through an outer method,
                  * where the nodeName/tagName was used to create this element.
                  */
 
             } else if ( k === 'className' ) {
                 if ( isApply ) {
-                    // String check is there because most of the time 'val' 
-                    // will being a string. So just check for that and then 
+                    // String check is there because most of the time 'val'
+                    // will being a string. So just check for that and then
                     // decide if it's an object literal laterz.
                     if ( (typeof val !== 'string') && isObjectLiteral(val) ) {
                         toggleClassObj( dom, val, null, null );
@@ -9025,9 +8845,9 @@ created.
                 }
 
             } else if ( k === 'text' || k === 'textContent' ) {
-                bb.textOne( dom, val );
+                setText( dom, combineStringOne(val), true )
             } else if ( k === 'html' || k === 'innerHTML' || k === 'innerHtml' ) {
-                bb.htmlOne( dom, val );
+                setHTML( bb, dom, val, false )
             } else if ( k === 'value' ) {
                 if ( val === undefined || val === null ) {
                     dom.value = '';
@@ -9042,38 +8862,24 @@ created.
                 setOnOff( bb, setOnInner, bb.setup.data.events, dom, val, PREVENT_DEFAULT_FUN, false )
 
             } else if ( k === 'init' ) {
-                assertFunction( val, "none function given for 'init' attribute" );
-
-                if ( bbGun !== null ) {
-                    val.call( bbGun, bbGun );
-                } else {
-                    val.call( dom, dom );
-                }
+                assertFunction( val, "none function given for 'init' attribute" )
+                InitFuns_add( initFuns, dom, val )
 
             } else if ( k === 'addTo' ) {
-                assert( dom.parentNode === null, "dom element already has a parent" );
-                createOne( bb, val ).appendChild( dom );
+                assert( dom.parentNode === null, "dom element already has a parent" )
+                createOne( bb, val, initFuns ).appendChild( dom )
 
             /* Events, includes HTML and custom  */
             } else if ( (ev = bb.setup.getEvent(k)) !== null ) {
-                if ( bbGun !== null ) {
-                    bbGun.on( k, val );
-                } else if ( ev.isFunction ) {
+                if ( ev.isFunction ) {
                     ev.fun( dom, val, false, bb, k, rest );
                 } else {
                     dom.addEventListener( k, val, false )
                 }
 
-            /* custom BBGun Event */
-            } else if (
-                    bbGun !== null && 
-                    bbGun.constructor.prototype.__eventList[k] === true 
-            ) {
-                bbGun.on( k, val );
-
             /* new objet creation */
             } else if ( bb.setup.isElement(k) ) {
-                newOneNewChildInner( bb, bbGun, dom, k, val, k );
+                newOneNewChildInner( bb, dom, k, val, k, initFuns );
 
             /* Arribute */
             } else {
@@ -9094,7 +8900,7 @@ created.
 /* -------------------------------------------------------------------------------
 ------------------------------------------------------------------------------- */
 
-    var attrObj = function(bb, bbGun, dom, obj, isApply) {
+    var attrObj = function( bb, dom, obj, isApply, initFuns ) {
         var hasHTMLText = false;
 
         for ( var k in obj ) {
@@ -9107,30 +8913,69 @@ created.
                     }
                 }
 
-                attrOne( bb, bbGun, dom, k, obj[k], isApply );
+                attrOne( bb, dom, k, obj[k], isApply, initFuns );
             }
         }
     }
 
 
 
+/* ===============================================================================
+
+### setHTML bb:BB dom:Element el:string|Element|string[]|Element[] append:boolean
+
+=============================================================================== */
+
+    var setHTML = function( bb, dom, el, append ) {
+        assert( el, "given element is not valid" );
+
+        if ( isString(el) ) {
+            if ( append ) {
+                dom.insertAdjacentHTML( 'beforeend', content )
+            } else {
+                dom.innerHTML = el
+            }
+        } else if ( el.nodeType !== undefined ) {
+            dom.appendChild( el );
+        } else if ( el instanceof Array ) {
+            bb.htmlArray( dom, el, 0 )
+        } else if ( isObjectLiteral(el) ) {
+            dom.appendChild( bb.describe(el) )
+        } else {
+            fail( "Unknown html value given", el );
+        }
+
+        return dom;
+    }
+
+
+
 /* -------------------------------------------------------------------------------
 
-### setText dom:Element text:string
+### setText dom:Element text:string append:boolean
 
-Sets the given string, to the dom element given. This is set to it's 
+Sets the given string, to the dom element given. This is set to it's
 textContent if it is a standard HTMLElement, and to it's value if it is a
 HTMLInput.
 
 @param dom The Element to set the text to.
 @param text A string of the text being set.
+@param append True if the text should be appended, false to replace.
 @return The given dom, for function chaining of elements.
 
 ------------------------------------------------------------------------------- */
 
-    var setText = function( dom, text ) {
+    var setText = function( dom, text, append ) {
         if ( dom instanceof HTMLInputElement ) {
-            dom.value = text;
+            if ( append ) {
+                dom.value += text;
+            } else {
+                dom.value = text;
+            }
+
+        } else if ( append ) {
+            dom.appendChild( document.createTextNode(text) )
+
         } else {
             dom.textContent = text;
         }
@@ -9152,18 +8997,21 @@ Anything else will cause an error to be raised.
 This exists as a function for unifying strings and arrays of strings, as one.
 
 @param text The text to combine.
-@return Either the array of strings combined, or if given a string, it will 
+@return Either the array of strings combined, or if given a string, it will
   just be returned.
 
 ------------------------------------------------------------------------------- */
 
-    var combineStringOne = function(text) {
+    var combineStringOne = function( text ) {
         if ( text instanceof Array ) {
-            return combineStringArray( text, 0 );
+            return combineStringArray( text, 0 )
+
         } else if ( isString(text) ) {
-            return text;
+            return text
+
         } else {
-            fail( "non-string given for text content", text );
+            fail( "non-string given for text content", text )
+
         }
     }
 
@@ -9189,23 +9037,25 @@ start joining from the second element onwards.
 
     var combineStringArray = function( args, startI ) {
         if ( startI === undefined ) {
-            startI = 0;
+            startI = 0
         }
 
-        var argsLen = args.length;
+        var argsLen = args.length
 
         if ( startI > argsLen ) {
-            fail( "start index is greater than the array length" );
+            fail( "start index is greater than the array length" )
+
         } else if ( startI === argsLen ) {
-            return '';
+            return ''
+
         } else {
-            var allText = combineStringOne( args[startI++] );
+            var allText = combineStringOne( args[startI++] )
 
             while( startI++ < argsLen ) {
-                allText += combineStringOne( args[startI] );
+                allText += combineStringOne( args[startI] )
             }
 
-            return allText;
+            return allText
         }
     }
 
@@ -9219,11 +9069,13 @@ start joining from the second element onwards.
 
     var addClassOne = function( dom, klass ) {
         if ( isString(klass) ) {
-            return addClassOneString( dom, klass );
+            return addClassOneString( dom, klass )
+
         } else if ( isArray(klass) ) {
-            return addClassArray( dom, klass, 0 );
+            return addClassArray( dom, klass, 0 )
+
         } else {
-            fail("Unknown klass value given for adding a class");
+            fail("Unknown klass value given for adding a class")
         }
     }
 
@@ -9238,7 +9090,7 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
 ------------------------------------------------------------------------------- */
 
     var addClassOneString = function( dom, klass ) {
-        assertString( klass, "Given class names are not a string." );
+        assertString( klass, "Given class names are not a string." )
 
         /*
          * Take the class apart, and then append the pieces indevidually.
@@ -9246,43 +9098,43 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
          */
         if ( klass.length > 0 ) {
             if ( klass.indexOf(' ') !== -1 ) {
-                var parts = klass.split( ' ' );
+                var parts = klass.split( ' ' )
 
                 for ( var i = 0; i < parts.length; i++ ) {
-                    var part = parts[i];
+                    var part = parts[i]
 
                     if ( part.length > 0 ) {
                         if ( part.indexOf('.') !== -1 ) {
-                            var partParts = part.split('.');
+                            var partParts = part.split('.')
 
                             for ( var j = 0; j < partParts.length; j++ ) {
-                                var partPart = partParts[j];
+                                var partPart = partParts[j]
 
                                 if ( partPart.length > 0 ) {
-                                    dom.classList.add( partPart );
+                                    dom.classList.add( partPart )
                                 }
                             }
                         } else {
-                            dom.classList.add( part );
+                            dom.classList.add( part )
                         }
                     }
                 }
             } else if ( klass.indexOf('.') !== -1 ) {
-                var parts = klass.split( '.' );
+                var parts = klass.split( '.' )
 
                 for ( var i = 0; i < parts.length; i++ ) {
-                    var part = parts[i];
+                    var part = parts[i]
 
                     if ( part.length > 0 ) {
-                        dom.classList.add( part );
+                        dom.classList.add( part )
                     }
                 }
             } else if ( klass.length > 0 ) {
-                dom.classList.add( klass );
+                dom.classList.add( klass )
             }
         }
 
-        return dom;
+        return dom
     }
 
 
@@ -9292,14 +9144,14 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
 
     var addClassArray = function( dom, args, i ) {
         if ( i === undefined ) {
-            i = 0;
+            i = 0
         }
 
         iterateClasses( args, i, args.length, function(klass) {
-            dom.classList.add( klass );
+            dom.classList.add( klass )
         } )
 
-        return dom;
+        return dom
     }
 
 
@@ -9309,21 +9161,23 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
 
     var setClassOne = function( dom, klass ) {
         if ( typeof klass === 'string' ) {
-            dom.className = klass.replace(/\./g, ' ');
+            dom.className = klass.replace(/\./g, ' ')
+
         } else if ( klass instanceof Array ) {
             // sub arrays will also get joined but with a comma
             // so we use the replace to remove the comma as well as the dots
-            dom.className = klass.join(' ').replace(/\.|,/g, ' ');
+            dom.className = klass.join(' ').replace(/\.|,/g, ' ')
+
         } else if ( isObjectLiteral(klass) ) {
-            dom.className = '';
+            dom.className = ''
 
             for ( var k in klass ) {
                 if ( klass.has(k) && klass[k] ) {
-                    dom.classList.add( k );
+                    dom.classList.add( k )
                 }
             }
         } else {
-            fail( "Expected ClassName to be a string or array of strings, but it's something else." );
+            fail( "Expected ClassName to be a string or array of strings, but it's something else." )
         }
     }
 
@@ -9334,10 +9188,10 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
 
     var removeClassOne = function( dom, klasses ) {
         iterateClassesString( klasses, function(klass) {
-            dom.classList.remove( klass );
+            dom.classList.remove( klass )
         } )
 
-        return dom;
+        return dom
     }
 
 
@@ -9355,6 +9209,38 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
         } )
 
         return dom;
+    }
+
+
+
+/* -------------------------------------------------------------------------------
+------------------------------------------------------------------------------- */
+
+    var bbGet = function(dom) {
+        assert( dom, "falsy dom given for bb.get" );
+
+        if ( isString(dom) ) {
+            return document.querySelector(dom) || null;
+
+        } else if ( dom.nodeType !== undefined ) {
+            return dom;
+
+        } else {
+            fail( "unknown object given", dom );
+        }
+    }
+
+    var bbGetOrCreate = function( dom ) {
+        if ( isObjectLiteral(dom) ) {
+            var initFuns = InitFuns_create()
+            var dom = createObj( bb, dom, initFuns )
+            InitFuns_callAndFree( initFuns )
+
+            return dom
+        } else {
+            return bbGet( dom )
+
+        }
     }
 
 
@@ -9397,9 +9283,7 @@ and a function.
             }
         }
 
-        bb.__domsI = 0;
-
-        bb.__doms = [];
+        bb.__initFuns = []
 
 
 
@@ -9440,10 +9324,10 @@ adding new custom events which you can use on DOM elements.
                  *      classPrefix( prefix ) -> this
                  */
 
-                 /* 
+                 /*
                   * It was built for CSS namespacing, but I don't know if this
                   * is ever used?
-                  * 
+                  *
                   * Maybe in BBGun???
                   */
                 classPrefix: function( prefix ) {
@@ -9459,7 +9343,7 @@ adding new custom events which you can use on DOM elements.
                     var ev = this.data.events[ name ];
 
                     if (
-                            ev !== undefined && 
+                            ev !== undefined &&
                             ev !== null
                     ) {
                         return ev;
@@ -9469,13 +9353,13 @@ adding new custom events which you can use on DOM elements.
                 },
 
                 /**
-                 * 
+                 *
                  */
                 getElement: function( name ) {
                     var ev = this.data.elements[ name ];
 
-                    if ( 
-                            ev !== undefined && 
+                    if (
+                            ev !== undefined &&
                             ev !== null
                     ) {
                         return ev;
@@ -9492,8 +9376,8 @@ adding new custom events which you can use on DOM elements.
                  *
                  * For example, you could over-write 'click' for touch devices,
                  * or add new events such as 'taponce'.
-                 * 
-                 * Events should use the event callback signature which is 
+                 *
+                 * Events should use the event callback signature which is
                  * documented at the top of this file.
                  */
                 event: newRegisterMethod( 'event', 'eventOne' ),
@@ -9511,7 +9395,7 @@ adding new custom events which you can use on DOM elements.
                 isEvent: function( name ) {
                     var ev = this.data.events[ name ];
 
-                    return ev !== undefined && 
+                    return ev !== undefined &&
                            ev !== null
                 },
 
@@ -9539,7 +9423,7 @@ adding new custom events which you can use on DOM elements.
                  * @param fun A function callback which creates, and returns, the element.
                  */
                 element: newRegisterMethod( 'element', 'elementOne' ),
-                
+
                 elementOne: function( name, fun ) {
                     this.data.elements[ name ] = newBBFunctionData( fun, this.data.elements[name] );
                 }
@@ -9558,12 +9442,12 @@ adding new custom events which you can use on DOM elements.
                 /**
                  * If you create an element, which is named with one of those
                  * below, then it will be created as an input with that type.
-                 * 
+                 *
                  * For example:
-                 * 
+                 *
                  *      // returns <input type="submit"></input>
-                 *      bb.createElement( 'submit' ); 
-                 * 
+                 *      bb.createElement( 'submit' );
+                 *
                  */
                 element( [
                                 'button',
@@ -9645,14 +9529,15 @@ These events include:
         bb.on = function( dom, name, fun, useCapture ) {
             assert(
                     dom === window ||
-                    (dom instanceof HTMLElement) ||
+                    (dom instanceof HTMLElement ) ||
                     (dom instanceof HTMLDocument) ||
-                    dom.__isBBGun,
-                
-                    "HTML Element expected in bb.on."
-            );
+                    (dom instanceof NodeList    ) ||
+                    (dom instanceof Array       ),
 
-            var argsLen = arguments.length;
+                    "HTML Element expected in bb.on."
+            )
+
+            var argsLen = arguments.length
 
             if ( argsLen === 4 ) {
                 setOnOff( bb, setOnInner, bb.setup.data.events, dom, name, fun, !! useCapture )
@@ -9704,10 +9589,21 @@ These events include:
 ------------------------------------------------------------------------------- */
 
         bb.removeOn = function( dom, name, fun, useCapture ) {
-            var argsLen = arguments.length;
+            assert(
+                    dom === window ||
+                    (dom instanceof HTMLElement ) ||
+                    (dom instanceof HTMLDocument) ||
+                    (dom instanceof NodeList    ) ||
+                    (dom instanceof Array       ),
+
+                    "HTML Element expected in bb.on."
+            )
+
+            var argsLen = arguments.length
 
             if ( argsLen === 4 ) {
                 setOnOff( bb, setOffInner, bb.setup.data.events, dom, name, fun, !! useCapture )
+
             } else if ( argsLen === 3 ) {
                 if ( fun === true ) {
                     setOnOffObject( bb, setOffInner, bb.setup.data.events, dom, name, true )
@@ -9716,8 +9612,10 @@ These events include:
                 } else {
                     setOnOff( bb, setOffInner, bb.setup.data.events, dom, name, fun, false )
                 }
+
             } else if ( argsLen === 2 ) {
                 setOnOffObject( bb, setOffInner, bb.setup.data.events, dom, name, false )
+
             } else {
                 fail( "unknown parameters given", arguments )
             }
@@ -9740,7 +9638,7 @@ This does 2 things:
 
 ------------------------------------------------------------------------------- */
 
-        bb.onInternal = function( dom, evName, origFun, evCallback, useCapture ) { 
+        bb.onInternal = function( dom, evName, origFun, evCallback, useCapture ) {
             var funCallback = { orig: origFun, callback: evCallback };
             var map;
 
@@ -9785,14 +9683,14 @@ This does 2 things:
                                     dom.removeEventListener(
                                             evName,
                                             callback[j],
-                                            useCapture 
+                                            useCapture
                                     );
                                 }
                             } else if ( isFunction(callback) ) {
                                 dom.removeEventListener(
                                         evName,
                                         callback,
-                                        useCapture 
+                                        useCapture
                                 );
                             } else {
                                 fail( "unknown callback found in 'bb.onRemoveInternal' from the dom" );
@@ -9829,7 +9727,7 @@ This does 2 things:
 
 ## bb.create
 
-Used as the standard way to 
+Used as the standard way to
 
 ```
       bb.create( html-element,
@@ -9849,79 +9747,25 @@ Used as the standard way to
             }
         }
 
-/* -------------------------------------------------------------------------------
-
-## bb.createBBGun
-
-------------------------------------------------------------------------------- */
-
-        bb.createBBGun = function(bbGun, obj, args, i) {
-            if ( i === undefined ) {
-                i = 0
-            }
-
-            return applyArray(
-                    bb,
-                    bbGun,
-                    createOneBBGun( bb, bbGun, obj ),
-                    args,
-                    i
-            )
-        }
-
-        bb.initBBGun = function( bbGun ) {
-            var dom = bbGun.dom();
-
-            if ( arguments.length === 1 ) {
-                return bbGun.dom();
-            } else {
-                return applyArray(
-                        bb,
-                        bbGun,
-                        bbGun.dom(),
-                        arguments,
-                        1
-                );
-            }
-        }
-
         bb.createArray = function( obj, args, i ) {
             if ( i === undefined ) {
                 i = 0
             }
 
-            return applyArray(
+            var initFuns = InitFuns_create()
+            var dom = applyArray(
                     bb,
-                    null,
-                    createOne( bb, obj ),
+                    createOne( bb, obj, initFuns ),
                     args,
-                    i
-            );
-        }
-
-        bb.apply = function( dom ) {
-            return applyArray(
-                    bb,
-                    null,
-                    bb.get( dom, true ),
-                    arguments,
-                    1
-            );
-        }
-
-        bb.applyArray = function( dom, args, startI ) {
-            if ( startI === undefined ) {
-                startI = 0
-            }
-
-            return applyArray(
-                    bb,
-                    null,
-                    bb.get( dom, true ),
-                    args,
-                    startI
+                    i,
+                    initFuns
             )
+            InitFuns_callAndFree( initFuns )
+
+            return dom
         }
+
+
 
 /* -------------------------------------------------------------------------------
 
@@ -9940,13 +9784,11 @@ arguments-add-class stuff.
 ------------------------------------------------------------------------------- */
 
         bb.createOne = function( obj ) {
-            return createOne( bb, obj );
-        }
+            var initFuns = InitFuns_create()
+            var dom = createOne( bb, obj, initFuns )
+            InitFuns_callAndFree( initFuns )
 
-        bb.createObj = function( obj ) {
-            assertObjectLiteral( obj );
-
-            return createObj( bb, null, obj );
+            return dom
         }
 
 /* -------------------------------------------------------------------------------
@@ -9971,7 +9813,7 @@ Creates just an element, of the given name.
 
 What makes this special is that it also hooks into the provided names, such as
 'button' as shorthand the input with type button.
- 
+
 @param domName The name of the component to create.
 @return A Element for the name given.
 
@@ -10004,8 +9846,8 @@ What makes this special is that it also hooks into the provided names, such as
                         klass = name.substring( seperatorSpace );
                     }
                 } else if (
-                        seperatorSpace === -1 || 
-                        (seperatorDot < seperatorSpace) 
+                        seperatorSpace === -1 ||
+                        (seperatorDot < seperatorSpace)
                 ) {
                     type = name.substring( 0, seperatorDot );
                     klass = name.substring( seperatorDot );
@@ -10022,19 +9864,15 @@ What makes this special is that it also hooks into the provided names, such as
             var elEv = bb.setup.getElement( type );
             if ( elEv !== null ) {
                 if ( elEv.isFunction ) {
-                    dom = elEv.fun( type );
+                    dom = elEv.fun( type )
 
-                    if ( dom.__isBBGun ) {
-                        dom = dom.dom();
-                    }  else {
-                        assert(
-                                dom && dom.nodeType !== undefined,
-                                "html element event, must return a HTML Element, or BBGun",
-                                dom 
-                        );
-                    }
+                    assert(
+                            dom && dom.nodeType !== undefined,
+                            "html element event must return a HTML Element",
+                            dom
+                    )
                 } else {
-                    dom = document.createElement( type );
+                    dom = document.createElement( type )
                 }
             } else {
                 return bb.setClass( document.createElement(DEFAULT_ELEMENT), name )
@@ -10046,6 +9884,7 @@ What makes this special is that it also hooks into the provided names, such as
         bb.hasClass = function( dom, klass ) {
             if ( dom.classList !== undefined ) {
                 return dom.classList.contains( klass );
+
             } else {
                 var className = dom.className;
 
@@ -10054,26 +9893,27 @@ What makes this special is that it also hooks into the provided names, such as
                         className.indexOf(' ' + klass      ) === (className.length - (klass.length + 1)) ||
                         className.indexOf(' ' + klass + ' ') !== -1 ;
             }
-        } 
+        }
 
         bb.hasClassArray = function( dom, klasses, i ) {
             if ( i === undefined ) {
-                i = 0;
+                i = 0
             }
 
-            var isRemoved = false;
+            var isRemoved = false
             iterateClasses( klasses, i, klasses.length, function(klass) {
                 if ( ! isRemoved && dom.classList.contains(klass) ) {
-                    isRemoved = true;
-                    return false;
-                }
-            } );
+                    isRemoved = true
 
-            return isRemoved;
+                    return false
+                }
+            } )
+
+            return isRemoved
         }
 
         bb.removeClass = function( dom ) {
-            var innerDom = bb.get( dom, false );
+            var innerDom = bbGet( dom );
 
             if ( arguments.length === 1 ) {
                 return innerDom;
@@ -10085,7 +9925,7 @@ What makes this special is that it also hooks into the provided names, such as
         }
 
         bb.removeClassArray = function( dom, klasses, i ) {
-            return removeClassArray( bb.get(dom, false), klasses, i );
+            return removeClassArray( bbGet(dom), klasses, i );
         }
 
 
@@ -10102,7 +9942,7 @@ You can also toggle multiple classes on or off ...
 ```
      bb.toggleClass( dom, 'foobar', 'bar' );
 
-A function can be provided for 
+A function can be provided for
 
 ```
      bb.toggleClass( dom, 'show', function( isAdded ) {
@@ -10119,7 +9959,7 @@ uniformity. It is just always true for the added fun, and
 false for the removed fun.
 
 ```
-     bb.toggleClass( dom, 'show', 
+     bb.toggleClass( dom, 'show',
              function( isAdded ) {
                  // show was added
              },
@@ -10150,20 +9990,20 @@ This is useful for using conditions to set a class on or off.
 
         bb.toggleClass = function( dom ) {
             var argsLen = arguments.length;
-            var dom = bb.get( dom );
+            var dom = bbGet( dom );
 
             if ( argsLen === 1 ) {
                 return toggleClassOne( dom, arguments[1] );
 
             } else {
 
-                // 
+                //
                 // check for the last param being a function,
                 //      bb.toggleClass( dom, klasses .... onAddFun)
-                // 
+                //
                 // or last two being 2 functions:
                 //      bb.toggleClass( dom, klasses .... onAddFun, onRemoveFun)
-                // 
+                //
 
                 var onAdd    = null;
                 var onRemove = null;
@@ -10191,11 +10031,11 @@ This is useful for using conditions to set a class on or off.
                     onAdd = null;
                 }
 
-                // bb.toggleClass div, isShowBool, "show" ... potentially more classes ... 
+                // bb.toggleClass div, isShowBool, "show" ... potentially more classes ...
                 if ( isBoolean(arguments[1]) ) {
                     assert( argsLen > 2, "not enough arguments provided" );
 
-                    if ( 
+                    if (
                             ( argsLen === 3 && onAdd === null                   ) ||
                             ( argsLen === 4 && onAdd !== null && onRemove === null ) ||
                             ( argsLen === 5 && onAdd !== null && onRemove !== null )
@@ -10224,20 +10064,20 @@ This is useful for using conditions to set a class on or off.
                 // bb.toggleClass div, klass, toggleFlag:boolean, onAdd?, onRemove?
                 } else if ( isBoolean(arguments[2]) ) {
 
-                    // 
+                    //
                     // this motherfucker is to check ensures that the parameters went ...
-                    // 
+                    //
                     //      div,
                     //      klass,
                     //      boolean,
                     //      maybe onAdd function,
                     //      maybe onRemove function
-                    assert( 
+                    assert(
                             ( argsLen === 3 && onAdd === null                   ) ||
                             ( argsLen === 4 && onAdd !== null && onRemove === null ) ||
                             ( argsLen === 5 && onAdd !== null && onRemove !== null ),
 
-                            "too many parameters provided for toggleClass." 
+                            "too many parameters provided for toggleClass."
                     );
 
                     return toggleClassBoolean( dom,
@@ -10274,7 +10114,7 @@ This is useful for using conditions to set a class on or off.
         }
 
         bb.addClass = function( dom ) {
-            var dom = bb.get( dom );
+            var dom = bbGet( dom );
 
             if ( arguments.length === 2 ) {
                 return addClassOneString( dom, arguments[1] );
@@ -10285,13 +10125,13 @@ This is useful for using conditions to set a class on or off.
 
         bb.addClassArray = function( dom, args, i ) {
             assertArray( args );
-            var dom = bb.get( dom );
+            var dom = bbGet( dom );
 
             return addClassArray( dom, args, i );
         }
 
         bb.addClassOne = function(dom, klass) {
-            dom = bb.get(dom, false);
+            dom = bbGet(dom);
             assert( dom && dom.nodeType !== undefined, "falsy dom given for bb.addClassOne" );
 
             return addClassOne( dom, klass );
@@ -10364,21 +10204,7 @@ previous classes are gone.
             return dom;
         }
 
-        bb.get = function(dom, performQuery) {
-            assert( dom, "falsy dom given for bb.get" );
-
-            if (performQuery !== false && isString(dom)) {
-                return document.querySelector(dom) || null;
-            } else if ( dom.nodeType !== undefined ) {
-                return dom;
-            } else if ( isObjectLiteral(dom) ) {
-                return createObj( bb, null, dom );
-            } else if ( dom.__isBBGun ) {
-                return dom.dom()
-            } else {
-                fail( "unknown object given", dom );
-            }
-        }
+        bb.get = bbGet
 
 
 
@@ -10410,12 +10236,8 @@ buttons, and so on.
                 assert( skip >= 0, "negative index given for bb.next" );
             }
 
-            var dom = bb.get( dom );
-            if ( dom.__isBBGun ) {
-                dom = dom.dom();
-            }
-
-            var next = dom.nextSibling;
+            var dom = bbGet( dom )
+            var next = dom.nextSibling
 
             do {
                 if ( next === null ) {
@@ -10454,7 +10276,7 @@ buttons, and so on.
 
 ### bb.previous dom query skip
 
-The same as bb.next, but instead of searching forward, this will search 
+The same as bb.next, but instead of searching forward, this will search
 backwards.
 
 This stops searching when it gets to the start of the element, unless 'wrap' is
@@ -10474,12 +10296,8 @@ Otherwise, it is exactly the same.
                 assert( skip >= 0, "negative index given for bb.previous" );
             }
 
-            var dom = bb.get( dom );
-            if ( dom.__isBBGun ) {
-                dom = dom.dom();
-            }
-
-            var next = dom.previousSibling;
+            var dom = bbGet( dom )
+            var next = dom.previousSibling
 
             do {
                 if ( next === null ) {
@@ -10525,14 +10343,14 @@ Just like bb.previous, but this has the wrap parameter on.
 ------------------------------------------------------------------------------- */
 
         bb.beforeOne = function( dom, node ) {
-            var dom = bb.get( dom, true );
+            var dom = bbGet( dom );
             assertParent( dom );
 
             return beforeOne( bb, dom.parentNode, dom, node );
         }
 
         bb.afterOne = function( dom, node ) {
-            var dom = bb.get( dom, true );
+            var dom = bbGet( dom );
             assertParent( dom );
 
             return afterOne( bb, dom.parentNode, dom, node );
@@ -10543,7 +10361,7 @@ Just like bb.previous, but this has the wrap parameter on.
                 i = 0;
             }
 
-            var dom = bb.get( dom, true );
+            var dom = bbGet( dom );
             assertParent( dom );
             var parentDom = dom.parentNode;
 
@@ -10559,7 +10377,7 @@ Just like bb.previous, but this has the wrap parameter on.
                 i = 0;
             }
 
-            var dom = bb.get( dom, true );
+            var dom = bbGet( dom );
             assertParent( dom );
             var parentDom = dom.parentNode;
 
@@ -10580,7 +10398,7 @@ Just like bb.previous, but this has the wrap parameter on.
 
         bb.add = function( dom ) {
             if ( arguments.length === 2 ) {
-                return addOne( bb, bb.get(dom, true), arguments[1] );
+                return addOne( bb, bbGetOrCreate(dom), arguments[1] );
             } else {
                 return bb.addArray( dom, arguments, 1 );
             }
@@ -10591,12 +10409,12 @@ Just like bb.previous, but this has the wrap parameter on.
                 startI = 0;
             }
 
-            return addArray( bb, bb.get(dom, true), args, startI );
+            return addArray( bb, bbGetOrCreate(dom), args, startI );
         }
 
         bb.addOne = function( dom, dest ) {
             return addOne( bb,
-                    bb.get( dom ),
+                    bbGetOrCreate( dom ),
                     dest
             );
         }
@@ -10610,27 +10428,11 @@ Sets the HTML content within this element.
 ------------------------------------------------------------------------------- */
 
         bb.html = function( dom ) {
-            return bb.htmlArray( dom, arguments, 1 );
+            return bb.htmlArray( dom, arguments, 1 )
         }
 
         bb.htmlOne = function( dom, el ) {
-            assert( el, "given element is not valid" );
-
-            if ( isString(el) ) {
-                dom.innerHTML = el;
-            } else if ( el.nodeType !== undefined ) {
-                dom.appendChild( el );
-            } else if ( el.__isBBGun ) {
-                dom.appendChild( el.dom() )
-            } else if ( el instanceof Array ) {
-                bb.htmlArray( dom, el, 0 )
-            } else if ( isObjectLiteral(el) ) {
-                dom.appendChild( bb.describe(el) )
-            } else {
-                fail( "Unknown html value given", el );
-            }
-
-            return dom;
+            setHTML( bb, dom, el, false )
         }
 
         bb.htmlArray = function( dom, htmls, i ) {
@@ -10644,38 +10446,37 @@ Sets the HTML content within this element.
              * Content is cached, so multiple HTML strings
              * are inserted once.
              */
-            var content = '',
-                children = [];
+            var content = ''
+
             for ( ; i < htmls.length; i++ ) {
-                var el = htmls[i];
+                var el = htmls[i]
 
                 if ( isString(el) ) {
-                    content += el;
-                } else if ( el instanceof Array ) {
-                    bb.htmlArray( dom, el, 0 );
+                    content += el
+
                 } else {
                     if ( content !== '' ) {
-                        dom.insertAdjacentHTML( 'beforeend', content );
-                        content = '';
+                      dom.insertAdjacentHTML( 'beforeend', content )
+                      content = ''
                     }
 
-                    if ( el.nodeType !== undefined ) {
-                        dom.appendChild( el );
-                    } else if ( el.__isBBGun ) {
-                        dom.appendChild( el.dom() );
+                    if ( el instanceof Array ) {
+                        bb.htmlArray( dom, el, 0 )
+
+                    } else if ( el.nodeType !== undefined ) {
+                        dom.appendChild( el )
+
                     } else if ( isObjectLiteral(el) ) {
-                        dom.appendChild(
-                                bb.describe(el)
-                        );
+                        dom.appendChild( bb.describe(el) )
                     }
                 }
             }
 
             if ( content !== '' ) {
-                dom.insertAdjacentHTML( 'beforeend', content );
+                dom.insertAdjacentHTML( 'beforeend', content )
             }
 
-            return dom;
+            return dom
         }
 
 /* -------------------------------------------------------------------------------
@@ -10707,7 +10508,7 @@ within it.
 ------------------------------------------------------------------------------- */
 
         bb.text = function( dom ) {
-            return setText( dom, combineStringArray(arguments, 1) );
+            return setText( dom, combineStringArray(arguments, 1), false )
         }
 
 
@@ -10719,7 +10520,7 @@ within it.
 ------------------------------------------------------------------------------- */
 
         bb.textOne = function( dom, text ) {
-            return setText( dom, combineStringOne(text) );
+            return setText( dom, combineStringOne(text), false )
         }
 
 
@@ -10731,7 +10532,7 @@ within it.
 ------------------------------------------------------------------------------- */
 
         bb.textArray = function( dom, args, startI ) {
-            return setText( dom, combineStringArray(args, startI) );
+            return setText( dom, combineStringArray(args, startI), false )
         }
 
 
@@ -10740,7 +10541,7 @@ within it.
 
 ## bb.attr dom
 
-The dom it takes, can be a query for a dom, a BBGun object, or a HTML Element.
+The dom it takes, can be a query for a dom, or a HTML Element.
 For example:
 
 ```
@@ -10762,7 +10563,7 @@ For example:
  - value,   Sets the value within this element. This applies to inputs and
    textareas.
 
- - stopPropagation For the events named, they are set, with a function which 
+ - stopPropagation For the events named, they are set, with a function which
    will simply stop propagation of that event.
  - preventDefault  For the events named, this will set a function, which
    prevents the default action from taking place.
@@ -10777,15 +10578,15 @@ Anything else is set as an attribute of the object.
         bb.attr = function( dom, obj, val ) {
             if ( arguments.length === 2 ) {
                 if ( isString(obj) ) {
-                    var realDom = bb.get( dom );
+                    var realDom = bbGetOrCreate( dom );
 
                     if ( obj === 'className' || obj === 'class' ) {
                         return realDom.className;
-                    } else if ( 
+                    } else if (
                             obj === 'value' ||
                             ( realDom instanceof HTMLInputElement && (
                                     obj === 'text' ||
-                                    obj === 'textContent' 
+                                    obj === 'textContent'
                             ) )
                     ) {
                         return obj.value;
@@ -10794,7 +10595,7 @@ Anything else is set as an attribute of the object.
                     } else if (
                             obj === 'html'      ||
                             obj === 'innerHTML' ||
-                            obj === 'innerHtml' 
+                            obj === 'innerHtml'
                     ) {
                         return realDom.innerHTML;
                     } else if (
@@ -10811,13 +10612,16 @@ Anything else is set as an attribute of the object.
                         return realDom.getAttribute( obj );
                     }
                 } else if ( isObjectLiteral(obj) ) {
-                    attrObj( bb, null, dom, obj, false );
+                    attrObj( bb, dom, obj, false, initFuns );
                 } else {
                     fail( "invalid parameter given", obj );
                 }
             } else if ( arguments.length === 3 ) {
-                assertString( obj, "non-string given as key for attr", obj );
-                attrOne( this, null, dom, obj, val, false );
+                assertString( obj, "non-string given as key for attr", obj )
+
+                var initFuns = InitFuns_create()
+                attrOne( this, dom, obj, val, false, initFuns )
+                InitFuns_callAndFree( initFuns )
             } else {
                 if ( arguments.length < 2 ) {
                     throw new Error( "not enough parameters given" );
@@ -10844,6 +10648,28 @@ Anything else is set as an attribute of the object.
 
 /* ===============================================================================
 
+Normalize Transition End Event
+------------------------------
+
+
+
+=============================================================================== */
+
+        bb.setup.event( 'transitionend', function( el, callback, useCapture, bb, eventName, rest ) {
+            var handleTransitionEnd = function( ev ) {
+                callback.call( el, ev )
+            }
+
+            el.addEventListener( 'webkitTransitionEnd', handleTransitionEnd, useCapture )
+            el.addEventListener( 'transitionend'      , handleTransitionEnd, useCapture )
+            el.addEventListener( 'msTransitionEnd'    , handleTransitionEnd, useCapture )
+            el.addEventListener( 'oTransitionEnd'     , handleTransitionEnd, useCapture )
+        })
+
+
+
+/* ===============================================================================
+
 Pre-provided Touch Events
 -------------------------
 
@@ -10856,7 +10682,7 @@ Events for click, and hold, under touch interface, is pre-provided.
                 window.DocumentTouch &&
                 document instanceof DocumentTouch );
 
-        if ( IS_TOUCH ) {
+        if ( IS_TOUCH && false ) {
             bb.setup.event( 'click', touchy.click );
         }
 
@@ -10867,7 +10693,7 @@ Events for click, and hold, under touch interface, is pre-provided.
 Pre-provided Keyboard Events
 ----------------------------
 
-These events will bind when these keypresses have been pressed. If you want 
+These events will bind when these keypresses have been pressed. If you want
 something more sophisticated, build it yourself.
 
 ===============================================================================
@@ -10897,67 +10723,67 @@ alternative names for keys. For example 'esc' will be changed to 'escape', and
 
                 } else if ( key === 'enter' ) {
                     return '\r';
-                
+
                 } else if ( key === 'space' ) {
                     return ' ';
-                    
+
                 } else if ( key === 'comma' ) {
                     return ',';
-                    
+
                 } else if ( key === 'fullstop' ) {
                     return '.';
 
-                    
+
                 } else if ( key === 'singlequote' ) {
                     return "'";
-                    
+
                 } else if ( key === 'doublequote' ) {
                     return '"';
-                    
+
                 } else if ( key === 'plus' ) {
                     return '+';
-                    
+
                 } else if ( key === 'multiply' ) {
                     return '*';
 
-                    
+
                 } else if ( key === 'del' ) {
                     return 'delete';
-                    
+
                 } else if ( key === 'menu' ) {
                     return 'contextmenu';
-                    
+
                 } else if ( key === 'esc' ) {
                     return 'escape';
-                    
+
                 } else if ( key === 'ctrl' ) {
                     return 'control';
 
-                    
+
                 } else if ( key === 'left' ) {
                     return 'arrowleft';
-                    
+
                 } else if ( key === 'leftarrow' ) {
                     return 'arrowleft';
 
-                    
+
                 } else if ( key === 'right' ) {
                     return 'arrowright';
-                    
+
                 } else if ( key === 'rightarrow' ) {
                     return 'arrowright';
 
-                    
+
                 } else if ( key === 'down' ) {
                     return 'arrowdown';
-                    
+
                 } else if ( key === 'downarrow' ) {
                     return 'arrowdown';
 
-                    
+
                 } else if ( key === 'up' ) {
                     return 'arrowup';
-                    
+
                 } else if ( key === 'uparrow' ) {
                     return 'arrowup';
 
@@ -11121,10 +10947,10 @@ It can also take an array of values which in turn is just the previous two.
 
 @example
     // sets two functions to the keypress
-    bb.on( dom, 'keypress', [ someFun, anotherFun ] ); 
+    bb.on( dom, 'keypress', [ someFun, anotherFun ] );
     // one function for keypress enter, another for escape
-    bb.on( dom, 'keypress', [{ enter: startFun }, { esc: cancelFun }] ); 
-    
+    bb.on( dom, 'keypress', [{ enter: startFun }, { esc: cancelFun }] );
+
 The event name can also take keys within that. For example:
 
 @example
@@ -11291,12 +11117,9 @@ or not.
             } else {
                 var t = keyTest.modifierBitmask;
 
-                if ( keyTest.letter === 'f12' ) {
-                }
-
                 /*
                  * Test the modifier keys, either ...
-                 * 
+                 *
                  *  * the bit mask is set to 'any',
                  *  * or the ev modifier is false and the bit in test state is 0
                  *  * or the ev modifier is true and the bit in test state is 1
@@ -11304,35 +11127,41 @@ or not.
                 if (
                         // the bitmask is set to any
                         t === ANY || (
-                                (!!ev.shiftDown || !!ev.shiftKey) === ((t & SHIFT) === 1) && 
-                                (!!ev.ctrlDown  || !!ev.ctrlKey ) === ((t & CTRL ) === 1) && 
-                                (!!ev.altDown   || !!ev.altKey  ) === ((t & ALT  ) === 1) && 
+                                (!!ev.shiftDown || !!ev.shiftKey) === ((t & SHIFT) === 1) &&
+                                (!!ev.ctrlDown  || !!ev.ctrlKey ) === ((t & CTRL ) === 1) &&
+                                (!!ev.altDown   || !!ev.altKey  ) === ((t & ALT  ) === 1) &&
                                 (!!ev.metaDown  || !!ev.metaKey ) === ((t & META ) === 1)
                         )
                 ) {
 
                     /*
                      * Now test the actual key.
-                     * 
+                     *
                      * These tests are ...
                      *  - there is a charCode, and it matches test
                      *  - there is a keyCode, and it matches test
                      *  - there is a named key, and it matches test
                      *  - there is a char, and it matches test
                      */
-                    if ( 
+                    if (
                         ( ev.charCode !== 0 && ev.charCode === keyTest.charCode ) ||
                         ( ev.keyCode  !== 0 && ev.keyCode  === keyTest.keyCode  )
                     ) {
                         return true;
-                    } else if ( keyTest.letter !== undefined ) {
-                        var evKey = ev.key;
 
-                        if ( evKey.length > 1 ) {
-                            return ( evKey.toLowerCase() === keyTest.letter || ev.char.toLowerCase() === keyTest.letter );
-                        } else {
-                            return ( evKey === keyTest.letter || ev.char === keyTest.letter );
+                    } else if ( keyTest.letter !== undefined ) {
+                        var evKey = ev.key || ev.keyIdentifier
+
+                        if ( isString(evKey) && evKey.toLowerCase() === keyTest.letter ) {
+                          return true
                         }
+
+                        var c = ev.char
+                        if ( isString(c) && c.toLowerCase() === keyTest.letter ) {
+                          return true
+                        }
+
+                        return false
                     }
                 }
             }
@@ -11344,1052 +11173,6 @@ or not.
     }
 
     window['bb'] = newBB();
-
-
-})();
-"use strict";(function() {
-
-/* ===============================================================================
-
-# BBGun
-
-The higher level DOM alternative, BB-Gun.
-It wraps doms, allowing you to do slightly more.
-
-It is intended that you would extend this,
-to create your own nodes.
-
-=============================================================================== */
-
-    var newBBGunType = function( bb ) {
-        bb = bb || window['bb'];
-        assert( bb, "bb.js is not loaded." );
-
-        var prepEvent = function( ev ) {
-            ev.doPropagate = false;
-
-            ev.propagate = function() {
-                this.doPropagate = true;
-            }
-        }
-
-
-
-/* -------------------------------------------------------------------------------
-
-#EventsManager
-
-It works in two levels:
- - events do *not* propagate to parents by default.
- - events are passed to those on the same level, unless they return false.
-
-------------------------------------------------------------------------------- */
-
-        var EventsManager = function( xe ) {
-            this.xe = xe;
-            this.events = {};
-        }
-
-        EventsManager.prototype = {
-            register: function( name, f ) {
-                if ( name instanceof Array ) {
-                    for ( var i = 0; i < name.length; i++ ) {
-                        this.register( name, f );
-                    }
-                } else {
-                    var bbGunName = bb.setup.normalizeEventName( name );
-
-                    assert(
-                            this.xe.__eventList.hasOwnProperty( bbGunName ) ||
-                                    bb.setup.isEvent( name ),
-                            "unknown event, " + name
-                    );
-
-                    if ( this.events.hasOwnProperty(bbGunName) ) {
-                        this.events[bbGunName].push( f );
-                    } else {
-                        if ( bb.setup.isEvent(name) ) {
-                            var self = this;
-
-                            bb.on( this.xe.dom(), name, function(ev) {
-                                self.fireDomEvent( bbGunName, ev );
-                            });
-                        }
-
-                        this.events[bbGunName] = [ f ];
-                    }
-                }
-            },
-
-            unregister: function( name, fun ) {
-                assert( this.xe.isEvent(name), "unknown event, " + name );
-
-                var bbGunName = bb.setup.normalizeEventName( name );
-                if ( this.events.hasOwnProperty(bbGunName) ) {
-                    var evs = this.events[bbGunName];
-
-                    for ( var i = 0; i < evs.length; i++ ) {
-                        if ( evs[i] === fun ) {
-                            evs.splice( i, 1 );
-
-                            return true;
-                        }
-                    }
-                }
-
-                return false;
-            },
-
-            once: function( name, f ) {
-                var self = this;
-                var fun = function(ev) {
-                    self.unregister( name, fun );
-                    return f.call( this, ev );
-                }
-
-                this.register( name, fun );
-            },
-
-            fireEvent: function( name, args, startI ) {
-                var bbGunName = bb.setup.normalizeEventName( name );
-
-                if ( this.events.hasOwnProperty(bbGunName) ) {
-                    var evs = this.events[bbGunName],
-                        xe  = this.xe;
-
-                    if ( args === null ) {
-                        for ( var i = 0; i < evs.length; i++ ) {
-                            if ( evs[i].call(xe) === false ) {
-                                return false;
-                            }
-                        }
-                    } else {
-                        var newArgs;
-
-                        if ( startI === undefined || startI === 0 ) {
-                            newArgs = args;
-                        } else {
-                            newArgs = new Array( args.length-startI );
-
-                            for ( var i = startI; i < args.length; i++ ) {
-                                newArgs[i-startI] = args[i];
-                            }
-                        }
-                        
-                        for ( var i = 0; i < evs.length; i++ ) {
-                            if ( evs[i].apply(xe, newArgs) === false ) {
-                                return false;
-                            }
-                        }
-                    }
-                }
-
-                return true;
-            },
-
-            fireDomEvent: function( bbGunName, ev ) {
-                if ( this.events.hasOwnProperty(bbGunName) ) {
-                    var evs = this.events[bbGunName],
-                        xe  = this.xe;
-
-                    prepEvent( ev );
-
-                    for ( var i = 0; i < evs.length; i++ ) {
-                        if ( evs[i].call(xe, ev) === false ) {
-                            ev.stopPropagation();
-                            return false;
-                        }
-                    }
-
-                    if ( ! ev.doPropagate ) {
-                        ev.stopPropagation();
-                    }
-                }
-
-                return true;
-            }
-        }
-
-        var removeDomCycle = function( node, args ) {
-            var shouldDelete = node.fireApply( 'beforeremove', args, 0 );
-            if ( shouldDelete !== false ) {
-                var nodeDom = node.dom();
-                nodeDom.parentNode.removeChild( nodeDom );
-
-                node.fireApply( 'remove', args, 0 );
-            }
-        }
-
-        var removeOne = function( self, selfDom, node, args ) {
-            if ( node.__isBBGun ) {
-                var nodeParent = node.parent();
-
-                if ( nodeParent === null ) {
-                    fail( "removing node which does not have a parent", node );
-                } else if ( nodeParent !== self ) {
-                    fail( "removing node which is not a child of this node", node );
-                }
-
-                removeDomCycle( node, args );
-            } else if ( node.nodeType !== undefined ) {
-                if ( node.parentNode !== selfDom ) {
-                    fail( "removing Element which is not a child of this node", node );
-                } else {
-                    delete node.__xe;
-                    node.parentNode.removeChild( nodeDom );
-                }
-            } else {
-                fail( "removing unsupported element", node );
-            }
-        }
-
-        var beforeAfterChild = function( bbGun, current, args, isAfter ) {
-            if ( args.length >= 2 ) {
-                assert( current, "falsy parameter given" );
-                assert( bbGun.child(current) !== null, "child given, is not a child of this node" );
-
-                for ( var i = 1; i < args.length; i++ ) {
-                    var arg = args[i];
-
-                    assert( arg, "falsy parameter given" );
-
-                    assertNot( (arg.nodeType !== undefined) && (arg.parentNode !== null), "HTML Element given already has a parent" );
-                    assertNot( (arg.__isBBGun) && (arg.parent() !== null), "BBGun element given already has a parent" );
-                }
-
-                if ( isAfter ) {
-                    bb.afterArray( current, args, 1 );
-                } else {
-                    bb.beforeArray( current, args, 1 );
-                }
-            } else {
-                fail( "invalid number of parameters" );
-            }
-        }
-
-
-
-/* -------------------------------------------------------------------------------
-
-## BBGun
-
-------------------------------------------------------------------------------- */
-
-        var BBGun = function( domType ) {
-            this.__xeEvents = null;
-            this.__isBBGun  = true;
-            this.__xeDom    = null;
-
-            this.dom(
-                    ( arguments.length !== 0 ) ?
-                            bb.createBBGun( this, domType, arguments, 1 ) :
-                            bb.div()
-            )
-        }
-
-
-
-/* -------------------------------------------------------------------------------
-
-## BBGun.clone( bb )
-
-Clones the whole module, provided you with another copy.
-
-@param Optional, the BB library copy this will be working with.
-
-------------------------------------------------------------------------------- */
-
-        BBGun.clone = function( bb ) {
-            return newBBGunType( bb );
-        }
-
-        var registerEvent = function( bbGun, es, f, doOnce ) {
-            assertString( es, "no event name(s) provided" );
-            assertFunction( f, "no function provided" );
-
-            if ( bbGun.__xeEvents === null ) {
-                bbGun.__xeEvents = new EventsManager( bbGun );
-            }
-
-            if ( doOnce ) {
-                bbGun.__xeEvents.once( es, f );
-            } else {
-                bbGun.__xeEvents.register( es, f );
-            }
-
-            return bbGun;
-        }
-
-        var duplicateEventList = function( oldList, newEvents ) {
-            var eventList = {};
-
-            for ( var k in oldList ) {
-                if ( oldList.hasOwnProperty(k) ) {
-                    eventList[k] = true;
-                }
-            }
-
-            for ( var i = 0; i < newEvents; i++ ) {
-                var name = bb.setup.normalizeEventName( newEvents[i] );
-                eventList[ name ] = true;
-            }
-
-            return eventList;
-        }
-
-        var replaceNode = function( oldNode, newNode, args, startI ) {
-            assert( newNode, "falsy newNode given" );
-
-            var parentDom = oldNode.__xeDom.parentNode;
-            var newDom;
-
-            if ( newNode.nodeType !== undefined ) {
-                newNode = bb( newNode );
-            } else if ( ! newNode.__isBBGun ) {
-                newNode = bb( newNode );
-            }
-
-            var newDom = newNode.dom();
-
-            assert( parentDom !== null, "replacing this element, when it has no parent dom" );
-            assert( newDom.parentNode === null, "replacing with node which already has a parent" );
-
-            var shouldDelete;
-            var hasArgs = ( args !== null && args.length > startI ),
-                args;
-            
-            if ( hasArgs ) {
-                var argsLen = arguments.length;
-                var newArgs = new Array( (argsLen-startI) + 2 );
-
-                newArgs[0] = newNode;
-                newArgs[1] = newDom;
-
-                for ( var i = startI; i < argsLen; i++ ) {
-                    newArgs[i+2] = args[i];
-                }
-
-                shouldDelete = oldNode.fireApply( 'beforeReplace', newArgs, 0 );
-            } else {
-                shouldDelete = oldNode.fireApply('beforeReplace', [newNode, newDom], 0);
-            }
-
-            if ( shouldDelete ) {
-                assert( oldNode.__xeDom.parentNode === parentDom, "parent has been changed within the 'beforeReplace' event" );
-                parentDom.replaceChild( newDom, oldNode.__xeDom );
-
-                if ( hasArgs ) {
-                    oldNode.fireApply( 'replace', args );
-                } else {
-                    oldNode.fire( 'replace', newNode, newDom );
-                }
-            }
-        }
-
-        /**
-         * Extends this BBGun prototype,
-         * with a new version, which includes the
-         * events given.
-         *
-         * These events must be added, for them to be
-         * legal events.
-         */
-        BBGun.registerEvents = function() {
-            return this.override({
-                    __eventList: duplicateEventList( this.prototype.__eventList, arguments )
-            })
-        }
-
-        /**
-         * The same as 'registerEvents', only it also
-         * adds no method stubs.
-         *
-         * If a method already exists, an error will be raised.
-         */
-        BBGun.events = function() {
-            var methods = {};
-
-            for ( var i = 0; i < arguments.length; i++ ) {
-                var name = arguments[i];
-                methods[name] = new Function( "f", "return this.on('" + name + "', f);" );
-            }
-
-            var extension = this.extend( methods );
-            extension.prototype.__eventList =
-                    duplicateEventList( this.prototype.__eventList, arguments );
-
-            return extension;
-        }
-
-        BBGun.prototype = {
-
-
-/* A list of all 'legal' events. */
-
-            __eventList: {
-                    'replace': true,
-                    'beforereplace': true,
-
-                    'remove': true,
-                    'beforeremove': true
-            },
-
-
-
-/* -------------------------------------------------------------------------------
-
-### bbgun.parent() -> BBGun | null
-
-Returns the BBGun parent of this object, or null if this has no parent.
-
-@return The BBGun parent above this one, or null.
-
-### bbgun.parent( BBGun ) -> boolean
-
-Given a BBGun instance, this returns true if it is the parent of this object, 
-and false if not.
-
-@param bbgun A BBGun object to test against.
-@return True if the BBGun given is the parent of this, otherwise false.
-
-### bbgun.parent( (BBGun) -> any ) -> BBGun | null | any
-
-Given a function, it will call the function, if this has a parent. If there is 
-no parent, then null is returned.
-
-If the function returns a value other than undefined, this will be returned 
-instead of the parent.
-
-This means if the function returns 'false' or 'null', then 'false' or 'null' 
-will be returned.
-
-### bbgun.parent( string ) -> BBGun | null
-
-Given a string description of a node, this will search for it, and return the 
-first parent that matches, if found.
-
-If not found, then this will return null.
-
-### bbgun.parent( string, (BBGun) -> any ) -> BBGun | null | any
-
-This is a mix of the function and string version of parent.
-
-------------------------------------------------------------------------------- */
-
-            parent: function( f, f2 ) {
-                var argsLen = arguments.length;
-
-                if ( argsLen === 0 ) {
-                    for (
-                            var upDom = this.dom().parentNode; 
-                            upDom !== null;
-                            upDom = upDom.parentNode
-                    ) {
-                        if ( upDom.__xe !== undefined && upDom.__xe !== null ) {
-                            return upDom.__xe;
-                        }
-                    }
-                } else if ( argsLen === 1 ) {
-                    var p = this.parent();
-
-                    if ( f instanceof Function ) {
-                        if ( p !== null ) {
-                            var r = f.call( this, p );
-
-                            if ( r !== undefined ) {
-                                return r;
-                            }
-                        }
-
-                        return p;
-                    } else if ( f.__isBBGun ) {
-                        return ( p === f ) ? p : null ;
-                    } else if ( isString(f) ) {
-                        for (
-                                var upDom = this.dom().parentNode; 
-                                upDom !== null;
-                                upDom = upDom.parentNode
-                        ) {
-                            if (
-                                    upDom.__xe !== undefined &&
-                                    upDom.__xe !== null &&
-                                    upDom.matchesSelector( f )
-                            ) {
-                                return upDom.__xe;
-                            }
-                        }
-                    } else {
-                        fail( "invalid parameter given", f );
-                    }
-                } else if ( argsLen === 2 ) {
-                    assertFunction( f2, "second parameter is expected to be a function" );
-
-                    var p = this.parent( f );
-
-                    if ( p !== null ) {
-                        var r = f2.call( this, p );
-
-                        if ( r !== undefined ) {
-                            return r;
-                        } else {
-                            return p;
-                        }
-                    }
-                } else {
-                    fail( "too many parameters given" );
-                }
-
-                return null;
-            },
-
-
-
-/* -------------------------------------------------------------------------------
-
-### bbgun.children() -> [ BBGun ]
-
-### bbgun.children( (BBGun) -> any ) -> [ BBGun ]
-
-@return An array containing all of the children of this BBGun.
-
-------------------------------------------------------------------------------- */
-
-            children: function( f, f2 ) {
-                var argsLen = arguments.length;
-
-                if ( argsLen === 0 ) {
-                    var bbGuns = [];
-                    var doms = this.dom().childNodes;
-
-                    for ( var i = 0; i < doms.length; i++ ) {
-                        var dom = doms[i];
-                        var bbGun = dom.__xe;
-
-                        if ( bbGun !== undefined && bbGun !== null && bbGun.__isBBGun ) {
-                            bbGuns.push( bbGun );
-                        }
-                    }
-
-                    return bbGuns;
-                } else if ( argsLen === 1 ) {
-                    if ( isFunction(f) ) {
-                        var guns = this.children();
-
-                        for ( var i = 0; i < guns.length; i++ ) {
-                            f.call( this, guns[i] );
-                        }
-
-                        return guns;
-                    } else if ( isString(f) ) {
-                        assert( f !== '', "empty selector given" );
-
-                        var bbGuns = [];
-                        var doms = this.dom().childNodes;
-
-                        for ( var i = 0; i < doms.length; i++ ) {
-                            var dom = doms[i];
-                            var bbGun = dom.__xe;
-
-                            if (
-                                    bbGun !== undefined    &&
-                                    bbGun !== null         &&
-                                    bbGun.__isBBGun &&
-                                    dom.matchesSelector( f )
-                            ) {
-                                bbGuns.push( bbGun );
-                            }
-                        }
-
-                        return bbGuns;
-                    } else {
-                        fail( "unknown parameter given", f );
-                    }
-                } else if ( argsLen === 3 ) {
-                    assertString( f, "non string given for element selector" );
-                    assertFunction( f2, "non function given for function callback" );
-
-                    var guns = this.children( f );
-
-                    for ( var i = 0; i < guns.length; i++ ) {
-                        f2.call( this, guns[i] );
-                    }
-
-                    return guns;
-                } else {
-                    fail( "too many parameters given" );
-                }
-
-                return [];
-            },
-
-            child: function( obj, f ) {
-                var argsLen = arguments.length;
-
-                if ( argsLen === 1 ) {
-                    if ( isString(obj) ) {
-                        // if it look like a class, presume it's a class
-                        if ( obj.search(/^[a-zA-Z-_0-9]+$/) === 0 && ! bb.setup.isElement(obj) ) {
-                            obj = '.' + obj;
-                        }
-
-                        var child = this.dom().querySelector( obj );
-
-                        if ( child !== null ) {
-                            if ( child.__xe ) {
-                                return child.__xe;
-                            } else {
-                                return child;
-                            }
-                        }
-                    /*
-                     * These are here as checks of existance,
-                     * they are returned if found.
-                     */
-                    } else if ( obj.__isBBGun ) {
-                        if ( obj.parent() === this ) {
-                            return obj;
-                        }
-                    } else if ( obj.nodeType !== undefined ) {
-                        var children = this.dom().childNodes;
-                        for ( var i = 0; i < children.length; i++ ) {
-                            if ( children[i] === obj ) {
-                                return obj;
-                            }
-                        }
-                    } else {
-                        fail( "invalid parameter given as selector", obj );
-                    }
-
-                    return null;
-                } else if ( argsLen === 2 ) {
-                    var child = this.child( obj );
-
-                    assertFunction( f, "none function given" );
-                    var r = f.call( this, obj );
-
-                    if ( r !== undefined ) {
-                        return r;
-                    } else {
-                        return child;
-                    }
-                } else {
-                    fail( "too many parameters given" );
-                }
-
-                return null;
-            },
-
-            /**
-             * Inserts the nodes given before *this* element.
-             */
-            beforeThis: function() {
-                bb.beforeArray( this, arguments, 0 )
-                return this;
-            },
-
-            /**
-             * Inserts the nodes given after *this* element.
-             */
-            afterThis: function() {
-                bb.beforeArray( this, arguments, 0 )
-                return this;
-            },
-
-            before: function( child ) {
-                beforeAfterChild( this, child, arguments, false );
-                return this;
-            },
-
-            after: function( child ) {
-                beforeAfterChild( this, child, arguments, true );
-                return this;
-            },
-
-            add: function() {
-                bb.addArray( this.dom(), arguments, 0 );
-
-                return this;
-            },
-
-            addTo: function( dest ) {
-                assert( arguments.length === 1, "no destination node given" );
-                bb.addOne( dest, this );
-
-                return this;
-            },
-
-            /*
-             * The event is called *before* the replacement.
-             * This allows you to cancel the replacelement,
-             * by returning false.
-             */
-            beforeReplace: function( f ) {
-                assert( arguments.length === 1, "number of parameters is incorrect" );
-                assertFunction( f );
-
-                return this.on( 'beforeReplace', f );
-            },
-
-            replaceWith: function( node ) {
-                replaceNode( this, node, arguments, 1 );
-
-                return this;
-            },
-
-
-
-/* -------------------------------------------------------------------------------
-
-Replaces this node with the one given,
-or replaces one child with another.
-
-### bbgun.replace( newNode ) -> this
-
-Replaces this node, with the one given,
-in the DOM.
-
-### bbgun.replace( childNode, newNode ) -> this
-
-Replaces the childNode given, with the nodeNode.
-The child must be a child of this node.
-
-### bbgun.replace( (newNode, newDom:Element) -> any ) -> this 
-
-Adds a function to be called, when this node
-is replaced by another.
-
-@example
-     foo.replace( function(newNode) {
-         // on 'replace' event here
-     } );
-
-### bbgun.replace( (newNode, newDom:Element) -> any, (newNode, newDom:Element) -> any ) -> this 
-
-@example
-     foo.replace(
-         function(newNode) {
-             // on 'beforeReplace' event here
-         },
-         function(newNode) {
-             // on 'replace' event here
-         }
-     );
-
-The first parameter is whatever was given, for
-the replacement. This could be text, an object
-description, a BBGun node, or whatever.
-
-The second parameter is the DOM node for that
-newNode.
-
-If an Element was given, then 'newNode' and 'newDom'
-will be identical.
-
-------------------------------------------------------------------------------- */
-
-            replace: function( oldNode, newNode ) {
-                var argsLen = arguments.length;
-                assert( argsLen > 0, "not enough arguments given" );
-
-                if ( isFunction(oldNode) ) {
-                    assert( argsLen === 1, "too many arguments given" );
-                    this.on( 'replace', oldNode );
-                } else if ( argsLen === 1 ) {
-                    replaceNode( this, oldNode, null, 0 );
-                } else if ( argsLen >= 2 ) {
-                    if ( isFunction(oldNode) ) {
-                        assert( isFunction(newNode), "'replace' event is not a function" );
-                        assert( argsLen === 2, "too many parameters provided" );
-
-                        this.on( 'beforeReplace', newNode );
-                        this.on( 'replace', newNode );
-                    } else if ( isFunction(newNode) ) {
-                        fail( "'beforeReplace' event is not a function" );
-                    } else {
-                        assert( oldNode, "falsy oldNode given" );
-                        assert( newNode, "falsy newNode given" );
-
-                        var oldDom, newDom;
-                        if ( oldNode.nodeType !== undefined ) {
-                            oldDom = oldNode;
-                        } else if ( oldNode.__isBBGun ) {
-                            oldDom = oldNode.dom();
-                        } else {
-                            fail( "node given, is not a HTML element", oldNode );
-                        }
-
-                        try {
-                            var newDom = bb( newNode );
-                        } catch ( err ) {
-                            fail( "replacement node is not a HTML element (perhaps you meant 'replaceWith'?)", err, err.stack );
-                        }
-
-                        var dom = this.dom();
-                        assert( oldDom.parentNode === dom , "removing node which is not a child of this element" );
-                        assert( newDom.parentNode === null, "adding node which is already a child of another" );
-
-                        fail( 'replacement events need to be sent to the child' );
-
-                        replaceNode( oldDom, newDom, arguments, 2 );
-                    }
-                } else {
-                    fail( "too many, or not enough, parameters provided", arguments );
-                }
-
-                return this;
-            },
-
-
-
-            beforeRemove: function( f ) {
-                assert( arguments.length === 1, "number of parameters is incorrect" );
-                assertFunction( f );
-
-                return this.on( 'beforeremove', f );
-            },
-
-
-
-/* -------------------------------------------------------------------------------
-
-## remove()
-
-Removes this from it's parent DOM node.
-
-## remove( Event )
-
-Removes this from it's parent DOM node,
-and passes the event to any listeners.
-
-## remove( node )
-
-Removes the node given, from this.
-If it is not found, then an error is raised.
-
-@example
-    remove( function(ev) {
-        // on remove code here
-    } )
-
-Adds an event to be called, when this node is
-removed. Note that it only works if you are
-working through BBGun objects API.
-
-------------------------------------------------------------------------------- */
-
-            remove: function() {
-                var argsLen = arguments.length;
-
-                if ( argsLen === 0 ) {
-                    var dom = this.__xeDom;
-                    assert( dom.parentNode !== null, "removing this when it has no parent" );
-
-                    removeDomCycle( this, null );
-                } else if ( argsLen === 1 ) {
-                    var arg = arguments[0];
-
-                    if ( isFunction(arg) ) {
-                        this.on( 'remove', arg );
-                    } else if ( arg instanceof Event ) {
-                        removeDomCycle( this, [arg] );
-                    } else {
-                        removeOne( this, this.__xeDom, arguments[0], null );
-                    }
-                } else {
-                    var a = arguments[0],
-                        b = arguments[1];
-
-                    if ( isFunction(a) ) {
-                        assert( isFunction(a), "'remove' event is not a function" );
-                        assert( argsLen === 2, "too many parameters provided" );
-
-                        this.on( 'beforeRemove', a );
-                        this.on( 'remove', b );
-                    } else if ( isFunction(b) ) {
-                        fail( "'beforeRemove' event is not a function" );
-                    } else {
-                        var newArgs = new Array( argsLen-1 );
-
-                        for ( var i = startI; i < argsLen; i++ ) {
-                            newArgs[i-1] = arguments[i];
-                        }
-
-                        removeOne( this, this.__xeDom, arguments[0], newArgs );
-                    }
-                }
-
-                return this;
-            },
-                 
-            unregister: function( es, f ) {
-                if ( this.__xeEvents !== null ) {
-                    this.__xeEvents.unregister( es, f );
-                }
-
-                return this;
-            },
-
-            fireApply: function( name, args, startI ) {
-                if ( this.__xeEvents !== null ) {
-                    return this.__xeEvents.fireEvent( name, args, startI );
-                } else {
-                    return true;
-                }
-            },
-
-            fire: function( name ) {
-                if ( this.__xeEvents !== null ) {
-                    return this.fireApply( name, arguments, 1 );
-                } else {
-                    return true;
-                }
-            },
-
-            click: function( fun ) {
-                if ( arguments.length === 1 ) {
-                    return this.on( 'click', fun );
-                } else {
-                    fail( "invalid number of arguments given" );
-                }
-            },
-
-            isEvent: function( name ) {
-                return this.__eventList.hasOwnProperty( bb.setup.normalizeEventName(name) ) || bb.setup.isEvent( name );
-            },
-
-            /**
-             * 
-             */
-            on: function( es, f ) {
-                return registerEvent( this, es, f, false )
-            },
-
-            once: function( es, f ) {
-                return registerEvent( this, es, f, true )
-            },
-
-            style: function( obj, val ) {
-                var argsLen = arguments.length;
-
-                if (argsLen === 0) {
-                    return this.dom().style;
-                } else if (argsLen === 1) {
-                    if (isString(obj)) {
-                        return this.dom().style[obj];
-                    } else if (isObjectLiteral(obj)) {
-                        bb.style(this.dom(), obj);
-                    } else {
-                        fail("invalid style parameter", obj);
-                    }
-                } else if (argsLen === 2) {
-                    assert(isString(obj) && isLiteral(val),
-                            "invalid parameters")
-
-                    this.dom().style[obj] = val;
-                } else {
-                    fail("too many parameters", arguments);
-                }
-
-                return this;
-            },
-
-            dom: function(newDom) {
-                if ( arguments.length === 0 ) {
-                    return this.__xeDom;
-                } else {
-                    if ( this.__xeDom !== newDom ) {
-                        assert( newDom.__xe === undefined, "setting dom, which already has a BBGun parent" );
-
-                        if ( this.__xeDom !== null ) {
-                            delete this.__xeDom.__xe;
-                        }
-
-                        this.__xeDom = bb.createArray( arguments[0], arguments, 1 );
-                        this.__xeDom.__xe = this;
-                    }
-
-                    return this;
-                }
-            },
-
-            html: function() {
-                if ( arguments.length === 0 ) {
-                    return this.__xeDom.innerHTML;
-                } else {
-                    bb.htmlArray( this.__xeDom, arguments );
-
-                    return this;
-                }
-            },
-
-            attr: function( obj, val ) {
-                if ( arguments.length === 1 ) {
-                    if ( isString(obj) ) {
-                        return bb.attr( obj );
-                    } else {
-                        bb.attr( obj );
-
-                        return this;
-                    }
-                } else {
-                    bb.attr( obj, val );
-                }
-
-                return this;
-            },
-
-            toggleClass: function() {
-                bb.toggleClassArray( this.__xeDom, arguments, 0 );
-                return this;
-            },
-
-            toggleClassInv: function() {
-                bb.toggleClassInvArray( this.__xeDom, arguments, 0 );
-                return this;
-            },
-
-            addClass: function() {
-                bb.addClassArray( this.__xeDom, arguments, 0 );
-                return this;
-            },
-
-            setClass: function() {
-                bb.setClassArray( this.__xeDom, arguments, 0 );
-                return this;
-            },
-
-            hasClass: function( klass ) {
-                return bb.hasClass( this.__xeDom, klass );
-            },
-           
-            removeClass: function() {
-                bb.removeClassArray( this.__xeDom, arguments );
-                return this;
-            },
-
-            toggle: function( klass, onExists, onRemove ) {
-                var argsLen = arguments.length;
-
-                if ( argsLen === 1 ) {
-                    bb.toggle( klass );
-                } else if ( argsLen === 2 ) {
-                    bb.toggle( klass, onExists.bind(this) );
-                } else if ( argsLen === 3 ) {
-                    bb.toggle( klass, onExists.bind(this), onRemove.bind(this) );
-                } else {
-                    throw new Error( "invalid parameters given" );
-                }
-
-                return this;
-            }
-        }
-
-        return BBGun;
-    }
-
-    window['BBGun'] = newBBGunType();
-
-
 
 
 })();
