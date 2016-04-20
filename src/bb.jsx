@@ -104,7 +104,7 @@ set to the same BROWSER_PROVIDED_DEFAULT object.
     var __initFunsI = 0
     var InitFuns_create = function() {
       if ( __initFunsI > 0 ) {
-        return __initFunsArr[ __initFunsI-- ]
+        return __initFunsArr[ --__initFunsI ]
 
       } else {
         return {
@@ -119,6 +119,7 @@ set to the same BROWSER_PROVIDED_DEFAULT object.
       var len = initFuns.length
 
       for ( var i = 0; i < len; i++ ) {
+        var initFun = arr[i]
         var dom = initFun.dom
 
         initFun.fun.call( dom, dom )
@@ -127,10 +128,14 @@ set to the same BROWSER_PROVIDED_DEFAULT object.
         initFun.dom = initFun.fun = null
       }
 
+      initFuns.length = 0
       __initFunsArr[ __initFunsI++ ] = initFuns
     }
 
     var InitFuns_add = function( initFuns, dom, f ) {
+      assert( dom !== null, "null init dom given" )
+      assert( f !== null, "null init function given" )
+
       var i = initFuns.length++
       var arr = initFuns.arr
 
@@ -138,7 +143,7 @@ set to the same BROWSER_PROVIDED_DEFAULT object.
       if ( i < arr.length ) {
         initFun = arr[ i ]
         initFun.dom = dom
-        initFun.fun   = f
+        initFun.fun = f
       } else {
         initFun = { dom: dom, fun: f }
         arr[ i ] = initFun
@@ -1134,9 +1139,10 @@ so it's DRY'd up and placed here.
         assert( k.length > 1, "empty description given" );
 
         var className = k.substring(dotI+1);
-        var domType = ( dotI > 0 ) ?
-                    k.substring( 0, dotI ) :
-                    'div'                  ;
+        var domType =
+                ( dotI > 0               ) ? k.substring( 0, dotI ) :
+                ( val instanceof Element ) ? val.nodeName           :
+                                            'div'                   ;
 
         var newDom = newOneNewChildInner( bb, dom, domType, val, k, initFuns )
 
@@ -1153,10 +1159,9 @@ so it's DRY'd up and placed here.
             newDom = createObj( bb, val, initFuns )
 
         } else if ( val instanceof Element ) {
-            assert(
-                domType === '' || domType.toLowerCase() === val.nodeName.toLowerCase(),
-                "Type of dom node does not match the type stated in the identifier"
-            )
+            if ( domType !== '' && domType.toLowerCase() !== val.nodeName.toLowerCase() ) {
+                fail( "Type of dom node does not match the type stated in the identifier, given '" + domType + "', got '" + val.nodeName + "'" )
+            }
 
             newDom = val
 
@@ -1299,7 +1304,7 @@ created.
             } else if ( k === 'text' || k === 'textContent' ) {
                 setText( dom, combineStringOne(val), true )
             } else if ( k === 'html' || k === 'innerHTML' || k === 'innerHtml' ) {
-                setHTML( bb, dom, el, false )
+                setHTML( bb, dom, val, false )
             } else if ( k === 'value' ) {
                 if ( val === undefined || val === null ) {
                     dom.value = '';
@@ -3134,7 +3139,7 @@ Events for click, and hold, under touch interface, is pre-provided.
                 window.DocumentTouch &&
                 document instanceof DocumentTouch );
 
-        if ( IS_TOUCH ) {
+        if ( IS_TOUCH && false ) {
             bb.setup.event( 'click', touchy.click );
         }
 
