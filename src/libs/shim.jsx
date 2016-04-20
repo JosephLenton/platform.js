@@ -10,6 +10,40 @@ and some built by me, which add support for missing JS features.
 
     var __shim__ = window.__shim__;
 
+
+===============================================================================
+
+## window
+
+===============================================================================
+
+
+
+
+===============================================================================
+
+### requestIdleCallback
+
+New function for being called when the browser is idle and can process work.
+The fallback is just to use animation frame sometime in the future.
+
+We call multiple times to avoid being on the next frame where there may be work
+from a legit 'requestAnimationFrame' call.
+
+===============================================================================
+
+    __shim__( window,
+        'requestIdleCallback', function(f) {
+            window.requestAnimationFrame(function() {
+                window.requestAnimationFrame(function() {
+                    window.requestAnimationFrame( f )
+                })
+            })
+        }
+    )
+
+
+
 ===============================================================================
 
 ## Object
@@ -53,7 +87,7 @@ in the 'extras' file.
 
 Production steps of ECMA-262, Edition 5, 15.4.4.18
 Reference: http://es5.github.com/#x15.4.4.18
-    
+
 -------------------------------------------------------------------------------
 
     __shim__( Array.prototype,
@@ -213,9 +247,9 @@ Reference: http://es5.github.com/#x15.4.4.18
 
 Fast repeat, uses the `Exponentiation by squaring` algorithm.
 
-This is optimized for non-FF browsers, because FF already has a version 
+This is optimized for non-FF browsers, because FF already has a version
 in-built.
- 
+
 FireFox also has issues with the use of 'valueOf', where in other browsers it's
 use always yields a speedup. The short of it is that you can only use 'valueOf'
 to convert a String object to a literal string, if you intend to call a lot of
@@ -241,7 +275,7 @@ performance or worse.
                 } else if ( count === 2 ) {
                     var thisVal = this.valueOf();
                     return thisVal + thisVal ;
-                    
+
                 } else if ( count === 3 ) {
                     var thisVal = this.valueOf();
                     return thisVal + thisVal + thisVal;
@@ -376,7 +410,7 @@ performance or worse.
 ===============================================================================
 
     var div = document.createElement('div');
-    if ( 
+    if (
             div.textContent === undefined &&
             div.innerText !== undefined
     ) {
@@ -390,7 +424,7 @@ performance or worse.
                     addProps( children[i] );
                 }
             }
-        }; 
+        };
 
         var textDesc = {
                 get: function() {
@@ -462,7 +496,7 @@ performance or worse.
             return addProps( oldCreate(name) );
         }
 
-        // add properties to any existing elements 
+        // add properties to any existing elements
         var doms = document.querySelectorAll('*');
         for ( var i = 0; i < doms.length; i++ ) {
             addProps( doms[i] );
@@ -510,7 +544,7 @@ These do *not* use __shim__, as it breaks in IE 8!
 
 ### element.matchesSelector()
 
-A new W3C selection tester, for testing if a node matches a selection. Very 
+A new W3C selection tester, for testing if a node matches a selection. Very
 new, so it's either browser specific, or needs a shim.
 
 @author termi https://gist.github.com/termi
@@ -524,7 +558,7 @@ new, so it's either browser specific, or needs a shim.
                 Element.prototype.webkitMatchesSelector ||
                 Element.prototype.mozMatchesSelector ||
                 Element.prototype.msMatchesSelector ||
-                Element.prototype.oMatchesSelector || 
+                Element.prototype.oMatchesSelector ||
                 function(selector) {
                     if(!selector)return false;
                     if(selector === "*")return true;
@@ -559,7 +593,7 @@ new, so it's either browser specific, or needs a shim.
                     }
 
                     parent = thisObj.parentNode;
-                  
+
                     if (parent && parent.querySelector) {
                         match = parent.querySelector(selector) === thisObj;
                     }
@@ -601,15 +635,15 @@ NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
 @source http://purl.eligrey.com/github/classList.js/blob/master/classList.js
 
 -------------------------------------------------------------------------------
-  
+
     if (typeof document !== "undefined" && !("classList" in document.createElement("a"))) {
         (function (view) {
             "use strict";
-             
+
             if ( !('HTMLElement' in view) && !('Element' in view) ) {
                 return;
             }
-             
+
             var
                   classListProp = "classList"
                 , protoProp = "prototype"
@@ -696,7 +730,7 @@ NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
                     }
                 }
                 while (++i < l);
-             
+
                 if (updated) {
                     this._updateClassName();
                 }
@@ -719,7 +753,7 @@ NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
                     }
                 }
                 while (++i < l);
-             
+
                 if (updated) {
                     this._updateClassName();
                 }
@@ -727,7 +761,7 @@ NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
 
             classListProto.toggle = function (token, forse) {
                 token += "";
-             
+
                 var
                       result = this.contains(token)
                     , method = result ?
@@ -735,18 +769,18 @@ NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
                     :
                         forse !== false && "add"
                 ;
-             
+
                 if (method) {
                     this[method](token);
                 }
-             
+
                 return result;
             };
 
             classListProto.toString = function () {
                 return this.join(" ");
             };
-             
+
             if (objCtr.defineProperty) {
                 var classListPropDesc = {
                       get: classListGetter
