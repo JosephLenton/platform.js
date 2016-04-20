@@ -74,7 +74,7 @@ it.
 ```
     obj.invoke( 'doWork' );
 
-You may also send a function object as an alternative, which will be called 
+You may also send a function object as an alternative, which will be called
 with the object as it's this context.
 
 ```
@@ -166,14 +166,12 @@ only the items *directly* stored are included; prototype items are skipped.
 
 The function is in the form:
 
- function( value, k )
+ function( k, value, i )
 
 'value' is each value stored in turn, whilst 'k' is the key which the value is
 stored under.
 
 'this' is also bound to the value.
-
-This is so that it matches up with Array.map.
 
 @param fun The function to apply against this object's properties.
 
@@ -181,61 +179,17 @@ This is so that it matches up with Array.map.
 
     __setProp__( Object.prototype,
             'map', function( fun ) {
-                var rs = [];
+                var rs = []
+                var count = 0
 
-                if ( (typeof fun === 'string') || (fun instanceof String) ) {
-                    if ( arguments.length === 1 ) {
-                        for ( var k in this ) {
-                            if ( this.has(k) ) {
-                                var val = this[k];
-                                rs.push( val[fun].call(val, val, k) );
-                            }
-                        }
-                    } else {
-                        var args = new Array( arguments.length+1 );
-                        for ( var i = 2; i < args.length; i++ ) {
-                            args[i] = arguments[i-1];
-                        }
-
-                        for ( var k in this ) {
-                            if ( this.has(k) ) {
-                                var val = this[k];
-
-                                args[0] = val;
-                                args[1] = k;
-
-                                rs.push( val[fun].apply(val, args) );
-                            }
-                        }
-                    }
-                } else {
-                    if ( arguments.length === 1 ) {
-                        for ( var k in this ) {
-                            if ( this.has(k) ) {
-                                var val = this[k];
-                                rs.push( fun.call(val, val, k) );
-                            }
-                        }
-                    } else {
-                        var args = new Array( arguments.length+1 );
-                        for ( var i = 2; i < args.length; i++ ) {
-                            args[i] = arguments[i-1];
-                        }
-
-                        for ( var k in this ) {
-                            if ( this.has(k) ) {
-                                var val = this[k];
-
-                                args[0] = val;
-                                args[1] = k;
-
-                                rs.push( fun.apply(val, args) );
-                            }
-                        }
+                for ( var k in this ) {
+                    if ( this.has(k) ) {
+                        var val = this[k]
+                        rs.push( fun.call(val, k, val, count++) )
                     }
                 }
 
-                return rs;
+                return rs
             }
     );
 
@@ -366,7 +320,7 @@ This also supports currying.
              2
      )
 
-#### currying with underscore 
+#### currying with underscore
 
 It also supports use of the _ variable, to leave variables open for use later.
 
@@ -549,7 +503,7 @@ supported in the current browser.
 
             SPACE       : 32,
             ' '         : 32,
-            
+
             PAGE_UP     : 33,
             PAGE_DOWN   : 34,
             END         : 35,
@@ -559,7 +513,7 @@ supported in the current browser.
             UP_ARROW    : 38,
             RIGHT_ARROW : 39,
             DOWN_ARROW  : 40,
-            
+
             INSERT      : 45,
             DELETE      : 46,
 
@@ -644,21 +598,7 @@ Same as array.map, but for String objects.
 
     __setProp__( String.prototype,
             'map', function( fun ) {
-                if ( typeof fun === 'string' || (fun instanceof String) ) {
-                    var args = new Array( arguments.length+1 );
-                    for ( var i = 2; i < args.length; i++ ) {
-                        args[i] = arguments[i-1];
-                    }
-
-                    return oldMap.call( this, function(obj, i) {
-                        args[0] = obj;
-                        args[1] = i;
-
-                        return obj[fun].apply( obj, args );
-                    } );
-                } else {
-                    return oldMap.apply( this, arguments );
-                }
+                return Array.prototype.map.apply( this, arguments );
             }
     )
 
@@ -671,7 +611,7 @@ Same as array.map, but for String objects.
 Returns a version of this string, where all special characters from a regular
 expression, are escaped and made safe.
 
-@return This string, with all RegExp characters escaped, so they no longer 
+@return This string, with all RegExp characters escaped, so they no longer
   affect any RegExp.
 
 -------------------------------------------------------------------------------
@@ -690,7 +630,7 @@ expression, are escaped and made safe.
 
 @param str The string to search for.
 @return True if the string given is present in this string, and false if not.
-    
+
 -------------------------------------------------------------------------------
 
     __setProp__( String.prototype,
@@ -954,7 +894,7 @@ expression 100%, or not.
 
 ### string.isInteger()
 
-Tests if this string looks like an integer, and if so, then returns true or 
+Tests if this string looks like an integer, and if so, then returns true or
 false accordingly.
 
 Note this does not take into account hexadecimal, or any other special notation.
@@ -1023,7 +963,7 @@ a trailing zero.
             } else {
                 var padLen = pad.length;
 
-                return repeatString( pad, 
+                return repeatString( pad,
                         // fast positive division + ceiling
                         ( (diff + padLen - 1) / padLen )|0
                 ) + thisVal ;
@@ -1064,89 +1004,8 @@ a trailing zero.
 
 ===============================================================================
 
--------------------------------------------------------------------------------
 
-### map shim
 
-This is a shim for the Array.map method, *if* it is not yet implemented.
-
-We fallback onto the old map for some of our behaviour, or define a new one, if
-missing (IE 8).
-
-@see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Array/map#Compatibility
-
--------------------------------------------------------------------------------
-
-    var oldMap = Array.prototype.map;
-    if ( ! ('map' in Array.prototype) ) {
-        oldMap = function(callback, thisArg) {
-            var T, A, k;
-
-            if (this == null) {
-              throw new TypeError(" this is null or not defined");
-            }
-
-            // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
-            var O = Object(this);
-
-            // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
-            // 3. Let len be ToUint32(lenValue).
-            var len = O.length >>> 0;
-
-            // 4. If IsCallable(callback) is false, throw a TypeError exception.
-            // See: http://es5.github.com/#x9.11
-            if (typeof callback !== "function") {
-              throw new TypeError(callback + " is not a function");
-            }
-
-            // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
-            if (thisArg) {
-              T = thisArg;
-            }
-
-            // 6. Let A be a new array created as if by the expression new Array(len) where Array is
-            // the standard built-in constructor with that name and len is the value of len.
-            A = new Array(len);
-
-            // 7. Let k be 0
-            k = 0;
-
-            // 8. Repeat, while k < len
-            while(k < len) {
-              var kValue, mappedValue;
-
-              // a. Let Pk be ToString(k).
-              //   This is implicit for LHS operands of the in operator
-              // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
-              //   This step can be combined with c
-              // c. If kPresent is true, then
-              if (k in O) {
-
-                // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
-                kValue = O[ k ];
-
-                // ii. Let mappedValue be the result of calling the Call internal method of callback
-                // with T as the this value and argument list containing kValue, k, and O.
-                mappedValue = callback.call(T, kValue, k, O);
-
-                // iii. Call the DefineOwnProperty internal method of A with arguments
-                // Pk, Property Descriptor {Value: mappedValue, : true, Enumerable: true, Configurable: true},
-                // and false.
-
-                // In browsers that support Object.defineProperty, use the following:
-                // Object.defineProperty(A, Pk, { value: mappedValue, writable: true, enumerable: true, configurable: true });
-
-                // For best browser support, use the following:
-                A[ k ] = mappedValue;
-              }
-              // d. Increase k by 1.
-              k++;
-            }
-
-            // 9. return A
-            return A;
-        };      
-    }
 
 -------------------------------------------------------------------------------
 
@@ -1352,72 +1211,6 @@ returned.
 
 
 
--------------------------------------------------------------------------------
-
-### map
-
-Maps a function, against all elements in the given array. If the function given
-is a function object, then it is run against each element in turn.
-
-```
-    // each unit is updated, with a delta-time given to each one
-    units.map( function(unit, i) {
-        unit.update( delta );
-    } );
-
-The 'this' value is also bound to the value given. This allows the same to be
-written as ...
-
-```
-    // each unit is updated, with a delta-time given to each one
-    units.map( function() {
-        this.update( delta );
-    } );
-
-You can also create and pass in a function to call instead.
-
-```
-    var updateFun = function() {
-        this.update( delta );
-    }
-    units.map( updateFun );
-
-If however it is a string given, then that function is called on each element 
-in turn.
-
-```
-    // each unit is updated, with a delta-time given to each one
-    units.map( 'update', delta );
-
-One or more parameters can be given after the function, as extra parameters to
-execute.
-
-@param fun The function to perform on each element.
-@return A new array, containing the result from each value.
-
--------------------------------------------------------------------------------
-
-    __setProp__( Array.prototype,
-            'map', function( fun ) {
-                if ( typeof fun === 'string' || (fun instanceof String) ) {
-                    var args = new Array( arguments.length+1 );
-                    for ( var i = 2; i < args.length; i++ ) {
-                        args[i] = arguments[i-1];
-                    }
-
-                    return oldMap.call( this, function(obj, i) {
-                        args[0] = obj;
-                        args[1] = i;
-
-                        return obj[fun].apply( obj, args );
-                    } );
-                } else {
-                    return oldMap.apply( this, arguments );
-                }
-            }
-    );
-
-
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -1532,7 +1325,7 @@ This is useful for currying, and it also supports negative indexes.
 ### array.drop( index )
 
 Removes the item at the index given. This can be a negative or positive index.
-The element is deleted from this array, and this array is then returned, 
+The element is deleted from this array, and this array is then returned,
 allowing function chaining.
 
 @param index The index of where to delete an item from this array.
@@ -1566,22 +1359,22 @@ allowing function chaining.
 
                     this.length = len-1;
                 } else {
-                    /* 
+                    /*
                      * This brute-force searches through the indexes given, and
                      * with each lowest index in turn, shuffles all the elements
                      * down the array. This is from 'last+1' to 'delIndex'.
-                     * 
-                     * It then does it once more after the loop, to include 
+                     *
+                     * It then does it once more after the loop, to include
                      * those following the highest 'delIndex'.
-                     * 
+                     *
                      * The lowest index for each, is skipped.
-                     * 
+                     *
                      * Whilst brute force is generally considered bad, it's
                      * best *on very small data sets!* This is because things
-                     * like array construction and function calls, would 
+                     * like array construction and function calls, would
                      * suddenly take up a lot more performance when compared
                      * to O( n^2 ) on a data set with 2 or 3 elements.
-                     * 
+                     *
                      * If lots of people want to delete 20 or more elements,
                      * then it would become a problem.
                      */
