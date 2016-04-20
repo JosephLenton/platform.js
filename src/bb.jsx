@@ -100,7 +100,50 @@ set to the same BROWSER_PROVIDED_DEFAULT object.
             isBrowserProvided: true
     };
 
+    var __initFunsArr = []
+    var __initFunsI = 0
+    var InitFuns_create = function() {
+      if ( __initFunsI > 0 ) {
+        return __initFunsArr[ __initFunsI-- ]
 
+      } else {
+        return {
+            length: 0,
+            arr: []
+        }
+      }
+    }
+
+    var InitFuns_callAndFree = function( initFuns ) {
+      var arr = initFuns.arr
+      var len = initFuns.length
+
+      for ( var i = 0; i < len; i++ ) {
+        var dom = initFun.dom
+
+        initFun.fun.call( dom, dom )
+
+        // clear
+        initFun.dom = initFun.fun = null
+      }
+
+      __initFunsArr[ __initFunsI++ ] = initFuns
+    }
+
+    var InitFuns_add = function( initFuns, dom, f ) {
+      var i = initFuns.length++
+      var arr = initFuns.arr
+
+      var initFun;
+      if ( i < arr.length ) {
+        initFun = arr[ i ]
+        initFun.dom = dom
+        initFun.fun   = f
+      } else {
+        initFun = { dom: dom, fun: f }
+        arr[ i ] = initFun
+      }
+    }
 
     var listToDataMap = function( arr ) {
         var map = {};
@@ -680,43 +723,21 @@ before this code is called.
         return klass;
     }
 
-    var applyArray = function(bb, dom, args, startI) {
+    var applyArray = function( bb, dom, args, startI, initFuns ) {
         if ( args !== null ) {
             var argsLen = args.length;
 
             for (var i = startI; i < argsLen; i++) {
-                applyOne( bb, dom, args[i], false )
+                applyOne( bb, dom, args[i], false, initFuns )
             }
         }
 
         return dom;
     }
 
-    var runAttrFun = function( bb, dom, arg ) {
-        bb.__doms[ bb.__domsI ] = dom
-        bb.__domsI++
-
-        var r = arg.call( dom )
-
-        /*
-         * Any non-undefined result is appended.
-         */
-
-        if ( r !== undefined ) {
-            if ( isArray(r) ) {
-                addArray( bb, dom, r, 0 )
-            } else {
-                addOne( bb, dom, r )
-            }
-        }
-
-        bb.__domsI--
-        bb.__doms[ bb.__domsI ] = null
-    }
-
-    var applyOne = function( bb, dom, arg, stringsAreContent ) {
+    var applyOne = function( bb, dom, arg, stringsAreContent, initFuns ) {
         if (arg instanceof Array) {
-            applyArray( bb, dom, arg, 0 )
+            applyArray( bb, dom, arg, 0, initFuns )
 
         } else if ( arg.nodeType !== undefined ) {
             dom.appendChild( arg )
@@ -732,9 +753,7 @@ before this code is called.
                 addClassOneString( dom, arg )
             }
         } else if ( isObjectLiteral(arg) ) {
-            attrObj( bb, dom, arg, true )
-        } else if ( isFunction(arg) ) {
-            runAttrFun( bb, dom, arg )
+            attrObj( bb, dom, arg, true, initFuns )
         } else {
             fail( "invalid argument given", arg )
         }
@@ -742,17 +761,7 @@ before this code is called.
         return dom
     }
 
-    var createOne = function( bb, obj ) {
-        if ( bb.__domsI === 0 ) {
-            return createOneInner( bb, obj );
-        } else {
-            var newDom = createOneInner( bb, obj );
-            bb.__doms[ bb.__domsI-1 ].appendChild( newDom );
-            return newDom;
-        }
-    }
-
-    var createOneInner = function( bb, obj ) {
+    var createOne = function( bb, obj, initFuns ) {
         /*
          * A String ...
          *  <html element="description"></html>
@@ -779,20 +788,20 @@ before this code is called.
         } else if ( obj.nodeType !== undefined ) {
             return obj;
         } else if ( isObjectLiteral(obj) ) {
-            return createObj( bb, obj );
+            return createObj( bb, obj, initFuns );
         } else {
             fail( "unknown parameter given", obj );
         }
     }
 
-    var createObj = function( bb, obj ) {
+    var createObj = function( bb, obj, initFuns ) {
         var dom = obj.has("nodeName") ? bb.createElement( obj["nodeName"] ) :
                   obj.has("tagName")  ? bb.createElement( obj["tagName"]  ) :
                                         bb.createElement()                  ;
 
         for ( var k in obj ) {
             if ( obj.has(k) ) {
-                attrOne( bb, dom, k, obj[k], false );
+                attrOne( bb, dom, k, obj[k], false, initFuns );
             }
         }
 
@@ -1121,7 +1130,7 @@ so it's DRY'd up and placed here.
      *      '.className'
      *
      */
-    var attrOneNewChild = function( bb, dom, k, val, dotI ) {
+    var attrOneNewChild = function( bb, dom, k, val, dotI, initFuns ) {
         assert( k.length > 1, "empty description given" );
 
         var className = k.substring(dotI+1);
@@ -1129,19 +1138,19 @@ so it's DRY'd up and placed here.
                     k.substring( 0, dotI ) :
                     'div'                  ;
 
-        var newDom = newOneNewChildInner( bb, dom, domType, val, k )
+        var newDom = newOneNewChildInner( bb, dom, domType, val, k, initFuns )
 
         addClassOneString( newDom, className );
     }
 
-    var newOneNewChildInner = function( bb, dom, domType, val, debugVal ) {
+    var newOneNewChildInner = function( bb, dom, domType, val, debugVal, initFuns ) {
         var newDom
 
         if ( isObjectLiteral(val) ) {
             assert( bb.setup.isElement(domType), "invalid element type given, " + domType )
             val["nodeName"] = domType
 
-            newDom = createObj( bb, val )
+            newDom = createObj( bb, val, initFuns )
 
         } else if ( val instanceof Element ) {
             assert(
@@ -1165,7 +1174,8 @@ so it's DRY'd up and placed here.
                         this,
                         newDom,
                         val,
-                        0
+                        0,
+                        initFuns
                 )
             } else if ( isFunction(val) ) {
                 if ( domType === 'a' ) {
@@ -1211,12 +1221,12 @@ created.
 
 -------------------------------------------------------------------------------
 
-    var attrOne = function( bb, dom, k, val, isApply ) {
+    var attrOne = function( bb, dom, k, val, isApply, initFuns ) {
         var dotI = k.indexOf( '.' );
         var ev;
 
         if ( dotI !== -1 ) {
-            attrOneNewChild( bb, dom, k, val, dotI )
+            attrOneNewChild( bb, dom, k, val, dotI, initFuns )
 
         } else {
             var spaceI = k.indexOf(' '),
@@ -1305,11 +1315,11 @@ created.
 
             } else if ( k === 'init' ) {
                 assertFunction( val, "none function given for 'init' attribute" )
-                val.call( dom, dom )
+                InitFuns_add( initFuns, dom, val )
 
             } else if ( k === 'addTo' ) {
                 assert( dom.parentNode === null, "dom element already has a parent" )
-                createOne( bb, val ).appendChild( dom )
+                createOne( bb, val, initFuns ).appendChild( dom )
 
             /* Events, includes HTML and custom  */
             } else if ( (ev = bb.setup.getEvent(k)) !== null ) {
@@ -1321,7 +1331,7 @@ created.
 
             /* new objet creation */
             } else if ( bb.setup.isElement(k) ) {
-                newOneNewChildInner( bb, dom, k, val, k );
+                newOneNewChildInner( bb, dom, k, val, k, initFuns );
 
             /* Arribute */
             } else {
@@ -1342,7 +1352,7 @@ created.
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 
-    var attrObj = function(bb, dom, obj, isApply) {
+    var attrObj = function( bb, dom, obj, isApply, initFuns ) {
         var hasHTMLText = false;
 
         for ( var k in obj ) {
@@ -1355,7 +1365,7 @@ created.
                     }
                 }
 
-                attrOne( bb, dom, k, obj[k], isApply );
+                attrOne( bb, dom, k, obj[k], isApply, initFuns );
             }
         }
     }
@@ -1655,6 +1665,38 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
 
 
 
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+    var bbGet = function(dom) {
+        assert( dom, "falsy dom given for bb.get" );
+
+        if ( isString(dom) ) {
+            return document.querySelector(dom) || null;
+
+        } else if ( dom.nodeType !== undefined ) {
+            return dom;
+
+        } else {
+            fail( "unknown object given", dom );
+        }
+    }
+
+    var bbGetOrCreate = function( dom ) {
+        if ( isObjectLiteral(dom) ) {
+            var initFuns = InitFuns_create()
+            var dom = createObj( bb, dom, initFuns )
+            InitFuns_callAndFree( initFuns )
+
+            return dom
+        } else {
+            return bbGet( dom )
+
+        }
+    }
+
+
+
 ===============================================================================
 
 newBB
@@ -1693,9 +1735,7 @@ and a function.
             }
         }
 
-        bb.__domsI = 0;
-
-        bb.__doms = [];
+        bb.__initFuns = []
 
 
 
@@ -2164,35 +2204,20 @@ Used as the standard way to
                 i = 0
             }
 
-            return applyArray(
+            var initFuns = InitFuns_create()
+            var dom = applyArray(
                     bb,
-                    createOne( bb, obj ),
+                    createOne( bb, obj, initFuns ),
                     args,
-                    i
-            );
-        }
-
-        bb.apply = function( dom ) {
-            return applyArray(
-                    bb,
-                    bb.get( dom, true ),
-                    arguments,
-                    1
-            );
-        }
-
-        bb.applyArray = function( dom, args, startI ) {
-            if ( startI === undefined ) {
-                startI = 0
-            }
-
-            return applyArray(
-                    bb,
-                    bb.get( dom, true ),
-                    args,
-                    startI
+                    i,
+                    initFuns
             )
+            InitFuns_callAndFree( initFuns )
+
+            return dom
         }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -2211,13 +2236,11 @@ arguments-add-class stuff.
 -------------------------------------------------------------------------------
 
         bb.createOne = function( obj ) {
-            return createOne( bb, obj );
-        }
+            var initFuns = InitFuns_create()
+            var dom = createOne( bb, obj, initFuns )
+            InitFuns_callAndFree( initFuns )
 
-        bb.createObj = function( obj ) {
-            assertObjectLiteral( obj );
-
-            return createObj( bb, obj );
+            return dom
         }
 
 -------------------------------------------------------------------------------
@@ -2342,7 +2365,7 @@ What makes this special is that it also hooks into the provided names, such as
         }
 
         bb.removeClass = function( dom ) {
-            var innerDom = bb.get( dom, false );
+            var innerDom = bbGet( dom );
 
             if ( arguments.length === 1 ) {
                 return innerDom;
@@ -2354,7 +2377,7 @@ What makes this special is that it also hooks into the provided names, such as
         }
 
         bb.removeClassArray = function( dom, klasses, i ) {
-            return removeClassArray( bb.get(dom, false), klasses, i );
+            return removeClassArray( bbGet(dom), klasses, i );
         }
 
 
@@ -2419,7 +2442,7 @@ This is useful for using conditions to set a class on or off.
 
         bb.toggleClass = function( dom ) {
             var argsLen = arguments.length;
-            var dom = bb.get( dom );
+            var dom = bbGet( dom );
 
             if ( argsLen === 1 ) {
                 return toggleClassOne( dom, arguments[1] );
@@ -2543,7 +2566,7 @@ This is useful for using conditions to set a class on or off.
         }
 
         bb.addClass = function( dom ) {
-            var dom = bb.get( dom );
+            var dom = bbGet( dom );
 
             if ( arguments.length === 2 ) {
                 return addClassOneString( dom, arguments[1] );
@@ -2554,13 +2577,13 @@ This is useful for using conditions to set a class on or off.
 
         bb.addClassArray = function( dom, args, i ) {
             assertArray( args );
-            var dom = bb.get( dom );
+            var dom = bbGet( dom );
 
             return addClassArray( dom, args, i );
         }
 
         bb.addClassOne = function(dom, klass) {
-            dom = bb.get(dom, false);
+            dom = bbGet(dom);
             assert( dom && dom.nodeType !== undefined, "falsy dom given for bb.addClassOne" );
 
             return addClassOne( dom, klass );
@@ -2633,19 +2656,7 @@ previous classes are gone.
             return dom;
         }
 
-        bb.get = function(dom, performQuery) {
-            assert( dom, "falsy dom given for bb.get" );
-
-            if (performQuery !== false && isString(dom)) {
-                return document.querySelector(dom) || null;
-            } else if ( dom.nodeType !== undefined ) {
-                return dom;
-            } else if ( isObjectLiteral(dom) ) {
-                return createObj( bb, dom );
-            } else {
-                fail( "unknown object given", dom );
-            }
-        }
+        bb.get = bbGet
 
 
 
@@ -2677,7 +2688,7 @@ buttons, and so on.
                 assert( skip >= 0, "negative index given for bb.next" );
             }
 
-            var dom = bb.get( dom )
+            var dom = bbGet( dom )
             var next = dom.nextSibling
 
             do {
@@ -2737,7 +2748,7 @@ Otherwise, it is exactly the same.
                 assert( skip >= 0, "negative index given for bb.previous" );
             }
 
-            var dom = bb.get( dom )
+            var dom = bbGet( dom )
             var next = dom.previousSibling
 
             do {
@@ -2784,14 +2795,14 @@ Just like bb.previous, but this has the wrap parameter on.
 -------------------------------------------------------------------------------
 
         bb.beforeOne = function( dom, node ) {
-            var dom = bb.get( dom, true );
+            var dom = bbGet( dom );
             assertParent( dom );
 
             return beforeOne( bb, dom.parentNode, dom, node );
         }
 
         bb.afterOne = function( dom, node ) {
-            var dom = bb.get( dom, true );
+            var dom = bbGet( dom );
             assertParent( dom );
 
             return afterOne( bb, dom.parentNode, dom, node );
@@ -2802,7 +2813,7 @@ Just like bb.previous, but this has the wrap parameter on.
                 i = 0;
             }
 
-            var dom = bb.get( dom, true );
+            var dom = bbGet( dom );
             assertParent( dom );
             var parentDom = dom.parentNode;
 
@@ -2818,7 +2829,7 @@ Just like bb.previous, but this has the wrap parameter on.
                 i = 0;
             }
 
-            var dom = bb.get( dom, true );
+            var dom = bbGet( dom );
             assertParent( dom );
             var parentDom = dom.parentNode;
 
@@ -2839,7 +2850,7 @@ Just like bb.previous, but this has the wrap parameter on.
 
         bb.add = function( dom ) {
             if ( arguments.length === 2 ) {
-                return addOne( bb, bb.get(dom, true), arguments[1] );
+                return addOne( bb, bbGetOrCreate(dom), arguments[1] );
             } else {
                 return bb.addArray( dom, arguments, 1 );
             }
@@ -2850,12 +2861,12 @@ Just like bb.previous, but this has the wrap parameter on.
                 startI = 0;
             }
 
-            return addArray( bb, bb.get(dom, true), args, startI );
+            return addArray( bb, bbGetOrCreate(dom), args, startI );
         }
 
         bb.addOne = function( dom, dest ) {
             return addOne( bb,
-                    bb.get( dom ),
+                    bbGetOrCreate( dom ),
                     dest
             );
         }
@@ -3019,7 +3030,7 @@ Anything else is set as an attribute of the object.
         bb.attr = function( dom, obj, val ) {
             if ( arguments.length === 2 ) {
                 if ( isString(obj) ) {
-                    var realDom = bb.get( dom );
+                    var realDom = bbGetOrCreate( dom );
 
                     if ( obj === 'className' || obj === 'class' ) {
                         return realDom.className;
@@ -3053,13 +3064,16 @@ Anything else is set as an attribute of the object.
                         return realDom.getAttribute( obj );
                     }
                 } else if ( isObjectLiteral(obj) ) {
-                    attrObj( bb, dom, obj, false );
+                    attrObj( bb, dom, obj, false, initFuns );
                 } else {
                     fail( "invalid parameter given", obj );
                 }
             } else if ( arguments.length === 3 ) {
-                assertString( obj, "non-string given as key for attr", obj );
-                attrOne( this, dom, obj, val, false );
+                assertString( obj, "non-string given as key for attr", obj )
+
+                var initFuns = InitFuns_create()
+                attrOne( this, dom, obj, val, false, initFuns )
+                InitFuns_callAndFree( initFuns )
             } else {
                 if ( arguments.length < 2 ) {
                     throw new Error( "not enough parameters given" );
