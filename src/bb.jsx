@@ -71,6 +71,14 @@ array as a parameter.
         ev.preventDefault();
     }
 
+    var OBJECT_DESCRIPTION = {
+        value           : undefined,
+        enumerable      : false,
+        writable        : true,
+        configurable    : true
+    }
+
+
 
 The blank data is used internally for HTML events. All of the HTML events are
 set to the same BROWSER_PROVIDED_DEFAULT object.
@@ -2101,9 +2109,17 @@ This does 2 things:
 
             if ( dom.__bb_event_map__ === undefined ) {
                 map = {}
-                map[ evName ] = [ funCallback ];
+                map[ evName ] = [ funCallback ]
 
-                __setProp__( dom, '__bb_event_map__', map )
+                try {
+                    OBJECT_DESCRIPTION.value = map
+                    Object.defineProperty( dom, '__bb_event_map__', OBJECT_DESCRIPTION )
+
+                } catch ( ex ) {
+                    dom[ '__bb_event_map__' ] = val
+
+                }
+
             } else {
                 map = dom.__bb_event_map__;
 

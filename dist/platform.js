@@ -261,7 +261,7 @@ and some built by me, which add support for missing JS features.
 
 ===============================================================================
 
-### requestIdleCallback
+### window.requestIdleCallback
 
 New function for being called when the browser is idle and can process work.
 The fallback is just to use animation frame sometime in the future.
@@ -285,37 +285,7 @@ from a legit 'requestAnimationFrame' call.
 
 /* ===============================================================================
 
-## Object
-
-=============================================================================== */
-
-    /**
-     * Object.create
-     *
-     * @see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Object/create
-     */
-    __shim__( Object,
-        'create', function(o) {
-            if (arguments.length > 1) {
-                throw new Error('Object.create implementation only accepts the first parameter.');
-            }
-
-            function F() {}
-            F.prototype = o;
-
-            return new F();
-        }
-    );
-
-    __shim__( Date,
-        'now', function() {
-            return new Date().getTime();
-        }
-    );
-
-/* ===============================================================================
-
-### Array
+## Array
 
 Note that 'map' is missing, because it is dealt with
 in the 'extras' file.
@@ -404,26 +374,6 @@ Reference: http://es5.github.com/#x15.4.4.18
     __shim__( String.prototype,
             'toArray', function() {
                 return this.valueOf().split( '' );
-            }
-    );
-
-    __shim__( String.prototype,
-            'trim', function(check) {
-                if ( arguments.length === 0 || ( arguments.length === 1 && str === ' ' ) ) {
-                    var str = this.valueOf().replace(leftTrimSpaceRegex, '');
-                    var i = str.length;
-
-                    while (spaceRegex.test(str.charAt(--i)));
-
-                    return str.slice(0, i + 1);
-                } else if ( check.length === 0 ) {
-                    return this.valueOf();
-                } else {
-                    check = check.escapeRegExp();
-                    var regex = new RegExp( "(^(" + check + ")(" + check + ")*)|((" + check + ")(" + check + ")*$)", 'i' );
-
-                    return this.valueOf().replace( regex, '' );
-                }
             }
     );
 
@@ -624,245 +574,35 @@ performance or worse.
             }
     );
 
-/* ===============================================================================
-
-## document
-
-===============================================================================
-
--------------------------------------------------------------------------------
-
-### document.getElementsByClassName( name )
-
-------------------------------------------------------------------------------- */
-
-    if ( document.getElementsByClassName === undefined ) {
-        document.getElementsByClassName = function( klass ) {
-            return document.querySelectorAll( '.' + klass );
-        }
-    };
-
-/* ===============================================================================
-
-## textContent shim
-
-=============================================================================== */
-
-    var div = document.createElement('div');
-    if (
-            div.textContent === undefined &&
-            div.innerText !== undefined
-    ) {
-        // handles innerHTML
-        var onPropertyChange = function (e) {
-            if (event.propertyName === 'innerHTML') {
-                var div = (event.currentTarget) ? event.currentTarget : event.srcElement;
-                var children = div.childNodes;
-
-                for ( var i = 0; i < children.length; i++ ) {
-                    addProps( children[i] );
-                }
-            }
-        };
-
-        var textDesc = {
-                get: function() {
-                    return this.innerText;
-                },
-
-                set: function( text ) {
-                    this.innerText = text;
-                    return text;
-                }
-        };
-
-        var addProps = function( dom ) {
-            // these only work on non-text nodes
-            if ( dom.nodeType !== 3 ) {
-                Object.defineProperty( dom, 'textContent', textDesc );
-                Object.defineProperty( dom, 'insertAdjacentHTML', insertAdjacentHTMLDesc );
-
-                // just in case it's been attached once already
-                dom.detachEvent("onpropertychange", onPropertyChange);
-                dom.attachEvent("onpropertychange", onPropertyChange);
-            }
-
-            return dom;
-        }
-
-        /*
-         * Wrap insertAdjacentHTML.
-         */
-        var insertAdjacentHTMLDesc = function(pos, html) {
-            div.innerHTML = html;
-            var children = div.children;
-
-            var p = this.parentNode;
-            var first = undefined;
-
-            if ( pos === "afterend" ) {
-                first = children[0];
-            } else if ( pos === "afterbegin" ) {
-                first = this.firstChild;
-            } else if (
-                    pos !== 'beforebegin' ||
-                    pos !== 'beforeend'
-            ) {
-                fail("invalid position given " + pos);
-            }
-
-            while ( children.length > 0 ) {
-                var child = addProps( children[0] );
-
-                if ( pos === "beforebegin" || pos === 'afterend' ) {
-                    p.insertBefore( child, this );
-                } else if ( pos === "afterbegin" ) {
-                    this.insertBefore( child, first );
-                } else if ( pos === 'beforeend' ) {
-                    this.appendChild( child );
-                }
-            }
-
-            if ( pos === 'afterend' ) {
-                p.removeChild( this );
-                p.insertBefore( this, first );
-            }
-        };
-
-        // wrap createElement
-        var oldCreate = document.createElement;
-        document.createElement = function( name ) {
-            return addProps( oldCreate(name) );
-        }
-
-        // add properties to any existing elements
-        var doms = document.querySelectorAll('*');
-        for ( var i = 0; i < doms.length; i++ ) {
-            addProps( doms[i] );
-        }
-    }
-
-
-/* ===============================================================================
-
-## Element
-
-These do *not* use __shim__, as it breaks in IE 8!
-
-===============================================================================
-
--------------------------------------------------------------------------------
-
-### element.addEventListener
-
-------------------------------------------------------------------------------- */
-
-    if ( ! Element.prototype.addEventListener ) {
-        Element.prototype.addEventListener = function( name, listener ) {
-            return this.attachEvent( name, listener );
-        }
-    }
-
 
 
 /* -------------------------------------------------------------------------------
 
-### element.removeEventListener
+### Element.matches( queryString:string )
 
-------------------------------------------------------------------------------- */
-
-    if ( ! Element.prototype.removeEventListener ) {
-        Element.prototype.removeEventListener = function( name, listener ) {
-            return this.detachEvent( name, listener );
-        }
-    }
-
-
-
-/* -------------------------------------------------------------------------------
-
-### element.matchesSelector()
+Support is in IE 9 and above but with prefixes, and often called 'matchesSelector'.
 
 A new W3C selection tester, for testing if a node matches a selection. Very
 new, so it's either browser specific, or needs a shim.
 
-@author termi https://gist.github.com/termi
-@see https://gist.github.com/termi/2369850/f4022295bf19332ff17e79350ec06c5114d7fbc9
-
 ------------------------------------------------------------------------------- */
 
-    if ( ! Element.prototype.matchesSelector ) {
-        Element.prototype.matchesSelector =
-                Element.prototype.matches ||
-                Element.prototype.webkitMatchesSelector ||
-                Element.prototype.mozMatchesSelector ||
-                Element.prototype.msMatchesSelector ||
-                Element.prototype.oMatchesSelector ||
-                function(selector) {
-                    if(!selector)return false;
-                    if(selector === "*")return true;
-                    if(this === document.documentElement && selector === ":root")return true;
-                    if(this === document.body && selector === "body")return true;
+    __shim__( Element.prototype, 'matches',
+        Element.prototype.matches =
+            Element.prototype.matchesSelector ||
+            Element.prototype.webkitMatchesSelector ||
+            Element.prototype.mozMatchesSelector ||
+            Element.prototype.msMatchesSelector ||
+            Element.prototype.oMatchesSelector
+    )
 
-                    var thisObj = this,
-                        match = false,
-                        parent,
-                        i,
-                        str,
-                        tmp;
 
-                    if (/^[\w#\.][\w-]*$/.test(selector) || /^(\.[\w-]*)+$/.test(selector)) {
-                        switch (selector.charAt(0)) {
-                            case '#':
-                                return thisObj.id === selector.slice(1);
-                                break;
-                            case '.':
-                                match = true;
-                                i = -1;
-                                tmp = selector.slice(1).split(".");
-                                str = " " + thisObj.className + " ";
-                                while(tmp[++i] && match) {
-                                    match = !!~str.indexOf(" " + tmp[i] + " ");
-                                }
-                                return match;
-                                break;
-                            default:
-                                return thisObj.tagName && thisObj.tagName.toUpperCase() === selector.toUpperCase();
-                        }
-                    }
-
-                    parent = thisObj.parentNode;
-
-                    if (parent && parent.querySelector) {
-                        match = parent.querySelector(selector) === thisObj;
-                    }
-
-                    if (!match && (parent = thisObj.ownerDocument)) {
-                        tmp = parent.querySelectorAll( selector );
-
-                        for (i in tmp ) if(_hasOwnProperty(tmp, i)) {
-                            match = tmp[i] === thisObj;
-                            if(match)return true;
-                        }
-                    }
-
-                    return match;
-                }
-    };
-
-/* -------------------------------------------------------------------------------
-
-### element.matches
-
-------------------------------------------------------------------------------- */
-
-    if ( ! Element.prototype.matches ) {
-        Element.prototype.matches = Element.prototype.matchesSelector
-    };
 
 /* -------------------------------------------------------------------------------
 
 ### classList.js: Cross-browser full element.classList implementation.
+
+Required for IE 9
 
 2012-11-15
 
@@ -7614,6 +7354,14 @@ array as a parameter.
         ev.preventDefault();
     }
 
+    var OBJECT_DESCRIPTION = {
+        value           : undefined,
+        enumerable      : false,
+        writable        : true,
+        configurable    : true
+    }
+
+
 
 /* The blank data is used internally for HTML events. All of the HTML events are
 set to the same BROWSER_PROVIDED_DEFAULT object. */
@@ -9644,9 +9392,17 @@ This does 2 things:
 
             if ( dom.__bb_event_map__ === undefined ) {
                 map = {}
-                map[ evName ] = [ funCallback ];
+                map[ evName ] = [ funCallback ]
 
-                __setProp__( dom, '__bb_event_map__', map )
+                try {
+                    OBJECT_DESCRIPTION.value = map
+                    Object.defineProperty( dom, '__bb_event_map__', OBJECT_DESCRIPTION )
+
+                } catch ( ex ) {
+                    dom[ '__bb_event_map__' ] = val
+
+                }
+
             } else {
                 map = dom.__bb_event_map__;
 
