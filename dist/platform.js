@@ -9,15 +9,6 @@ The absolute core bootstrap, used by everything.
 
 -------------------------------------------------------------------------------
 
-Object.defineProperty is present for IE 8 and above,
-it just doesn't work in IE 8 for non-HTMLElements.
-
-So don't bother emulating it!
-
--------------------------------------------------------------------------------
-
--------------------------------------------------------------------------------
-
 ### OBJECT_DESCRIPTION
 
 A re-usable object, for setting descriptions. It's re-used to avoid object
@@ -31,12 +22,12 @@ creation.
         writable        : true,
         configurable    : true
     };
-    
+
 
 
 /* -------------------------------------------------------------------------------
 
-### window.__shim__ obj:Object name:string val:any
+### __shim__ obj:Object name:string val:any
 
 Same as __setProp__, only the item only gets set, *if* it is not already there.
 This is for setting shims, hence why it's called 'shim'.
@@ -47,7 +38,7 @@ This is for setting shims, hence why it's called 'shim'.
 
 ------------------------------------------------------------------------------- */
 
-    window.__shim__ = function( obj, name, val ) {
+    var __shim__ = function( obj, name, val ) {
         if ( ! obj.hasOwnProperty(name) ) {
             __setProp__( obj, name, val );
         }
@@ -57,11 +48,11 @@ This is for setting shims, hence why it's called 'shim'.
 
 /* -------------------------------------------------------------------------------
 
-### window.__setProp__ obj:Object name:string val:any
+### __setProp__ obj:Object name:string val:any
 
 ------------------------------------------------------------------------------- */
 
-    window.__setProp__ = function( obj, name, val ) {
+    var __setProp__ = function( obj, name, val ) {
         if ( typeof name === 'string' ) {
             OBJECT_DESCRIPTION.value = val;
 
@@ -167,7 +158,7 @@ Only rely on these sparingly; always feature detect where possible!
 
 ## IS_IE
 
-A global property which is truthy when this is running in IE holding the 
+A global property which is truthy when this is running in IE holding the
 version of IE we are running on.
 
 When it's not IE this will hold false.
@@ -235,8 +226,7 @@ value as 'IS_IE'.
 
 
 
-})();
-"use strict";(function() {
+
 
 /* ===============================================================================
 
@@ -245,12 +235,11 @@ value as 'IS_IE'.
 This is a collection of shims from around the internet,
 and some built by me, which add support for missing JS features.
 
-=============================================================================== */
-
-    var __shim__ = window.__shim__;
+===============================================================================
 
 
-/* ===============================================================================
+
+===============================================================================
 
 ## window
 
@@ -780,8 +769,7 @@ NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
         }(self));
     }
 
-})();
-"use strict";(function() {
+
 
 /* ===============================================================================
 
@@ -830,7 +818,7 @@ For testing if it's some kind of object, do ...
 
 ------------------------------------------------------------------------------- */
 
-    var isObjectLiteral = window.isObjectLiteral = function( obj ) {
+    var isObjectLiteral = function( obj ) {
         if ( obj !== undefined && obj !== null ) {
             var constructor = obj.constructor;
 
@@ -853,7 +841,7 @@ For testing if it's some kind of object, do ...
 
 ------------------------------------------------------------------------------- */
 
-    var isFunction = window.isFunction = function( f ) {
+    var isFunction = function( f ) {
         return ( typeof f === 'function' ) || ( f instanceof Function );
     }
 
@@ -868,7 +856,7 @@ For testing if it's some kind of object, do ...
 
 ------------------------------------------------------------------------------- */
 
-    var isNumber = window.isNumber = function( n ) {
+    var isNumber = function( n ) {
         return ( typeof n === 'number' ) || ( n instanceof Number );
     }
 
@@ -886,7 +874,7 @@ This is either an actual number, or a string which represents one.
 
 ------------------------------------------------------------------------------- */
 
-    var isNumeric = window.isNumeric = function( str ) {
+    var isNumeric = function( str ) {
         return ( typeof str === 'number' ) ||
                ( str instanceof Number   ) ||
                ( String(str).search( /^\s*(\+|-)?((\d+(\.\d+)?)|(\.\d+))\s*$/ ) !== -1 )
@@ -903,9 +891,25 @@ This is either an actual number, or a string which represents one.
 
 ------------------------------------------------------------------------------- */
 
-    var isString = window.isString = function( str ) {
+    var isString = function( str ) {
         return ( typeof str === 'string' ) || ( str instanceof String );
     }
+
+
+
+/* -------------------------------------------------------------------------------
+
+## isArray
+
+This is just Array.isArray and is only provided for completeness along side
+isString and so on.
+
+@param arr The value to test.
+@return True if the given value is an array, otherwise false.
+
+------------------------------------------------------------------------------- */
+
+    var isArray = Array.isArray
 
 
 
@@ -918,7 +922,7 @@ This is either an actual number, or a string which represents one.
 
 ------------------------------------------------------------------------------- */
 
-    var isBoolean = window.isBoolean = function( bool ) {
+    var isBoolean = function( bool ) {
         return bool === true || bool === false ;
     }
 
@@ -937,7 +941,7 @@ as Number or String).
 
 ------------------------------------------------------------------------------- */
 
-    var isLiteral = window.isLiteral = function(obj) {
+    var isLiteral = function(obj) {
         return isString(obj) ||
                 isNumber(obj) ||
                 obj === undefined ||
@@ -954,7 +958,7 @@ as Number or String).
 
 ------------------------------------------------------------------------------- */
 
-    var isHTMLElement = window.isHTMLElement = function(obj) {
+    var isHTMLElement = function(obj) {
         return obj.nodeType !== undefined;
     }
 
@@ -974,29 +978,9 @@ this.
 
 ------------------------------------------------------------------------------- */
 
-    var isArrayArguments = window.isArrayArguments = function( arr ) {
+    var isArrayArguments = function( arr ) {
         return isArray(arr) || isArguments(arr);
     }
-
-
-
-/* -------------------------------------------------------------------------------
-
-## isArray
-
-This does not include testring for 'arguments'; they will fail this test. To
-include them, use 'isArrayArguments'.
-
-@param arr The value to test.
-@return True, if the object given is an array object.
-
-------------------------------------------------------------------------------- */
-
-    var isArray = window.isArray = Array.isArray ?
-            Array.isArray :
-            function( arr ) {
-                return ( arr instanceof Array );
-            } ;
 
 
 
@@ -1008,7 +992,7 @@ include them, use 'isArrayArguments'.
 
 ------------------------------------------------------------------------------- */
 
-    var isArguments = window.isArguments = function( args ) {
+    var isArguments = function( args ) {
         return ('' + arr) === ARGUMENTS_TYPE_NAME ;
     }
 
@@ -1044,17 +1028,17 @@ assertion fails.
 
 An Error type, specific for assertions.
 
-The 'extraMsgArray' may just be the arguments value from a function. As a 
-result it could have values already at the start. For this reason the 
+The 'extraMsgArray' may just be the arguments value from a function. As a
+result it could have values already at the start. For this reason the
 startIndex parameter is provided so you could skip these elements at the start
 of the array.
 
 @param msg Optional The main message for the assertion.
-@param secondMsg Optional A secondary message. For many assertions this may be 
+@param secondMsg Optional A secondary message. For many assertions this may be
 the test performed.
-@param extraMsgArray Optional An array containing any other extra message 
+@param extraMsgArray Optional An array containing any other extra message
 things to display.
-@param startIndex Optional Where to start taking bits from the extraMsgArray, 
+@param startIndex Optional Where to start taking bits from the extraMsgArray,
 defaults to 0.
 
 ------------------------------------------------------------------------------- */
@@ -1125,7 +1109,7 @@ defaults to 0.
         if ( errStr !== '' ) {
             console.error( "\n" + errStr );
 
-            if ( window.IS_HTA ) {
+            if ( IS_HTA ) {
                 alert( errStr );
             }
         }
@@ -1158,9 +1142,9 @@ arguments given, before it throws the error.
 
 ```
     fail( "some-error", a, b, c )
-    
+
+```
     // equivalent to ...
-    
     console.log( a );
     console.log( b );
     console.log( c );
@@ -1173,7 +1157,7 @@ throw new Error, built together, as one.
 
 ------------------------------------------------------------------------------- */
 
-    var fail = window["fail"] = function( msg ) {
+    var fail = function( msg ) {
         throw new AssertionError( msg || "Failure is reported.", 'Fail()', arguments, 1 );
     }
 
@@ -1190,7 +1174,7 @@ Note that 0 and empty strings will not cause failure.
 
 ------------------------------------------------------------------------------- */
 
-    var assert = window["assert"] = function( test, msg ) {
+    var assert = function( test, msg ) {
         if ( test === undefined || test === null || test === false ) {
             throw new AssertionError( msg || "Assertion has failed.", test, arguments, 2 );
         }
@@ -1211,7 +1195,7 @@ Note that 0 and empty strings will cause failure.
 
 ------------------------------------------------------------------------------- */
 
-    var assertNot = window["assertNot"] = function( test, msg ) {
+    var assertNot = function( test, msg ) {
         if (
                 test !== false &&
                 test !== null &&
@@ -1236,7 +1220,7 @@ This always throws an assertion error.
 
 ------------------------------------------------------------------------------- */
 
-    var assertUnreachable = window["assertUnreachable"] = function( msg ) {
+    var assertUnreachable = function( msg ) {
         assert( false, msg || "this section of code should never be reached" );
     }
 
@@ -1255,7 +1239,7 @@ objects that this allows.
 
 ------------------------------------------------------------------------------- */
 
-    var assertObjectLiteral = window["assertObjectLiteral"] = function( obj, msg ) {
+    var assertObjectLiteral = function( obj, msg ) {
         if ( ! isObjectLiteral(obj) ) {
             throw new AssertionError( msg || "Code expected an JSON object literal.", obj, arguments, 2 );
         }
@@ -1277,7 +1261,7 @@ booleans, null, and undefined.
 
 ------------------------------------------------------------------------------- */
 
-    var assertLiteral = window["assertLiteral"] = function( obj, msg ) {
+    var assertLiteral = function( obj, msg ) {
         if ( ! isLiteral(obj) ) {
             throw new AssertionError( msg || "Primitive value expected.", obj, arguments, 2 );
         }
@@ -1294,7 +1278,7 @@ booleans, null, and undefined.
 
 ------------------------------------------------------------------------------- */
 
-    var assertFunction = window["assertFunction"] = function( fun, msg ) {
+    var assertFunction = function( fun, msg ) {
         if ( typeof fun !== 'function' && !(fun instanceof Function) ) {
             throw new AssertionError( msg || "Function expected.", fun, arguments, 2 );
         }
@@ -1311,7 +1295,7 @@ booleans, null, and undefined.
 
 ------------------------------------------------------------------------------- */
 
-    var assertBoolean = window["assertBoolean"] = function( bool, msg ) {
+    var assertBoolean = function( bool, msg ) {
         if ( bool !== true && bool !== false ) {
             throw new AssertionError( msg || "Boolean expected.", bool, arguments, 2 );
         }
@@ -1328,7 +1312,7 @@ booleans, null, and undefined.
 
 ------------------------------------------------------------------------------- */
 
-    var assertArray = window["assertArray"] = function( arr, msg ) {
+    var assertArray = function( arr, msg ) {
         if ( ! isArray(arr) && (arr.length === undefined) ) {
             throw new AssertionError( msg || "Array expected.", arr, arguments, 2 );
         }
@@ -1345,7 +1329,7 @@ booleans, null, and undefined.
 
 ------------------------------------------------------------------------------- */
 
-    var assertString = window["assertString"] = function( str, msg ) {
+    var assertString = function( str, msg ) {
         if ( typeof str !== 'string' && !(str instanceof String) ) {
             throw new AssertionError( msg || "String expected.", str, arguments, 2 );
         }
@@ -1364,7 +1348,7 @@ This includes both number primitives, and Number objects.
 
 ------------------------------------------------------------------------------- */
 
-    var assertNumber = window["assertNumber"] = function( num, msg ) {
+    var assertNumber = function( num, msg ) {
         if ( typeof n !== 'number' && !(n instanceof Number) ) {
             throw new AssertionError( msg || "Number expected.", num, arguments, 2 );
         }
@@ -1373,576 +1357,7 @@ This includes both number primitives, and Number objects.
 
 
 
-})();
-"use strict";(function() {
 
-/* ===============================================================================
-
-abc.js
-======
-
-@author Joseph Lenton
-
-A debugging library based on Letters
-for Ruby, http://lettersrb.com
-
-Adds methods to the Object prototype,
-for quick debugging at runtime.
-
- * a is for assertion
- * b is for block
- * c is for call method
- * d is for debug
- * e if for asserts if this is empty
- * f is for print field
-
- * k is for printing keys
-
- * l is for log console
-
- * m is for mark object
- * n is for no mark (unmark object)
-
- * p is for print
-
- * s is for stack trace
- * t is for timestamp
- * u is for user alert
-
- * v is for printing values
-
-### Marking
-
-Some functions allow you to mark / unmark,
-or filter based on mark.
-
-By 'mark' it means setting an identifier to
-that object. Why? Sometimes in large systems,
-you have lots of objects floating around,
-and being pushed through single functions.
-
-Marking is a way for you to mark objects in
-the data set before a function call, and then
-easily see if they turn up later in other parts
-of your program.
-
-'true' represents 'all marks', and is used
-
-when you ask to mark, but don't specify it.
-
-=============================================================================== */
-
-    var __shim__ = window.__shim__;
-
-/* -------------------------------------------------------------------------------
-
-## Assertion
-
-@example
-
-    foo.a()
-        // asserts 'this'
-
-@example
-
-    foo.a( function(f) { return f < 10 } )
-        // throws assertion if f is not less than 10
-
-------------------------------------------------------------------------------- */
-
-    __shim__( Object.prototype,
-        'a', function( block, msg ) {
-            if ( arguments.length === 1 ) {
-                if (
-                        !(typeof block === 'function') &&
-                        !(block instanceof Function)
-                ) {
-                    msg = block;
-                    block = undefined;
-                }
-            } else if ( arguments.length >= 2 ) {
-                /*
-                 * If ...
-                 *  - block is not a function, and,
-                 *  - msg is a function,
-                 *  - then swap them!
-                 */
-                if (
-                        (
-                                !(typeof block === 'function') &&
-                                !(block instanceof Function)
-                        ) &&
-                        (
-                                (typeof   msg === 'function') && 
-                                (  msg instanceof Function)
-                        )
-                ) {
-                    msg = block;
-                    block = undefined;
-                }
-            }
-
-            var asserted = ( block !== undefined ) ?
-                    !! block.call( this, this ) :
-                    !! this                     ;
-
-            if ( ! asserted ) {
-                if ( msg ) {
-                    throw new Error( msg );
-                } else {
-                    throw new Error( "assertion error!" )
-                }
-            }
-
-            return this;
-        }
-    );
-
-
-
-/* -------------------------------------------------------------------------------
-
-## Block
-
-Function is in the form:
-
-```
-    f( obj, mark )
-
-If no mark has been placed,
-then mark will be undefined.
-
-The return value is ignored.
-
-@example 1,
-
-     foo.
-         b( function(obj) {
-             if ( obj ) {
-                 console.log( obj );
-             }
-         } ).
-         doWork();
-
-@example 2,
-
-     bar.m( 'work-object' );
-    
-     // some time later
-    
-     foo.
-         b( function(obj, mark) {
-             if ( mark === 'work-object' ) {
-                 console.log( obj );
-             }
-         } ).
-         doWork();
-
-@param cmd A block to pass this object into.
-@return This object.
-
-------------------------------------------------------------------------------- */
-
-    __shim__( Object.prototype,
-        'b', function( cmd ) {
-            cmd.call( this, this, this.____mark____ );
-
-            return this;
-        }
-    );
-
-
-
-/* -------------------------------------------------------------------------------
-
-## Call
-
-Calls the command given, on this object.
-
-@param method The method required to be called.
-@return This object.
-
-------------------------------------------------------------------------------- */
-
-    __shim__( Object.prototype,
-        'c', function( method ) {
-            var args = new Array( arguments.length-1 );
-            for ( var i = 1; i < arguments.length; i++ ) {
-                args[i-1] = arguments[i];
-            }
-
-            this[method].apply( this, args );
-
-            return this;
-        }
-    );
-
-
-
-/* -------------------------------------------------------------------------------
-
-## Debug
-
-Starts the debugger, if available.
-
-To select any object that is marked,
-just pass in true.
-
-@param mark Optional, debugger is only used if this has the same mark given.
-@return This.
-
-------------------------------------------------------------------------------- */
-
-    __shim__( Object.prototype,
-        'd', function( mark ) {
-            if ( arguments.length === 0 ) {
-                debugger;
-            } else if ( mark === true || this.___mark___ === mark ) {
-                debugger;
-            }
-
-            return this;
-        }
-    );
-
-
-
-/* -------------------------------------------------------------------------------
-
-## Assert
-
-Asserts this is empty.
-
-@return This.
-
-------------------------------------------------------------------------------- */
-
-    __shim__( Object.prototype,
-        'e', function() {
-            var isInvalid = false;
-
-            if ( this.length !== undefined ) {
-                if ( this.length > 0 ) {
-                    isInvalid = true;
-                }
-            } else {
-                for ( var k in this ) {
-                    if ( this.hasOwnProperty(k) ) {
-                        isInvalid = true;
-                        break;
-                    }
-                }
-            }
-
-            if ( isInvalid ) {
-                throw new Error("this object is not empty");
-            }
-                
-            return this;
-        }
-    );
-
-
-
-    __shim__( Object.prototype,
-        'f', function( field ) {
-            console.log( this[field] );
-
-            return this;
-        }
-    );
-
-
-
-/* -------------------------------------------------------------------------------
-
-## Keys
-
-Provides all of the keys for this object.
-This only includes keys which are on this
-objects property; it ignores prototypal
-properties.
-
-If a block is provided, then the keys will
-passed into that on each iteration instead
-of being outputted to the console.
-
-@param block Optional, a block for iterating across all keys.
-@return This object.
-
-------------------------------------------------------------------------------- */
-
-    __shim__( Object.prototype,
-        'k', function( block ) {
-            for ( var k in this ) {
-                if ( this.hasOwnProperty(k) ) {
-                    if ( block ) {
-                        block.call( this, k );
-                    } else {
-                        console.log( k );
-                    }
-                }
-            }
-
-            return this;
-        }
-    );
-
-
-
-/* -------------------------------------------------------------------------------
-
-## Log
-
-Prints a message via console.log.
-If a msg is provided, it is printed,
-and otherwise this object is printed.
-
-@param Optional, a message to send to the console instead.
-@return This.
-
-------------------------------------------------------------------------------- */
-
-    __shim__( Object.prototype,
-        'l', function( msg ) {
-            console.log( msg || this );
-
-            return this;
-        }
-    );
-
-
-
-/* -------------------------------------------------------------------------------
-
-## Mark
-
-Marking is here to help tracking objects, through a busy system.
-They are used to help distinguish objects later, without having to setup global
-variables.
-
-Other methods also take a mark, to allow filtering, so you can apply a method
-to lots of objects, and only those marked will actually carry out the action.
-
-### marking with a value
-
-The parameter given is the value to use
-when marking.
-
-This allows you to mark different objects,
-with different values, so they can be
-identified in different ways.
-
-### marking via block
-
-If called with a block,
-the object is passed into that block.
-
-If the block returns a non-falsy object,
-the object is then marked.
-
-If called with no block,
-it is marked for certain.
-
-This is to allow marking specific objects 
-in a large system, and then allow you to
-retrieve them again later.
-
-@param block An optional filter for marking objects, or the value to mark them with.
-@return This object.
-
-------------------------------------------------------------------------------- */
-
-    __shim__( Object.prototype,
-        'm', function( block ) {
-            if ( block !== undefined ) {
-                if ( typeof block === 'function' || (block instanceof Function) ) {
-                    var mark = block.call( this, this );
-
-                    if ( mark ) {
-                        this.____mark____ = mark;
-                    } else {
-                        delete this.____mark____;
-                    }
-                } else {
-                    this.___mark___ = block || true;
-                }
-            } else {
-                this.____mark____ = true;
-            }
-
-            return this;
-        }
-    );
-
-
-
-/* -------------------------------------------------------------------------------
-
-## No Mark
-
-If this has a mark, then it is unmarked.
-The given block, like with mark,
-allows you to filter unmarking objects.
-
-@param block An optional filter to use for unmarking.
-@return This object.
-
-------------------------------------------------------------------------------- */
-
-    __shim__( Object.prototype,
-        'n', function( block ) {
-            if ( this.____mark____ !== undefined ) {
-                if ( block !== undefined ) {
-                    if ( block.call(this, this, this.____mark____) ) {
-                        delete this.____mark____;
-                    }
-                } else {
-                    delete this.____mark____;
-                }
-            }
-
-            return this;
-        }
-    );
-
-
-
-/* -------------------------------------------------------------------------------
-
-## Print
-
-Prints this object to `console.log`.
-
-@param msg Optional, a message to print before the item.
-@return This.
-
-------------------------------------------------------------------------------- */
-
-    __shim__( Object.prototype,
-        'p', function( msg ) {
-            if ( arguments.length === 0 ) {
-                console.log( this );
-            } else {
-                console.log( msg, this );
-            }
-
-            return this;
-        }
-    );
-
-
-
-/* -------------------------------------------------------------------------------
-
-## Stack trace.
-
-Prints a stack trace to the console.
-
-@return This object.
-
-------------------------------------------------------------------------------- */
-
-    __shim__( Object.prototype,
-        's', function() {
-            var err = new Error();
-
-            if ( err.stack ) {
-                console.log( err.stack );
-            }
-
-            return this;
-        }
-    );
-
-
-
-/* -------------------------------------------------------------------------------
-
-## Timestamp
-
-A timestamp is dumped to the console.
-
-@return This object.
-
-------------------------------------------------------------------------------- */
-
-    __shim__( Object.prototype,
-        't', function() {
-            console.log( Date.now() );
-
-            return this;
-        }
-    );
-
-
-
-/* -------------------------------------------------------------------------------
-
-## User Alert
-
-Shows an alert to the user.
-
-@param msg Optional, a message to display, defaults to this object.
-@return This.
-   
-------------------------------------------------------------------------------- */
-
-    __shim__( Object.prototype,
-        'u', function( msg ) {
-            if ( arguments.length > 0 ) {
-                alert( msg );
-            } else {
-                alert( this );
-            }
-
-            return this;
-        }
-    );
-
-
-
-/* -------------------------------------------------------------------------------
-
-## Values
-
-This will iterate over all of the key => value pairs
-in this object. That is regardless of if this is
-an Array, Object, or something else.
-
-By default, they are printed.
-
-If a block is provided, they are passed to the block
-in turn.
-
-@example
-
-     foo.v( function(k, val) { ... } )
-
-@param block An optional block for iterating over the key-value pairs.
-@return This object.
-
-------------------------------------------------------------------------------- */
-
-    __shim__( Object.prototype,
-        'v', function( block ) {
-            for ( var k in this ) {
-                if ( this.hasOwnProperty(k) ) {
-                    if ( block ) {
-                        block.call( this, k, this[k] );
-                    } else {
-                        console.log( k, this[k] );
-                    }
-                }
-            }
-
-            return this;
-        }
-    );
-
-
-})();
-"use strict";(function() {
 
 
 /* extras
@@ -1955,13 +1370,9 @@ This includes extra array methods, methods on the object to allow it to be used 
 more array-like fashion.
 
 
- */
-
-    var __setProp__ = window.__setProp__;
 
 
-
-/* ===============================================================================
+===============================================================================
 
 ## Object
 
@@ -3415,8 +2826,7 @@ function application.
 
 
 
-})();
-"use strict";(function() {
+
 
 /* Function.js
 ===========
@@ -3432,13 +2842,12 @@ Also includes some helper functions, to make working with functions easier.
 
 ## Function
 
-=============================================================================== */
-
-    var __setProp__ = window.__setProp__;
+===============================================================================
 
 
 
-/* -------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
 
 ### LazyParam
 
@@ -3500,7 +2909,7 @@ If you wish to use the underscore for something else, you can use the value
 
 
 ------------------------------------------------------------------------------- */
-    
+
     var newPrototypeArray = function( src, arr, check ) {
         var hasCheck = ( arguments.length >= 3 );
         var proto = src.prototype;
@@ -3598,7 +3007,7 @@ If you wish to use the underscore for something else, you can use the value
 
             newFunctionExtendCallback.isOkCallback = isOkCallback;
             var proto = newPrototypeArray( this, arguments, newFunctionExtendCallback )
-             
+
             if ( errors !== null ) {
                 throw new Error( errMsg + "\n    " + errors.join(', ') );
             }
@@ -3790,7 +3199,7 @@ So this will try to call it normally and if that fails call without an object.
                 } else {
                     if ( startIndex > 0 ) {
                         funArgs = new Array( (argsLen - startIndex) + argumentsLen );
-                        
+
                         for ( var i = startIndex; i < argsLen; i++ ) {
                             funArgs[ i - startIndex ] = args[ i ];
                         }
@@ -3910,7 +3319,7 @@ Binds the given function to the target given, and then returns the function.
 
 The equivalent to calling 'new Fun()'.
 
-The reason this exists, is because by oferring it as a function, you can then 
+The reason this exists, is because by oferring it as a function, you can then
 bind the constructor call and pass it around.
 
 ------------------------------------------------------------------------------- */
@@ -4075,7 +3484,7 @@ other function methods, for adding in extras on top.
 
             return newFun;
         }
-    );    
+    );
 
 
 /* -------------------------------------------------------------------------------
@@ -4177,18 +3586,18 @@ timer.
 
 ### function.delay( delay )
 
-This is very similar to 'future' and 'throttle'. This will return a function 
+This is very similar to 'future' and 'throttle'. This will return a function
 that wraps this function which when called will actually run in the future.
 
 With this the call is just delayed, and calling it multiple times will result
 in it being called multiple times in the future. The execution of the function
 is 'delayed' (hence the name).
 
-When the result is called it will call the function sometime in the future. 
+When the result is called it will call the function sometime in the future.
 This is after a ceratain amount of milliseconds, which is provided by 'delay'.
 
 This is just like 'throttle', only this will call in the function in the future
-for *each* time it is called. So if you call the function 4 times in a row, 
+for *each* time it is called. So if you call the function 4 times in a row,
 then it will be called 4 times in the future as well.
 
 ------------------------------------------------------------------------------- */
@@ -4400,7 +3809,7 @@ This allows you to have a sanity check.
 
 ### function.protoExtend
 
-Adds on extra methods, but none of them are allowed 
+Adds on extra methods, but none of them are allowed
 to override any others.
 
 This is used as a sanity check.
@@ -4526,10 +3935,9 @@ Another example, given the code:
      var f = function( a1, a2, a3, a4 ) {
          // do nothing
      }
-     
      var fRice = f.rice( 1, 2 )
      fRice( "a", "b" );
-     
+
 Variables inside f will be ...
 
 ```
@@ -4663,7 +4071,7 @@ on that object it is bound to,
 if the first parameter is a string.
 
 i.e.
- 
+
 ```
      var doAB = obj.method( 'doA' ).then( 'doB' );
 
@@ -4734,12 +4142,12 @@ This is useful for chaining in callbacks which are optional.
              * if not a function,
              * or it's the name of a function but not a method on this object,
              * or it's the name of a function and not a function that exists globally ...
-             * 
+             *
              * ... then replace it with a blank stub to be used instead.
              */
             if (
-                    ! isFunction(fun) || ( 
-                            isString( fun ) && 
+                    ! isFunction(fun) || (
+                            isString( fun ) &&
                             ( fun.__bound !== undefined && ! isFunction(fun.__bound[fun]) ) ||
                             ( ! isFunction(window[fun]) )
                     )
@@ -4850,7 +4258,7 @@ This is a mix of call, and future.
 
 ### function.future
 
-Sets this function to be called future. This will call the function in 0 
+Sets this function to be called future. This will call the function in 0
 milliseconds; essentially some time in the future, as soon as possible.
 
 It returns the value used when creating the timeout, and this allows you to
@@ -4939,7 +4347,7 @@ The first parameter of the function being methodized, will always hold 'this'.
     __setProp__( Function.prototype,
         'methodize', function() {
             var fun = this;
-            
+
             return function() {
                 var argsLen = arguments.length;
 
@@ -5012,8 +4420,7 @@ the first parameter.
 
 
 
-})();
-"use strict";(function() {
+
 
 /* Math.jsx
 ========
@@ -5021,16 +4428,16 @@ the first parameter.
 @author Joseph Lenton
 
 Adds on extras for extra mathematical operations.
+
+
  */
 
-    var __setProp__ = window.__setProp__;
-    
     __setProp__( Math, {
             'TAO': Math.PI*2  ,
             'π'  : Math.PI    ,
             'τ'  : Math.PI*2
     } );
-    
+
     __setProp__( window, {
             'π'  : Math.PI    ,
             'τ'  : Math.PI*2
@@ -5089,12 +4496,12 @@ This is a small parser for parsing and evaluating simple math expressions.
 
 Note this is *not*, and *never* intends to be, a full language.
 
-The point is so you can have a public facing input that allows inputs such as 
-"200" or "190+12". This means the user can enter a simple mathematical 
+The point is so you can have a public facing input that allows inputs such as
+"200" or "190+12". This means the user can enter a simple mathematical
 expression instead of working it out by hand.
 
 So far this only supports ...
- - integers 
+ - integers
  - decimal values
  - hexadecimal values, 0xabc34
  - binary values, 0b010101011010
@@ -5103,11 +4510,11 @@ So far this only supports ...
 
 No variables, no functions, because this isn't a mini programming language.
 
-You chuck the maths into parse and it either gives you the result, or null. 
+You chuck the maths into parse and it either gives you the result, or null.
 Null is returned if there is some issue with the input and it's designed to ask
 no questions and just fail fast.
 
-If null is not good enough; well again this is not intended to be a fully 
+If null is not good enough; well again this is not intended to be a fully
 functioning language. So if you want an in-depth maths AST builder and error
 checker then tbh use something else because this ain't that.
 
@@ -5129,12 +4536,12 @@ alternative. It parses and then runs the maths.
             var TERM_DIVIDE          = 6
             var TERM_LEFT_BRACKET    = 7
             var TERM_RIGHT_BRACKET   = 8
-            
+
             /// Token for whole int numbers.
             /// It will also push 1 extra integer into the tokens array.
             ///     - the integer value
             var TERM_INT_NUMBER      = 9
-            
+
             /// Token for decimal numbers.
             /// It will also push 3 extra integers onto the tokens array
             ///     - the integer value
@@ -5179,9 +4586,9 @@ alternative. It parses and then runs the maths.
                 /*
                  * 0x - Hexadecimal
                  */
-                if ( 
-                        (secondCode === LOWER_X || secondCode === UPPER_X) && 
-                        code === ZERO 
+                if (
+                        (secondCode === LOWER_X || secondCode === UPPER_X) &&
+                        code === ZERO
                 ) {
                     base = 16;
                     hasMore = false;
@@ -5219,7 +4626,7 @@ alternative. It parses and then runs the maths.
                  */
                 } else if (
                         (secondCode === LOWER_B || secondCode === UPPER_B)
-                        && code === ZERO 
+                        && code === ZERO
                 ) {
                     base = 2;
 
@@ -5232,7 +4639,7 @@ alternative. It parses and then runs the maths.
                         } else if ( code === ONE ) {
                             num = num*2 + 1;
                             hasMore = true;
-                        
+
                         // decimal binary, not supported
                         } else if (code === FULL_STOP ) {
                             state.fail = true;
@@ -5538,7 +4945,6 @@ alternative. It parses and then runs the maths.
         })()
     );
 
-})();
 "use strict";
 
 (function() {
@@ -5855,7 +5261,7 @@ alternative. It parses and then runs the maths.
             hold : holdBuilder
     }
 })();
-"use strict";(function() {
+
 
 /* ===============================================================================
 
@@ -6295,47 +5701,49 @@ in a callback method.
 
 ------------------------------------------------------------------------------- */
 
-    var newRegisterMethod = function( methodName, methodNameOne ) {
-        return new Function( "name", "fun", [
-                        '    var argsLen = arguments.length;',
-                        '    ',
-                        '    if ( argsLen === 1 ) {',
-                        '        assertObjectLiteral( name, ' +
-                        '                "non-object given for registering" ',
-                        '        );',
-                        '        ',
-                        '        for ( var k in name ) {',
-                        '            if ( name.has(k) ) {',
-                        '                this.' + methodName + '(k, name[k]);',
-                        '            }',
-                        '        }',
-                        '    } else if ( argsLen === 2 ) {',
-                        '        if ( name instanceof Array ) {',
-                        '            for ( var i = 0; i < name.length; i++ ) {',
-                        '                this.' + methodName + '(name[i], fun);',
-                        '            }',
-                        '        } else {',
-                        '            assertString( name, "non-string given for name" );',
-                        '            assertFunction( fun, "non-function given for function" );',
-                        '            ',
-                        '            this.' + methodNameOne + '( name, fun );',
-                        '        }',
-                        '    } else if ( argsLen === 0 ) {',
-                        '        fail( "no parameters given" )',
-                        '    } else {',
-                        '        var names = new Array( argsLen-1 );',
-                        '        fun = arguments[ argsLen-1 ];',
-                        '        ',
-                        '        for ( var i = 0; i < argsLen-1; i++ ) {',
-                        '            names[i] = arguments[i];',
-                        '        }',
-                        '        ',
-                        '        this.' + methodName + '( names, fun );',
-                        '    }',
-                        '    ',
-                        '    return this;'
-                ].join("\n")
-        )
+    var newRegisterMethod = function( doThis, doThisOne ) {
+        return function( name, fun ) {
+            var argsLen = arguments.length
+
+            if ( argsLen === 1 ) {
+                assertObjectLiteral( name,
+                        "non-object given for registering"
+                )
+
+                for ( var k in name ) {
+                    if ( name.has(k) ) {
+                        doThis( this, k, name[k] )
+                    }
+                }
+            } else if ( argsLen === 2 ) {
+                if ( name instanceof Array ) {
+                    for ( var i = 0; i < name.length; i++ ) {
+                        doThis( this, name[i], fun )
+                    }
+
+                } else {
+                    assertString( name, "non-string given for name" )
+                    assertFunction( fun, "non-function given for function" )
+
+                    doThisOne( this,  name, fun )
+                }
+
+            } else if ( argsLen === 0 ) {
+                fail( "no parameters given" )
+
+            } else {
+                var names = new Array( argsLen-1 )
+                fun = arguments[ argsLen-1 ]
+
+                for ( var i = 0; i < argsLen-1; i++ ) {
+                    names[i] = arguments[i]
+                }
+
+                doThis( this,  names, fun )
+            }
+
+            return this
+        }
     }
 
 
@@ -7703,7 +7111,10 @@ adding new custom events which you can use on DOM elements.
                  * Events should use the event callback signature which is
                  * documented at the top of this file.
                  */
-                event: newRegisterMethod( 'event', 'eventOne' ),
+                event: newRegisterMethod(
+                    function(self, k, fun) { self.event(k, fun) },
+                    function(self, k, fun) { self.eventOne(k, fun) }
+                ),
 
                 eventOne: function( name, fun ) {
                     this.data.events[ name ] = newBBFunctionData( fun, this.data.events[name] );
@@ -7745,7 +7156,10 @@ adding new custom events which you can use on DOM elements.
                  * @param name The name for the component.
                  * @param fun A function callback which creates, and returns, the element.
                  */
-                element: newRegisterMethod( 'element', 'elementOne' ),
+                element: newRegisterMethod(
+                    function(self, k, fun) { self.element(k, fun) },
+                    function(self, k, fun) { self.elementOne(k, fun) }
+                ),
 
                 elementOne: function( name, fun ) {
                     this.data.elements[ name ] = newBBFunctionData( fun, this.data.elements[name] );

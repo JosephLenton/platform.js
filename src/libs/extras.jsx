@@ -12,10 +12,6 @@ more array-like fashion.
 
 
 
-    var __setProp__ = window.__setProp__;
-
-
-
 ===============================================================================
 
 ## Object

@@ -15,7 +15,6 @@ Also includes some helper functions, to make working with functions easier.
 
 ===============================================================================
 
-    var __setProp__ = window.__setProp__;
 
 
 
@@ -81,7 +80,7 @@ If you wish to use the underscore for something else, you can use the value
 
 
 -------------------------------------------------------------------------------
-    
+
     var newPrototypeArray = function( src, arr, check ) {
         var hasCheck = ( arguments.length >= 3 );
         var proto = src.prototype;
@@ -179,7 +178,7 @@ If you wish to use the underscore for something else, you can use the value
 
             newFunctionExtendCallback.isOkCallback = isOkCallback;
             var proto = newPrototypeArray( this, arguments, newFunctionExtendCallback )
-             
+
             if ( errors !== null ) {
                 throw new Error( errMsg + "\n    " + errors.join(', ') );
             }
@@ -371,7 +370,7 @@ So this will try to call it normally and if that fails call without an object.
                 } else {
                     if ( startIndex > 0 ) {
                         funArgs = new Array( (argsLen - startIndex) + argumentsLen );
-                        
+
                         for ( var i = startIndex; i < argsLen; i++ ) {
                             funArgs[ i - startIndex ] = args[ i ];
                         }
@@ -491,7 +490,7 @@ Binds the given function to the target given, and then returns the function.
 
 The equivalent to calling 'new Fun()'.
 
-The reason this exists, is because by oferring it as a function, you can then 
+The reason this exists, is because by oferring it as a function, you can then
 bind the constructor call and pass it around.
 
 -------------------------------------------------------------------------------
@@ -656,7 +655,7 @@ other function methods, for adding in extras on top.
 
             return newFun;
         }
-    );    
+    );
 
 
 -------------------------------------------------------------------------------
@@ -758,18 +757,18 @@ timer.
 
 ### function.delay( delay )
 
-This is very similar to 'future' and 'throttle'. This will return a function 
+This is very similar to 'future' and 'throttle'. This will return a function
 that wraps this function which when called will actually run in the future.
 
 With this the call is just delayed, and calling it multiple times will result
 in it being called multiple times in the future. The execution of the function
 is 'delayed' (hence the name).
 
-When the result is called it will call the function sometime in the future. 
+When the result is called it will call the function sometime in the future.
 This is after a ceratain amount of milliseconds, which is provided by 'delay'.
 
 This is just like 'throttle', only this will call in the function in the future
-for *each* time it is called. So if you call the function 4 times in a row, 
+for *each* time it is called. So if you call the function 4 times in a row,
 then it will be called 4 times in the future as well.
 
 -------------------------------------------------------------------------------
@@ -981,7 +980,7 @@ This allows you to have a sanity check.
 
 ### function.protoExtend
 
-Adds on extra methods, but none of them are allowed 
+Adds on extra methods, but none of them are allowed
 to override any others.
 
 This is used as a sanity check.
@@ -1107,10 +1106,9 @@ Another example, given the code:
      var f = function( a1, a2, a3, a4 ) {
          // do nothing
      }
-     
      var fRice = f.rice( 1, 2 )
      fRice( "a", "b" );
-     
+
 Variables inside f will be ...
 
 ```
@@ -1244,7 +1242,7 @@ on that object it is bound to,
 if the first parameter is a string.
 
 i.e.
- 
+
 ```
      var doAB = obj.method( 'doA' ).then( 'doB' );
 
@@ -1315,12 +1313,12 @@ This is useful for chaining in callbacks which are optional.
              * if not a function,
              * or it's the name of a function but not a method on this object,
              * or it's the name of a function and not a function that exists globally ...
-             * 
+             *
              * ... then replace it with a blank stub to be used instead.
              */
             if (
-                    ! isFunction(fun) || ( 
-                            isString( fun ) && 
+                    ! isFunction(fun) || (
+                            isString( fun ) &&
                             ( fun.__bound !== undefined && ! isFunction(fun.__bound[fun]) ) ||
                             ( ! isFunction(window[fun]) )
                     )
@@ -1431,7 +1429,7 @@ This is a mix of call, and future.
 
 ### function.future
 
-Sets this function to be called future. This will call the function in 0 
+Sets this function to be called future. This will call the function in 0
 milliseconds; essentially some time in the future, as soon as possible.
 
 It returns the value used when creating the timeout, and this allows you to
@@ -1520,7 +1518,7 @@ The first parameter of the function being methodized, will always hold 'this'.
     __setProp__( Function.prototype,
         'methodize', function() {
             var fun = this;
-            
+
             return function() {
                 var argsLen = arguments.length;
 

@@ -7,14 +7,14 @@ Math.jsx
 Adds on extras for extra mathematical operations.
 
 
-    var __setProp__ = window.__setProp__;
-    
+
+
     __setProp__( Math, {
             'TAO': Math.PI*2  ,
             'π'  : Math.PI    ,
             'τ'  : Math.PI*2
     } );
-    
+
     __setProp__( window, {
             'π'  : Math.PI    ,
             'τ'  : Math.PI*2
@@ -73,12 +73,12 @@ This is a small parser for parsing and evaluating simple math expressions.
 
 Note this is *not*, and *never* intends to be, a full language.
 
-The point is so you can have a public facing input that allows inputs such as 
-"200" or "190+12". This means the user can enter a simple mathematical 
+The point is so you can have a public facing input that allows inputs such as
+"200" or "190+12". This means the user can enter a simple mathematical
 expression instead of working it out by hand.
 
 So far this only supports ...
- - integers 
+ - integers
  - decimal values
  - hexadecimal values, 0xabc34
  - binary values, 0b010101011010
@@ -87,11 +87,11 @@ So far this only supports ...
 
 No variables, no functions, because this isn't a mini programming language.
 
-You chuck the maths into parse and it either gives you the result, or null. 
+You chuck the maths into parse and it either gives you the result, or null.
 Null is returned if there is some issue with the input and it's designed to ask
 no questions and just fail fast.
 
-If null is not good enough; well again this is not intended to be a fully 
+If null is not good enough; well again this is not intended to be a fully
 functioning language. So if you want an in-depth maths AST builder and error
 checker then tbh use something else because this ain't that.
 
@@ -113,12 +113,12 @@ alternative. It parses and then runs the maths.
             var TERM_DIVIDE          = 6
             var TERM_LEFT_BRACKET    = 7
             var TERM_RIGHT_BRACKET   = 8
-            
+
             /// Token for whole int numbers.
             /// It will also push 1 extra integer into the tokens array.
             ///     - the integer value
             var TERM_INT_NUMBER      = 9
-            
+
             /// Token for decimal numbers.
             /// It will also push 3 extra integers onto the tokens array
             ///     - the integer value
@@ -163,9 +163,9 @@ alternative. It parses and then runs the maths.
                 /*
                  * 0x - Hexadecimal
                  */
-                if ( 
-                        (secondCode === LOWER_X || secondCode === UPPER_X) && 
-                        code === ZERO 
+                if (
+                        (secondCode === LOWER_X || secondCode === UPPER_X) &&
+                        code === ZERO
                 ) {
                     base = 16;
                     hasMore = false;
@@ -203,7 +203,7 @@ alternative. It parses and then runs the maths.
                  */
                 } else if (
                         (secondCode === LOWER_B || secondCode === UPPER_B)
-                        && code === ZERO 
+                        && code === ZERO
                 ) {
                     base = 2;
 
@@ -216,7 +216,7 @@ alternative. It parses and then runs the maths.
                         } else if ( code === ONE ) {
                             num = num*2 + 1;
                             hasMore = true;
-                        
+
                         // decimal binary, not supported
                         } else if (code === FULL_STOP ) {
                             state.fail = true;

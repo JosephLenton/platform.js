@@ -26,7 +26,7 @@ creation.
 
 -------------------------------------------------------------------------------
 
-### window.__shim__ obj:Object name:string val:any
+### __shim__ obj:Object name:string val:any
 
 Same as __setProp__, only the item only gets set, *if* it is not already there.
 This is for setting shims, hence why it's called 'shim'.
@@ -37,7 +37,7 @@ This is for setting shims, hence why it's called 'shim'.
 
 -------------------------------------------------------------------------------
 
-    window.__shim__ = function( obj, name, val ) {
+    var __shim__ = function( obj, name, val ) {
         if ( ! obj.hasOwnProperty(name) ) {
             __setProp__( obj, name, val );
         }
@@ -47,11 +47,11 @@ This is for setting shims, hence why it's called 'shim'.
 
 -------------------------------------------------------------------------------
 
-### window.__setProp__ obj:Object name:string val:any
+### __setProp__ obj:Object name:string val:any
 
 -------------------------------------------------------------------------------
 
-    window.__setProp__ = function( obj, name, val ) {
+    var __setProp__ = function( obj, name, val ) {
         if ( typeof name === 'string' ) {
             OBJECT_DESCRIPTION.value = val;
 

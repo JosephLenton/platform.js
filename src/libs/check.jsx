@@ -46,7 +46,7 @@ For testing if it's some kind of object, do ...
 
 -------------------------------------------------------------------------------
 
-    var isObjectLiteral = window.isObjectLiteral = function( obj ) {
+    var isObjectLiteral = function( obj ) {
         if ( obj !== undefined && obj !== null ) {
             var constructor = obj.constructor;
 
@@ -69,7 +69,7 @@ For testing if it's some kind of object, do ...
 
 -------------------------------------------------------------------------------
 
-    var isFunction = window.isFunction = function( f ) {
+    var isFunction = function( f ) {
         return ( typeof f === 'function' ) || ( f instanceof Function );
     }
 
@@ -84,7 +84,7 @@ For testing if it's some kind of object, do ...
 
 -------------------------------------------------------------------------------
 
-    var isNumber = window.isNumber = function( n ) {
+    var isNumber = function( n ) {
         return ( typeof n === 'number' ) || ( n instanceof Number );
     }
 
@@ -102,7 +102,7 @@ This is either an actual number, or a string which represents one.
 
 -------------------------------------------------------------------------------
 
-    var isNumeric = window.isNumeric = function( str ) {
+    var isNumeric = function( str ) {
         return ( typeof str === 'number' ) ||
                ( str instanceof Number   ) ||
                ( String(str).search( /^\s*(\+|-)?((\d+(\.\d+)?)|(\.\d+))\s*$/ ) !== -1 )
@@ -119,9 +119,25 @@ This is either an actual number, or a string which represents one.
 
 -------------------------------------------------------------------------------
 
-    var isString = window.isString = function( str ) {
+    var isString = function( str ) {
         return ( typeof str === 'string' ) || ( str instanceof String );
     }
+
+
+
+-------------------------------------------------------------------------------
+
+## isArray
+
+This is just Array.isArray and is only provided for completeness along side
+isString and so on.
+
+@param arr The value to test.
+@return True if the given value is an array, otherwise false.
+
+-------------------------------------------------------------------------------
+
+    var isArray = Array.isArray
 
 
 
@@ -134,7 +150,7 @@ This is either an actual number, or a string which represents one.
 
 -------------------------------------------------------------------------------
 
-    var isBoolean = window.isBoolean = function( bool ) {
+    var isBoolean = function( bool ) {
         return bool === true || bool === false ;
     }
 
@@ -153,7 +169,7 @@ as Number or String).
 
 -------------------------------------------------------------------------------
 
-    var isLiteral = window.isLiteral = function(obj) {
+    var isLiteral = function(obj) {
         return isString(obj) ||
                 isNumber(obj) ||
                 obj === undefined ||
@@ -170,7 +186,7 @@ as Number or String).
 
 -------------------------------------------------------------------------------
 
-    var isHTMLElement = window.isHTMLElement = function(obj) {
+    var isHTMLElement = function(obj) {
         return obj.nodeType !== undefined;
     }
 
@@ -190,29 +206,9 @@ this.
 
 -------------------------------------------------------------------------------
 
-    var isArrayArguments = window.isArrayArguments = function( arr ) {
+    var isArrayArguments = function( arr ) {
         return isArray(arr) || isArguments(arr);
     }
-
-
-
--------------------------------------------------------------------------------
-
-## isArray
-
-This does not include testring for 'arguments'; they will fail this test. To
-include them, use 'isArrayArguments'.
-
-@param arr The value to test.
-@return True, if the object given is an array object.
-
--------------------------------------------------------------------------------
-
-    var isArray = window.isArray = Array.isArray ?
-            Array.isArray :
-            function( arr ) {
-                return ( arr instanceof Array );
-            } ;
 
 
 
@@ -224,7 +220,7 @@ include them, use 'isArrayArguments'.
 
 -------------------------------------------------------------------------------
 
-    var isArguments = window.isArguments = function( args ) {
+    var isArguments = function( args ) {
         return ('' + arr) === ARGUMENTS_TYPE_NAME ;
     }
 
@@ -260,17 +256,17 @@ assertion fails.
 
 An Error type, specific for assertions.
 
-The 'extraMsgArray' may just be the arguments value from a function. As a 
-result it could have values already at the start. For this reason the 
+The 'extraMsgArray' may just be the arguments value from a function. As a
+result it could have values already at the start. For this reason the
 startIndex parameter is provided so you could skip these elements at the start
 of the array.
 
 @param msg Optional The main message for the assertion.
-@param secondMsg Optional A secondary message. For many assertions this may be 
+@param secondMsg Optional A secondary message. For many assertions this may be
 the test performed.
-@param extraMsgArray Optional An array containing any other extra message 
+@param extraMsgArray Optional An array containing any other extra message
 things to display.
-@param startIndex Optional Where to start taking bits from the extraMsgArray, 
+@param startIndex Optional Where to start taking bits from the extraMsgArray,
 defaults to 0.
 
 -------------------------------------------------------------------------------
@@ -341,7 +337,7 @@ defaults to 0.
         if ( errStr !== '' ) {
             console.error( "\n" + errStr );
 
-            if ( window.IS_HTA ) {
+            if ( IS_HTA ) {
                 alert( errStr );
             }
         }
@@ -374,9 +370,9 @@ arguments given, before it throws the error.
 
 ```
     fail( "some-error", a, b, c )
-    
+
+```
     // equivalent to ...
-    
     console.log( a );
     console.log( b );
     console.log( c );
@@ -389,7 +385,7 @@ throw new Error, built together, as one.
 
 -------------------------------------------------------------------------------
 
-    var fail = window["fail"] = function( msg ) {
+    var fail = function( msg ) {
         throw new AssertionError( msg || "Failure is reported.", 'Fail()', arguments, 1 );
     }
 
@@ -406,7 +402,7 @@ Note that 0 and empty strings will not cause failure.
 
 -------------------------------------------------------------------------------
 
-    var assert = window["assert"] = function( test, msg ) {
+    var assert = function( test, msg ) {
         if ( test === undefined || test === null || test === false ) {
             throw new AssertionError( msg || "Assertion has failed.", test, arguments, 2 );
         }
@@ -427,7 +423,7 @@ Note that 0 and empty strings will cause failure.
 
 -------------------------------------------------------------------------------
 
-    var assertNot = window["assertNot"] = function( test, msg ) {
+    var assertNot = function( test, msg ) {
         if (
                 test !== false &&
                 test !== null &&
@@ -452,7 +448,7 @@ This always throws an assertion error.
 
 -------------------------------------------------------------------------------
 
-    var assertUnreachable = window["assertUnreachable"] = function( msg ) {
+    var assertUnreachable = function( msg ) {
         assert( false, msg || "this section of code should never be reached" );
     }
 
@@ -471,7 +467,7 @@ objects that this allows.
 
 -------------------------------------------------------------------------------
 
-    var assertObjectLiteral = window["assertObjectLiteral"] = function( obj, msg ) {
+    var assertObjectLiteral = function( obj, msg ) {
         if ( ! isObjectLiteral(obj) ) {
             throw new AssertionError( msg || "Code expected an JSON object literal.", obj, arguments, 2 );
         }
@@ -493,7 +489,7 @@ booleans, null, and undefined.
 
 -------------------------------------------------------------------------------
 
-    var assertLiteral = window["assertLiteral"] = function( obj, msg ) {
+    var assertLiteral = function( obj, msg ) {
         if ( ! isLiteral(obj) ) {
             throw new AssertionError( msg || "Primitive value expected.", obj, arguments, 2 );
         }
@@ -510,7 +506,7 @@ booleans, null, and undefined.
 
 -------------------------------------------------------------------------------
 
-    var assertFunction = window["assertFunction"] = function( fun, msg ) {
+    var assertFunction = function( fun, msg ) {
         if ( typeof fun !== 'function' && !(fun instanceof Function) ) {
             throw new AssertionError( msg || "Function expected.", fun, arguments, 2 );
         }
@@ -527,7 +523,7 @@ booleans, null, and undefined.
 
 -------------------------------------------------------------------------------
 
-    var assertBoolean = window["assertBoolean"] = function( bool, msg ) {
+    var assertBoolean = function( bool, msg ) {
         if ( bool !== true && bool !== false ) {
             throw new AssertionError( msg || "Boolean expected.", bool, arguments, 2 );
         }
@@ -544,7 +540,7 @@ booleans, null, and undefined.
 
 -------------------------------------------------------------------------------
 
-    var assertArray = window["assertArray"] = function( arr, msg ) {
+    var assertArray = function( arr, msg ) {
         if ( ! isArray(arr) && (arr.length === undefined) ) {
             throw new AssertionError( msg || "Array expected.", arr, arguments, 2 );
         }
@@ -561,7 +557,7 @@ booleans, null, and undefined.
 
 -------------------------------------------------------------------------------
 
-    var assertString = window["assertString"] = function( str, msg ) {
+    var assertString = function( str, msg ) {
         if ( typeof str !== 'string' && !(str instanceof String) ) {
             throw new AssertionError( msg || "String expected.", str, arguments, 2 );
         }
@@ -580,7 +576,7 @@ This includes both number primitives, and Number objects.
 
 -------------------------------------------------------------------------------
 
-    var assertNumber = window["assertNumber"] = function( num, msg ) {
+    var assertNumber = function( num, msg ) {
         if ( typeof n !== 'number' && !(n instanceof Number) ) {
             throw new AssertionError( msg || "Number expected.", num, arguments, 2 );
         }

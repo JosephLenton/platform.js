@@ -437,47 +437,49 @@ in a callback method.
 
 -------------------------------------------------------------------------------
 
-    var newRegisterMethod = function( methodName, methodNameOne ) {
-        return new Function( "name", "fun", [
-                        '    var argsLen = arguments.length;',
-                        '    ',
-                        '    if ( argsLen === 1 ) {',
-                        '        assertObjectLiteral( name, ' +
-                        '                "non-object given for registering" ',
-                        '        );',
-                        '        ',
-                        '        for ( var k in name ) {',
-                        '            if ( name.has(k) ) {',
-                        '                this.' + methodName + '(k, name[k]);',
-                        '            }',
-                        '        }',
-                        '    } else if ( argsLen === 2 ) {',
-                        '        if ( name instanceof Array ) {',
-                        '            for ( var i = 0; i < name.length; i++ ) {',
-                        '                this.' + methodName + '(name[i], fun);',
-                        '            }',
-                        '        } else {',
-                        '            assertString( name, "non-string given for name" );',
-                        '            assertFunction( fun, "non-function given for function" );',
-                        '            ',
-                        '            this.' + methodNameOne + '( name, fun );',
-                        '        }',
-                        '    } else if ( argsLen === 0 ) {',
-                        '        fail( "no parameters given" )',
-                        '    } else {',
-                        '        var names = new Array( argsLen-1 );',
-                        '        fun = arguments[ argsLen-1 ];',
-                        '        ',
-                        '        for ( var i = 0; i < argsLen-1; i++ ) {',
-                        '            names[i] = arguments[i];',
-                        '        }',
-                        '        ',
-                        '        this.' + methodName + '( names, fun );',
-                        '    }',
-                        '    ',
-                        '    return this;'
-                ].join("\n")
-        )
+    var newRegisterMethod = function( doThis, doThisOne ) {
+        return function( name, fun ) {
+            var argsLen = arguments.length
+
+            if ( argsLen === 1 ) {
+                assertObjectLiteral( name,
+                        "non-object given for registering"
+                )
+
+                for ( var k in name ) {
+                    if ( name.has(k) ) {
+                        doThis( this, k, name[k] )
+                    }
+                }
+            } else if ( argsLen === 2 ) {
+                if ( name instanceof Array ) {
+                    for ( var i = 0; i < name.length; i++ ) {
+                        doThis( this, name[i], fun )
+                    }
+
+                } else {
+                    assertString( name, "non-string given for name" )
+                    assertFunction( fun, "non-function given for function" )
+
+                    doThisOne( this,  name, fun )
+                }
+
+            } else if ( argsLen === 0 ) {
+                fail( "no parameters given" )
+
+            } else {
+                var names = new Array( argsLen-1 )
+                fun = arguments[ argsLen-1 ]
+
+                for ( var i = 0; i < argsLen-1; i++ ) {
+                    names[i] = arguments[i]
+                }
+
+                doThis( this,  names, fun )
+            }
+
+            return this
+        }
     }
 
 
@@ -1845,7 +1847,10 @@ adding new custom events which you can use on DOM elements.
                  * Events should use the event callback signature which is
                  * documented at the top of this file.
                  */
-                event: newRegisterMethod( 'event', 'eventOne' ),
+                event: newRegisterMethod(
+                    function(self, k, fun) { self.event(k, fun) },
+                    function(self, k, fun) { self.eventOne(k, fun) }
+                ),
 
                 eventOne: function( name, fun ) {
                     this.data.events[ name ] = newBBFunctionData( fun, this.data.events[name] );
@@ -1887,7 +1892,10 @@ adding new custom events which you can use on DOM elements.
                  * @param name The name for the component.
                  * @param fun A function callback which creates, and returns, the element.
                  */
-                element: newRegisterMethod( 'element', 'elementOne' ),
+                element: newRegisterMethod(
+                    function(self, k, fun) { self.element(k, fun) },
+                    function(self, k, fun) { self.elementOne(k, fun) }
+                ),
 
                 elementOne: function( name, fun ) {
                     this.data.elements[ name ] = newBBFunctionData( fun, this.data.elements[name] );
