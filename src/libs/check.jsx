@@ -584,3 +584,18 @@ This includes both number primitives, and Number objects.
 
 
 
+-------------------------------------------------------------------------------
+
+## assertParent( dom:Element )
+
+Throws an error if the given element is not a HTMLElement, or if it does not
+have a parent node.
+
+-------------------------------------------------------------------------------
+
+    var assertParent = function( dom ) {
+        assert( dom instanceof HTMLElement && dom.parentNode !== null, "dom is not in the document; it doesn't have a parentNode" )
+    }
+
+
+
