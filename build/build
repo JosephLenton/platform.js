@@ -20,10 +20,6 @@ $JSX                                                                          \
       $SRC/libs/core/core.jsx                                                 \
       $SRC/libs/shim.jsx                                                      \
       $SRC/libs/check.jsx                                                     \
-      $SRC/libs/extras.jsx                                                    \
-      $SRC/libs/function.jsx                                                  \
-      $SRC/libs/math.jsx                                                      \
-      $SRC/libs/touchy.js                                                     \
                                                                               \
       $SRC/bb.jsx                                                             \
                                                                               \
