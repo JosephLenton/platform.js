@@ -3069,15 +3069,20 @@ Events for click, and hold, under touch interface, is pre-provided.
 ===============================================================================
 
         // test from Modernizer
-        var IS_TOUCH = !! ( ('ontouchstart' in window) ||
-                window.DocumentTouch &&
-                document instanceof DocumentTouch );
+        var IS_TOUCH = !! (
+            ( 'ontouchstart' in window ) ||
+            ( window.DocumentTouch && (document instanceof DocumentTouch) )
+        )
 
-        if ( IS_TOUCH && false ) {
-            bb.setup.event( 'click', touchy.click );
+        if ( window['touchy'] ) {
+            if ( IS_TOUCH && false ) {
+                bb.setup.event( 'click', touchy.click )
+            }
+
+            bb.setup.event( 'hold', touchy.hold )
         }
 
-        bb.setup.event( 'hold', touchy.hold );
+
 
 ===============================================================================
 
