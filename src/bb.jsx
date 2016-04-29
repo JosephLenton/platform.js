@@ -158,21 +158,6 @@ set to the same BROWSER_PROVIDED_DEFAULT object.
       }
     }
 
-    var listToDataMap = function( arr ) {
-        var map = {};
-
-        for ( var i = 0; i < arr.length; i++ ) {
-            var el = arr[i];
-
-            assert( ! map.has(el), "duplicate entry found in list '" + el + "'" );
-            map[ el ] = BROWSER_PROVIDED_DEFAULT;
-        }
-
-        return map;
-    }
-
-
-
     var newBBFunctionData = function( callback, oldEvent ) {
         if (
                 ((typeof callback) === 'function') ||
@@ -196,118 +181,120 @@ set to the same BROWSER_PROVIDED_DEFAULT object.
 
 -------------------------------------------------------------------------------
 
-    var HTML_ELEMENTS = [
-            'a',
-            'abbr',
-            'address',
-            'area',
-            'article',
-            'aside',
-            'audio',
-            'b',
-            'base',
-            'bdi',
-            'bdo',
-            'blockquote',
-            'body',
-            'br',
-            'button',
-            'canvas',
-            'caption',
-            'cite',
-            'code',
-            'col',
-            'colgroup',
-            'data',
-            'datalist',
-            'dd',
-            'del',
-            'details',
-            'dfn',
-            'dialog',
-            'div',
-            'dl',
-            'dt',
-            'em',
-            'embed',
-            'fieldset',
-            'figcaption',
-            'figure',
-            'footer',
-            'form',
-            'h1',
-            'h2',
-            'h3',
-            'h4',
-            'h5',
-            'h6',
-            'head',
-            'header',
-            'hgroup',
-            'hr',
-            'html',
-            'i',
-            'iframe',
-            'img',
-            'input',
-            'ins',
-            'kbd',
-            'keygen',
-            'label',
-            'legend',
-            'li',
-            'link',
-            'map',
-            'mark',
-            'menu',
-            'menuitem',
-            'meta',
-            'meter',
-            'nav',
-            'noscript',
-            'object',
-            'ol',
-            'optgroup',
-            'option',
-            'output',
-            'p',
-            'param',
-            'pre',
-            'progress',
-            'q',
-            'rp',
-            'rt',
-            'ruby',
-            's',
-            'samp',
-            'script',
-            'section',
-            'select',
-            'small',
-            'source',
-            'span',
-            'strong',
-            'style',
-            'sub',
-            'summary',
-            'sup',
-            'table',
-            'tbody',
-            'td',
-            'textarea',
-            'tfoot',
-            'th',
-            'thead',
-            'time',
-            'title',
-            'tr',
-            'track',
-            'u',
-            'ul',
-            'var',
-            'video',
-            'wbr'
-    ];
+    var HTML_ELEMENTS = {
+            'a'           : BROWSER_PROVIDED_DEFAULT,
+            'abbr'        : BROWSER_PROVIDED_DEFAULT,
+            'address'     : BROWSER_PROVIDED_DEFAULT,
+            'area'        : BROWSER_PROVIDED_DEFAULT,
+            'article'     : BROWSER_PROVIDED_DEFAULT,
+            'aside'       : BROWSER_PROVIDED_DEFAULT,
+            'audio'       : BROWSER_PROVIDED_DEFAULT,
+            'b'           : BROWSER_PROVIDED_DEFAULT,
+            'base'        : BROWSER_PROVIDED_DEFAULT,
+            'bdi'         : BROWSER_PROVIDED_DEFAULT,
+            'bdo'         : BROWSER_PROVIDED_DEFAULT,
+            'blockquote'  : BROWSER_PROVIDED_DEFAULT,
+            'body'        : BROWSER_PROVIDED_DEFAULT,
+            'br'          : BROWSER_PROVIDED_DEFAULT,
+            'button'      : BROWSER_PROVIDED_DEFAULT,
+            'canvas'      : BROWSER_PROVIDED_DEFAULT,
+            'caption'     : BROWSER_PROVIDED_DEFAULT,
+            'cite'        : BROWSER_PROVIDED_DEFAULT,
+            'code'        : BROWSER_PROVIDED_DEFAULT,
+            'col'         : BROWSER_PROVIDED_DEFAULT,
+            'colgroup'    : BROWSER_PROVIDED_DEFAULT,
+            'data'        : BROWSER_PROVIDED_DEFAULT,
+            'datalist'    : BROWSER_PROVIDED_DEFAULT,
+            'dd'          : BROWSER_PROVIDED_DEFAULT,
+            'del'         : BROWSER_PROVIDED_DEFAULT,
+            'details'     : BROWSER_PROVIDED_DEFAULT,
+            'dfn'         : BROWSER_PROVIDED_DEFAULT,
+            'dialog'      : BROWSER_PROVIDED_DEFAULT,
+            'div'         : BROWSER_PROVIDED_DEFAULT,
+            'dl'          : BROWSER_PROVIDED_DEFAULT,
+            'dt'          : BROWSER_PROVIDED_DEFAULT,
+            'em'          : BROWSER_PROVIDED_DEFAULT,
+            'embed'       : BROWSER_PROVIDED_DEFAULT,
+            'fieldset'    : BROWSER_PROVIDED_DEFAULT,
+            'figcaption'  : BROWSER_PROVIDED_DEFAULT,
+            'figure'      : BROWSER_PROVIDED_DEFAULT,
+            'footer'      : BROWSER_PROVIDED_DEFAULT,
+            'form'        : BROWSER_PROVIDED_DEFAULT,
+            'h1'          : BROWSER_PROVIDED_DEFAULT,
+            'h2'          : BROWSER_PROVIDED_DEFAULT,
+            'h3'          : BROWSER_PROVIDED_DEFAULT,
+            'h4'          : BROWSER_PROVIDED_DEFAULT,
+            'h5'          : BROWSER_PROVIDED_DEFAULT,
+            'h6'          : BROWSER_PROVIDED_DEFAULT,
+            'head'        : BROWSER_PROVIDED_DEFAULT,
+            'header'      : BROWSER_PROVIDED_DEFAULT,
+            'hgroup'      : BROWSER_PROVIDED_DEFAULT,
+            'hr'          : BROWSER_PROVIDED_DEFAULT,
+            'html'        : BROWSER_PROVIDED_DEFAULT,
+            'i'           : BROWSER_PROVIDED_DEFAULT,
+            'iframe'      : BROWSER_PROVIDED_DEFAULT,
+            'img'         : BROWSER_PROVIDED_DEFAULT,
+            'input'       : BROWSER_PROVIDED_DEFAULT,
+            'ins'         : BROWSER_PROVIDED_DEFAULT,
+            'kbd'         : BROWSER_PROVIDED_DEFAULT,
+            'keygen'      : BROWSER_PROVIDED_DEFAULT,
+            'label'       : BROWSER_PROVIDED_DEFAULT,
+            'legend'      : BROWSER_PROVIDED_DEFAULT,
+            'li'          : BROWSER_PROVIDED_DEFAULT,
+            'link'        : BROWSER_PROVIDED_DEFAULT,
+            'map'         : BROWSER_PROVIDED_DEFAULT,
+            'mark'        : BROWSER_PROVIDED_DEFAULT,
+            'menu'        : BROWSER_PROVIDED_DEFAULT,
+            'menuitem'    : BROWSER_PROVIDED_DEFAULT,
+            'meta'        : BROWSER_PROVIDED_DEFAULT,
+            'meter'       : BROWSER_PROVIDED_DEFAULT,
+            'nav'         : BROWSER_PROVIDED_DEFAULT,
+            'noscript'    : BROWSER_PROVIDED_DEFAULT,
+            'object'      : BROWSER_PROVIDED_DEFAULT,
+            'ol'          : BROWSER_PROVIDED_DEFAULT,
+            'optgroup'    : BROWSER_PROVIDED_DEFAULT,
+            'option'      : BROWSER_PROVIDED_DEFAULT,
+            'output'      : BROWSER_PROVIDED_DEFAULT,
+            'p'           : BROWSER_PROVIDED_DEFAULT,
+            'param'       : BROWSER_PROVIDED_DEFAULT,
+            'pre'         : BROWSER_PROVIDED_DEFAULT,
+            'progress'    : BROWSER_PROVIDED_DEFAULT,
+            'q'           : BROWSER_PROVIDED_DEFAULT,
+            'rp'          : BROWSER_PROVIDED_DEFAULT,
+            'rt'          : BROWSER_PROVIDED_DEFAULT,
+            'ruby'        : BROWSER_PROVIDED_DEFAULT,
+            's'           : BROWSER_PROVIDED_DEFAULT,
+            'samp'        : BROWSER_PROVIDED_DEFAULT,
+            'script'      : BROWSER_PROVIDED_DEFAULT,
+            'section'     : BROWSER_PROVIDED_DEFAULT,
+            'select'      : BROWSER_PROVIDED_DEFAULT,
+            'small'       : BROWSER_PROVIDED_DEFAULT,
+            'source'      : BROWSER_PROVIDED_DEFAULT,
+            'span'        : BROWSER_PROVIDED_DEFAULT,
+            'strong'      : BROWSER_PROVIDED_DEFAULT,
+            'style'       : BROWSER_PROVIDED_DEFAULT,
+            'sub'         : BROWSER_PROVIDED_DEFAULT,
+            'summary'     : BROWSER_PROVIDED_DEFAULT,
+            'sup'         : BROWSER_PROVIDED_DEFAULT,
+            'table'       : BROWSER_PROVIDED_DEFAULT,
+            'tbody'       : BROWSER_PROVIDED_DEFAULT,
+            'td'          : BROWSER_PROVIDED_DEFAULT,
+            'textarea'    : BROWSER_PROVIDED_DEFAULT,
+            'tfoot'       : BROWSER_PROVIDED_DEFAULT,
+            'th'          : BROWSER_PROVIDED_DEFAULT,
+            'thead'       : BROWSER_PROVIDED_DEFAULT,
+            'time'        : BROWSER_PROVIDED_DEFAULT,
+            'title'       : BROWSER_PROVIDED_DEFAULT,
+            'tr'          : BROWSER_PROVIDED_DEFAULT,
+            'track'       : BROWSER_PROVIDED_DEFAULT,
+            'u'           : BROWSER_PROVIDED_DEFAULT,
+            'ul'          : BROWSER_PROVIDED_DEFAULT,
+            'var'         : BROWSER_PROVIDED_DEFAULT,
+            'video'       : BROWSER_PROVIDED_DEFAULT,
+            'wbr'         : BROWSER_PROVIDED_DEFAULT
+    }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -317,111 +304,100 @@ All of the HTML events available.
 
 -------------------------------------------------------------------------------
 
-    var HTML_EVENTS = [
+    var HTML_EVENTS = {
             /* CSS Events */
 
             // this is added manually as a custom event,
             // to deal with prefixes.
 
-            'transitionend',
-            'animationstart',
-            'animationend',
-            'animationiteration',
+            'transitionend'               : BROWSER_PROVIDED_DEFAULT,
+            'animationstart'              : BROWSER_PROVIDED_DEFAULT,
+            'animationend'                : BROWSER_PROVIDED_DEFAULT,
+            'animationiteration'          : BROWSER_PROVIDED_DEFAULT,
 
             /* Touch Events */
-            'touchstart',
-            'touchend',
-            'touchmove',
-            'touchcancel',
+            'touchstart'                  : BROWSER_PROVIDED_DEFAULT,
+            'touchend'                    : BROWSER_PROVIDED_DEFAULT,
+            'touchmove'                   : BROWSER_PROVIDED_DEFAULT,
+            'touchcancel'                 : BROWSER_PROVIDED_DEFAULT,
 
             /* Drag n' Drop Events */
-            'drag',
-            'dragstart',
-            'dragend',
-            'dragover',
-            'dragenter',
-            'dragleave',
-            'drop',
+            'drag'                        : BROWSER_PROVIDED_DEFAULT,
+            'dragstart'                   : BROWSER_PROVIDED_DEFAULT,
+            'dragend'                     : BROWSER_PROVIDED_DEFAULT,
+            'dragover'                    : BROWSER_PROVIDED_DEFAULT,
+            'dragenter'                   : BROWSER_PROVIDED_DEFAULT,
+            'dragleave'                   : BROWSER_PROVIDED_DEFAULT,
+            'drop'                        : BROWSER_PROVIDED_DEFAULT,
 
             /* HTML5 Events (minus those which are also L3) */
-            'afterprint',
-            'beforeprint',
-            'beforeunload',
-            'change',
-            'contextmenu',
-            'DOMContentLoaded',
-            'hashchange',
-            'input',
-            'invalid',
-            'message',
-            'offline',
-            'online',
-            'pagehide',
-            'pageshow',
-            'popstate',
-            'readystatechange',
-            'reset',
-            'show',
-            'submit',
+            'afterprint'                  : BROWSER_PROVIDED_DEFAULT,
+            'beforeprint'                 : BROWSER_PROVIDED_DEFAULT,
+            'beforeunload'                : BROWSER_PROVIDED_DEFAULT,
+            'change'                      : BROWSER_PROVIDED_DEFAULT,
+            'contextmenu'                 : BROWSER_PROVIDED_DEFAULT,
+            'DOMContentLoaded'            : BROWSER_PROVIDED_DEFAULT,
+            'hashchange'                  : BROWSER_PROVIDED_DEFAULT,
+            'input'                       : BROWSER_PROVIDED_DEFAULT,
+            'invalid'                     : BROWSER_PROVIDED_DEFAULT,
+            'message'                     : BROWSER_PROVIDED_DEFAULT,
+            'offline'                     : BROWSER_PROVIDED_DEFAULT,
+            'online'                      : BROWSER_PROVIDED_DEFAULT,
+            'pagehide'                    : BROWSER_PROVIDED_DEFAULT,
+            'pageshow'                    : BROWSER_PROVIDED_DEFAULT,
+            'popstate'                    : BROWSER_PROVIDED_DEFAULT,
+            'readystatechange'            : BROWSER_PROVIDED_DEFAULT,
+            'reset'                       : BROWSER_PROVIDED_DEFAULT,
+            'show'                        : BROWSER_PROVIDED_DEFAULT,
+            'submit'                      : BROWSER_PROVIDED_DEFAULT,
 
             /* L3 Dom Events */
-            'DOMActivate',
-            'load',
-            'unload',
-            'abort',
-            'error',
-            'select',
-            'resize',
-            'scroll',
+            'DOMActivate'                 : BROWSER_PROVIDED_DEFAULT,
+            'load'                        : BROWSER_PROVIDED_DEFAULT,
+            'unload'                      : BROWSER_PROVIDED_DEFAULT,
+            'abort'                       : BROWSER_PROVIDED_DEFAULT,
+            'error'                       : BROWSER_PROVIDED_DEFAULT,
+            'select'                      : BROWSER_PROVIDED_DEFAULT,
+            'resize'                      : BROWSER_PROVIDED_DEFAULT,
+            'scroll'                      : BROWSER_PROVIDED_DEFAULT,
 
-            'blur',
-            'DOMFocusIn',
-            'DOMFocusOut',
-            'focus',
-            'focusin',
-            'focusout',
+            'blur'                        : BROWSER_PROVIDED_DEFAULT,
+            'DOMFocusIn'                  : BROWSER_PROVIDED_DEFAULT,
+            'DOMFocusOut'                 : BROWSER_PROVIDED_DEFAULT,
+            'focus'                       : BROWSER_PROVIDED_DEFAULT,
+            'focusin'                     : BROWSER_PROVIDED_DEFAULT,
+            'focusout'                    : BROWSER_PROVIDED_DEFAULT,
 
-            'click',
-            'dblclick',
-            'mousedown',
-            'mouseenter',
-            'mouseleave',
-            'mousemove',
-            'mouseover',
-            'mouseout',
-            'mouseup',
+            'click'                       : BROWSER_PROVIDED_DEFAULT,
+            'dblclick'                    : BROWSER_PROVIDED_DEFAULT,
+            'mousedown'                   : BROWSER_PROVIDED_DEFAULT,
+            'mouseenter'                  : BROWSER_PROVIDED_DEFAULT,
+            'mouseleave'                  : BROWSER_PROVIDED_DEFAULT,
+            'mousemove'                   : BROWSER_PROVIDED_DEFAULT,
+            'mouseover'                   : BROWSER_PROVIDED_DEFAULT,
+            'mouseout'                    : BROWSER_PROVIDED_DEFAULT,
+            'mouseup'                     : BROWSER_PROVIDED_DEFAULT,
 
-            'wheel',
+            'wheel'                       : BROWSER_PROVIDED_DEFAULT,
 
-            'keydown',
-            'keypress',
-            'keyup',
+            'keydown'                     : BROWSER_PROVIDED_DEFAULT,
+            'keypress'                    : BROWSER_PROVIDED_DEFAULT,
+            'keyup'                       : BROWSER_PROVIDED_DEFAULT,
 
-            'compositionstart',
-            'compositionupdate',
-            'compositionend',
+            'compositionstart'            : BROWSER_PROVIDED_DEFAULT,
+            'compositionupdate'           : BROWSER_PROVIDED_DEFAULT,
+            'compositionend'              : BROWSER_PROVIDED_DEFAULT,
 
-            'DOMAttrModified',
-            'DOMCharacterDataModified',
-            'DOMNodeInserted',
-            'DOMNodeInsertedIntoDocument',
-            'DOMNodeRemoved',
-            'DOMNodeRemovedFromDocument',
-            'DOMSubtreeModified'
-    ];
-
--------------------------------------------------------------------------------
-
-### assertParent( dom:Element )
-
-Throws an error, if the given dom element does not have a parent node.
-
--------------------------------------------------------------------------------
-
-    var assertParent = function( dom ) {
-        assert( dom.parentNode !== null,
-                "dom is not in the document; it doesn't have a parentNode" );
+            'DOMAttrModified'             : BROWSER_PROVIDED_DEFAULT,
+            'DOMCharacterDataModified'    : BROWSER_PROVIDED_DEFAULT,
+            'DOMNodeInserted'             : BROWSER_PROVIDED_DEFAULT,
+            'DOMNodeInsertedIntoDocument' : BROWSER_PROVIDED_DEFAULT,
+            'DOMNodeRemoved'              : BROWSER_PROVIDED_DEFAULT,
+            'DOMNodeRemovedFromDocument'  : BROWSER_PROVIDED_DEFAULT,
+            'DOMSubtreeModified'          : BROWSER_PROVIDED_DEFAULT
     }
+
+
 
 -------------------------------------------------------------------------------
 
@@ -442,12 +418,10 @@ in a callback method.
             var argsLen = arguments.length
 
             if ( argsLen === 1 ) {
-                assertObjectLiteral( name,
-                        "non-object given for registering"
-                )
+                assertObjectLiteral( name, "non-object given for registering" )
 
                 for ( var k in name ) {
-                    if ( name.has(k) ) {
+                    if ( name.hasOwnProperty(k) ) {
                         doThis( this, k, name[k] )
                     }
                 }
@@ -504,7 +478,7 @@ in a callback method.
         assert( dom, "null or undefined dom given", dom );
 
         for ( var k in obj ) {
-            if ( obj.has(k) ) {
+            if ( obj.hasOwnProperty(k) ) {
                 setOnOff( bb, nextSetFun, events, dom, k, obj[k], useCapture )
             }
         }
@@ -810,12 +784,12 @@ before this code is called.
     }
 
     var createObj = function( bb, obj, initFuns ) {
-        var dom = obj.has("nodeName") ? bb.createElement( obj["nodeName"] ) :
-                  obj.has("tagName")  ? bb.createElement( obj["tagName"]  ) :
+        var dom = obj.hasOwnProperty("nodeName") ? bb.createElement( obj["nodeName"] ) :
+                  obj.hasOwnProperty("tagName")  ? bb.createElement( obj["tagName"]  ) :
                                         bb.createElement()                  ;
 
         for ( var k in obj ) {
-            if ( obj.has(k) ) {
+            if ( obj.hasOwnProperty(k) ) {
                 attrOne( bb, dom, k, obj[k], false, initFuns );
             }
         }
@@ -979,7 +953,7 @@ so it's DRY'd up and placed here.
         var hasRemove = false;
 
         for ( var k in klass ) {
-            if ( klass.has(k) ) {
+            if ( klass.hasOwnProperty(k) ) {
                 var val = klass[k];
 
                 if ( isFunction(val) ) {
@@ -1371,7 +1345,7 @@ created.
         var hasHTMLText = false;
 
         for ( var k in obj ) {
-            if ( obj.has(k) ) {
+            if ( obj.hasOwnProperty(k) ) {
                 if ( k === 'text' || k === 'html' ) {
                     if ( hasHTMLText ) {
                         fail( "cannot use text and html at the same time", obj );
@@ -1639,7 +1613,7 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
             dom.className = ''
 
             for ( var k in klass ) {
-                if ( klass.has(k) && klass[k] ) {
+                if ( klass.hasOwnProperty(k) && klass[k] ) {
                     dom.classList.add( k )
                 }
             }
@@ -1714,6 +1688,484 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
 
 ===============================================================================
 
+Pre-provided Keyboard Events
+----------------------------
+
+These events will bind when these keypresses have been pressed. If you want
+something more sophisticated, build it yourself.
+
+===============================================================================
+
+
+
+-------------------------------------------------------------------------------
+
+### normalizeKeyName key:string -> string
+
+Given the name of a key, this will return a normalized version for some common
+alternative names for keys. For example 'esc' will be changed to 'escape', and
+'ctrl' would return 'control'.
+
+-------------------------------------------------------------------------------
+
+    var normalizeKeyName = function( key ) {
+        if ( key === '' ) {
+            return '';
+
+        } else {
+            key = key.toLowerCase().replace( /_/g, '' );
+
+            // an escaped comma
+            if ( key === "\\," ) {
+                return ',';
+
+            } else if ( key === 'enter' ) {
+                return '\r';
+
+            } else if ( key === 'space' ) {
+                return ' ';
+
+            } else if ( key === 'comma' ) {
+                return ',';
+
+            } else if ( key === 'fullstop' ) {
+                return '.';
+
+
+            } else if ( key === 'singlequote' ) {
+                return "'";
+
+            } else if ( key === 'doublequote' ) {
+                return '"';
+
+            } else if ( key === 'plus' ) {
+                return '+';
+
+            } else if ( key === 'multiply' ) {
+                return '*';
+
+
+            } else if ( key === 'del' ) {
+                return 'delete';
+
+            } else if ( key === 'menu' ) {
+                return 'contextmenu';
+
+            } else if ( key === 'esc' ) {
+                return 'escape';
+
+            } else if ( key === 'ctrl' ) {
+                return 'control';
+
+
+            } else if ( key === 'left' ) {
+                return 'arrowleft';
+
+            } else if ( key === 'leftarrow' ) {
+                return 'arrowleft';
+
+
+            } else if ( key === 'right' ) {
+                return 'arrowright';
+
+            } else if ( key === 'rightarrow' ) {
+                return 'arrowright';
+
+
+            } else if ( key === 'down' ) {
+                return 'arrowdown';
+
+            } else if ( key === 'downarrow' ) {
+                return 'arrowdown';
+
+
+            } else if ( key === 'up' ) {
+                return 'arrowup';
+
+            } else if ( key === 'uparrow' ) {
+                return 'arrowup';
+
+
+            } else {
+                return key;
+            }
+        }
+    }
+
+
+
+-------------------------------------------------------------------------------
+
+### newKeyTest k:string
+
+-------------------------------------------------------------------------------
+
+    var NONE      = 0
+    var SHIFT     = 0b00000001
+    var CTRL      = 0b00000100
+    var ALT       = 0b00010000
+    var META      = 0b01000000
+    var ANY       = 0b11111111
+
+    var newKeyTest = function( k ) {
+        k = k.trim().toLowerCase();
+
+        var testState = 0;
+        var charCode = 0;
+        var keyCode = 0;
+        var letter = '';
+        var tests = null;
+
+        if ( k ===  'shift' ) {
+            testState = SHIFT
+        } else if ( k ===   'ctrl' ) {
+            testState = CTRL
+        } else if ( k ===    'alt' ) {
+            testState = ALT
+        } else if ( k ===   'meta' ) {
+            testState = META
+        } else if ( k ===    'any' ) {
+            testState = ANY
+
+        } else if ( k ===   '!any' ) {
+            fail( "'!any' cannot be used, it is not valid" );
+        } else if ( k ===       '' ) {
+            fail( "empty key testing description given" );
+
+        } else if ( k.indexOf(',') !== -1 ) {
+            testState = 0;
+            var kParts = k.split( ',' );
+            var kPartsLen = kParts.length;
+            tests = new Array( kPartsLen );
+
+            for ( var i = 0; i < kPartsLen; i++ ) {
+                tests[i] = newKeyTest( kParts[i] );
+            }
+        } else if ( k.indexOf(' ') !== -1 ) {
+            var kParts = k.split( ' ' );
+            testState = 0;
+
+            for ( var i = 0; i < kParts.length; i++ ) {
+                var k2 = kParts[i];
+
+                if ( k2 !== '' ) {
+                    if ( k2 === 'shift' ) {
+                        if ( (testState & SHIFT) === 1 ) { fail("'shift' is set on, twice" ); }
+                        testState |= SHIFT
+
+                    } else if ( k2 ===  'ctrl' ) {
+                        if ( (testState & CTRL) === 1  ) { fail("'ctrl' is set on, twice" ); }
+                        testState |= CTRL
+
+                    } else if ( k2 ===  'alt' ) {
+                        if ( (testState & ALT) === 1   ) { fail("'alt' is set on, twice" ); }
+                        testState |= ALT
+
+                    } else if ( k2 ===  'meta' ) {
+                        if ( (testState & META) === 1  ) { fail("'meta' is set on, twice" ); }
+                        testState |= META
+
+                    } else if ( k2 === 'any' ) {
+                        if ( testState !== NONE ) { fail("'any' used in conjunction with other modifiers"); }
+                        testState = ANY
+
+                    // a letter/key was named
+                    } else {
+                        if ( letter !== '' ) {
+                            fail( "Naming more than 1 key for key event, " + letter + ", and " + k2 );
+                        } else {
+                            letter = k2;
+                        }
+                    }
+                }
+            }
+        } else {
+            letter = k;
+        }
+
+        // validate the letter that was picked
+        if ( letter !== '' ) {
+            var newLetter = normalizeKeyName( letter );
+
+            keyCode = String.KEY_CODES[ newLetter.toUpperCase() ] || 0;
+
+            if ( newLetter.length === 1 ) {
+                charCode = newLetter.charCodeAt( 0 );
+            } else {
+                if ( newLetter === 'enter' ) {
+                    charCode = "\r".charCodeAt( 0 );
+                } else if ( newLetter === 'tab' ) {
+                    charCode = "\t".charCodeAt( 0 );
+                } else if ( newLetter === 'space' ) {
+                    charCode = " ".charCodeAt( 0 );
+                }
+            }
+
+            if ( keyCode === 0 && charCode === 0 ) {
+                fail( "unknown letter given '" + letter + "'" );
+            } else {
+                letter = newLetter;
+            }
+        }
+
+        return {
+                /*
+                 * This is for when there are multiple inner tests; the
+                 * other properties should all be ignored when this is not
+                 * null.
+                 */
+                tests           : tests     ,
+
+                modifierBitmask : testState ,
+                letter          : letter    ,
+                charCode        : charCode  ,
+                keyCode         : keyCode
+        };
+    }
+
+
+
+-------------------------------------------------------------------------------
+
+### addKeyEventOne
+
+This is for setting the keydown / keypress / keyup key events to a DOM node.
+That includes doing all the calculations to work out what it is we are pressing
+and how.
+
+It can take 'data' as in a function to call, or an object describing the key
+to call.
+
+@example
+    bb.on( dom, 'keypress', someFun )
+    // one function for keypress enter, another for escape
+    bb.on( dom, 'keypress', { enter: startFun }, { esc: cancelFun } )
+
+It can also take an array of values which in turn is just the previous two.
+
+@example
+    // sets two functions to the keypress
+    bb.on( dom, 'keypress', [ someFun, anotherFun ] );
+    // one function for keypress enter, another for escape
+    bb.on( dom, 'keypress', [{ enter: startFun }, { esc: cancelFun }] );
+
+The event name can also take keys within that. For example:
+
+@example
+    bb.on( dom, 'keypress enter', startFun )
+    bb.on( dom, 'keypress esc'  , endFun   )
+
+-------------------------------------------------------------------------------
+
+    var addKeyEventOne = function(dom, data, useCapture, bb, eventName, key) {
+        // standard key stuff, so just add it
+        if ( isFunction(data) ) {
+            if ( key === '' ) {
+                dom.addEventListener( eventName, data );
+            } else {
+                addCleverKeyEventOne( dom, key, '', data, useCapture, bb, eventName );
+            }
+
+        } else if ( isArray(data) ) {
+            for ( var i = 0; i < data.length; i++ ) {
+                addKeyEventOne( dom, data[i], useCapture, bb, eventName, key );
+            }
+
+        } else if ( isObjectLiteral(data) ) {
+            for ( var keyAlt in data ) {
+                if ( data.hasOwnProperty(keyAlt) ) {
+                    addCleverKeyEventOne( dom, key, keyAlt, data[keyAlt], useCapture, bb, eventName);
+                }
+            }
+
+        } else {
+            fail( "unknown data given for '" + eventName + "'" );
+        }
+    };
+
+
+
+-------------------------------------------------------------------------------
+
+@param k:string A string describing the key to press.
+
+-------------------------------------------------------------------------------
+
+    var addCleverKeyEventOne = function(dom, k, keyAlt, val, useCapture, bb, eventName) {
+        if ( k === '' ) {
+            if ( keyAlt === '' ) {
+                k = 'any';
+            } else {
+                k = keyAlt;
+            }
+        } else {
+            if ( keyAlt !== '' ) {
+                k += ',' + keyAlt;
+            }
+        }
+
+        if ( isObjectLiteral(val) ) {
+            var kParts;
+            if ( k.indexOf(',') !== -1 ) {
+                kParts = k.split( ',' );
+            } else {
+                kParts = null;
+            }
+
+            for ( var l in val ) {
+                if ( val.hasOwnProperty(l) ) {
+                    var valVal = val[l];
+                    var k2;
+
+                    if ( l.indexOf(',') !== -1 ) {
+                        lParts = l.split(',');
+
+                        if ( kParts !== null ) {
+                            var k2Parts = new Array( lParts.length * kParts.length );
+                            var k2Inc = 0;
+
+                            for ( var i = 0; i < kParts.length; k++ ) {
+                                var k2Temp = kParts[i] + ' ';
+
+                                for ( var j = 0; j < lParts.length; j++ ) {
+                                    k2Parts[ k2Inc++ ] = k2Temp + lParts[j];
+                                }
+                            }
+
+                            k2 = k2Parts.join( ',' );
+                        } else {
+                            for ( var i = 0; i < lParts.length; i++ ) {
+                                lParts[i] = k + ' ' + lParts[i];
+                            }
+
+                            k2 = lParts.join( ',' );
+                        }
+                    } else if ( kParts !== null ) {
+                        var k2Parts = new Array( kParts.length );
+                        for ( var i = 0; i < kParts.length; i++ ) {
+                            k2Parts[i] = kParts[i] + ' ' + l;
+                        }
+
+                        k2 = k2Parts.join( ',' );
+                    } else {
+                        k2 = k + ' ' + l;
+                    }
+
+                    if ( isFunction(valVal) || isArray(valVal) || isObjectLiteral(valVal) ) {
+                        addCleverKeyEventOne( dom, k2, valVal, useCapture, bb, eventName );
+                    } else {
+                        fail( "unknown callback given for '" + eventName + "', at '" + k2 + "'" );
+                    }
+                }
+            }
+
+        } else if ( isArray(val) ) {
+            for ( var i = 0; i < val.length; i++ ) {
+                addCleverKeyEventOne( dom, k, val[i], useCapture, bb, eventName );
+            }
+
+        } else if ( isFunction(val) ) {
+            var test = newKeyTest( k );
+            var testFun = function(ev) {
+                if ( testKeyboardEvent(ev, test) ) {
+                    return val.call( this, ev );
+                }
+            }
+
+            bb.onInternal( dom, eventName, val, testFun, useCapture );
+
+        // failure
+        } else {
+            var eventDescription = "'" + eventName + " " + k + "'" ;
+
+            if ( val === undefined ) {
+                fail( "Undefined function given for " + eventDescription );
+            } else if ( val === null ) {
+                fail( "Null function given for " + eventDescription );
+            } else {
+                fail( "non-function given for " + eventDescription );
+            }
+        }
+    };
+
+
+
+-------------------------------------------------------------------------------
+
+### testKeyboardEvent ev:KeyboardEvent keyTest
+
+For building the test to see if the keyboard key given is the key we are after
+or not.
+
+-------------------------------------------------------------------------------
+
+    var testKeyboardEvent = function( ev, keyTest ) {
+        if ( keyTest.tests !== null ) {
+            var tests = keyTest.tests;
+
+            for ( var i = 0; i < tests.length; i++ ) {
+                if ( testKeyboardEvent(ev, tests[i]) ) {
+                    return true;
+                }
+            }
+        } else {
+            var t = keyTest.modifierBitmask;
+
+            /*
+             * Test the modifier keys, either ...
+             *
+             *  * the bit mask is set to 'any',
+             *  * or the ev modifier is false and the bit in test state is 0
+             *  * or the ev modifier is true and the bit in test state is 1
+             */
+            if (
+                    // the bitmask is set to any
+                    t === ANY || (
+                            (!!ev.shiftDown || !!ev.shiftKey) === ((t & SHIFT) === 1) &&
+                            (!!ev.ctrlDown  || !!ev.ctrlKey ) === ((t & CTRL ) === 1) &&
+                            (!!ev.altDown   || !!ev.altKey  ) === ((t & ALT  ) === 1) &&
+                            (!!ev.metaDown  || !!ev.metaKey ) === ((t & META ) === 1)
+                    )
+            ) {
+
+                /*
+                 * Now test the actual key.
+                 *
+                 * These tests are ...
+                 *  - there is a charCode, and it matches test
+                 *  - there is a keyCode, and it matches test
+                 *  - there is a named key, and it matches test
+                 *  - there is a char, and it matches test
+                 */
+                if (
+                    ( ev.charCode !== 0 && ev.charCode === keyTest.charCode ) ||
+                    ( ev.keyCode  !== 0 && ev.keyCode  === keyTest.keyCode  )
+                ) {
+                    return true;
+
+                } else if ( keyTest.letter !== undefined ) {
+                    var evKey = ev.key || ev.keyIdentifier
+
+                    if ( isString(evKey) && evKey.toLowerCase() === keyTest.letter ) {
+                      return true
+                    }
+
+                    var c = ev.char
+                    if ( isString(c) && c.toLowerCase() === keyTest.letter ) {
+                      return true
+                    }
+
+                    return false
+                }
+            }
+        }
+
+        return false;
+    }
+
+
+===============================================================================
+
 newBB
 -----
 
@@ -1773,13 +2225,13 @@ adding new custom events which you can use on DOM elements.
                          * types. So a name with 'checkbox' returns an input box
                          * of type 'checkbox'.
                          */
-                        elements: listToDataMap( HTML_ELEMENTS ),
+                        elements: HTML_ELEMENTS,
 
                         /**
                          * Holds mappings of event names, to the functions that
                          * define them.
                          */
-                        events  : listToDataMap( HTML_EVENTS )
+                        events  : HTML_EVENTS
                 },
 
                 /**
@@ -2660,7 +3112,7 @@ previous classes are gone.
                     }
                 } else if ( isObjectLiteral(k) ) {
                     for ( var i in k ) {
-                        if ( k.has(i) ) {
+                        if ( k.hasOwnProperty(i) ) {
                             bb.style( dom, i, k[i] );
                         }
                     }
@@ -3032,17 +3484,6 @@ provide it as the base. This allows you to use 'bb()' on a pre-existing element.
             return dom
         }
 
-        var htmlElementsLen = HTML_ELEMENTS.length;
-        for ( var i = 0; i < htmlElementsLen; i++ ) {
-            var k = HTML_ELEMENTS[i];
-
-            if ( bb.has(k) ) {
-                console.log( 'BB function clash: ' + k );
-            } else {
-                bb[k] = new Function( "return this.createArray('" + k + "', arguments, 0);" );
-            }
-        }
-
 
 
 ===============================================================================
@@ -3092,486 +3533,10 @@ Events for click, and hold, under touch interface, is pre-provided.
 
 
 
-===============================================================================
-
-Pre-provided Keyboard Events
-----------------------------
-
-These events will bind when these keypresses have been pressed. If you want
-something more sophisticated, build it yourself.
-
-===============================================================================
-
-
-
--------------------------------------------------------------------------------
-
-### normalizeKeyName key:string -> string
-
-Given the name of a key, this will return a normalized version for some common
-alternative names for keys. For example 'esc' will be changed to 'escape', and
-'ctrl' would return 'control'.
-
--------------------------------------------------------------------------------
-
-        var normalizeKeyName = function( key ) {
-            if ( key === '' ) {
-                return '';
-
-            } else {
-                key = key.toLowerCase().replace( /_/g, '' );
-
-                // an escaped comma
-                if ( key === "\\," ) {
-                    return ',';
-
-                } else if ( key === 'enter' ) {
-                    return '\r';
-
-                } else if ( key === 'space' ) {
-                    return ' ';
-
-                } else if ( key === 'comma' ) {
-                    return ',';
-
-                } else if ( key === 'fullstop' ) {
-                    return '.';
-
-
-                } else if ( key === 'singlequote' ) {
-                    return "'";
-
-                } else if ( key === 'doublequote' ) {
-                    return '"';
-
-                } else if ( key === 'plus' ) {
-                    return '+';
-
-                } else if ( key === 'multiply' ) {
-                    return '*';
-
-
-                } else if ( key === 'del' ) {
-                    return 'delete';
-
-                } else if ( key === 'menu' ) {
-                    return 'contextmenu';
-
-                } else if ( key === 'esc' ) {
-                    return 'escape';
-
-                } else if ( key === 'ctrl' ) {
-                    return 'control';
-
-
-                } else if ( key === 'left' ) {
-                    return 'arrowleft';
-
-                } else if ( key === 'leftarrow' ) {
-                    return 'arrowleft';
-
-
-                } else if ( key === 'right' ) {
-                    return 'arrowright';
-
-                } else if ( key === 'rightarrow' ) {
-                    return 'arrowright';
-
-
-                } else if ( key === 'down' ) {
-                    return 'arrowdown';
-
-                } else if ( key === 'downarrow' ) {
-                    return 'arrowdown';
-
-
-                } else if ( key === 'up' ) {
-                    return 'arrowup';
-
-                } else if ( key === 'uparrow' ) {
-                    return 'arrowup';
-
-
-                } else {
-                    return key;
-                }
-            }
-        }
-
-
-
--------------------------------------------------------------------------------
-
-### newKeyTest k:string
-
--------------------------------------------------------------------------------
-
-        var NONE      = 0
-        var SHIFT     = 0b00000001
-        var CTRL      = 0b00000100
-        var ALT       = 0b00010000
-        var META      = 0b01000000
-        var ANY       = 0b11111111
-
-        var newKeyTest = function( k ) {
-            k = k.trim().toLowerCase();
-
-            var testState = 0;
-            var charCode = 0;
-            var keyCode = 0;
-            var letter = '';
-            var tests = null;
-
-            if ( k ===  'shift' ) {
-                testState = SHIFT
-            } else if ( k ===   'ctrl' ) {
-                testState = CTRL
-            } else if ( k ===    'alt' ) {
-                testState = ALT
-            } else if ( k ===   'meta' ) {
-                testState = META
-            } else if ( k ===    'any' ) {
-                testState = ANY
-
-            } else if ( k ===   '!any' ) {
-                fail( "'!any' cannot be used, it is not valid" );
-            } else if ( k ===       '' ) {
-                fail( "empty key testing description given" );
-
-            } else if ( k.indexOf(',') !== -1 ) {
-                testState = 0;
-                var kParts = k.split( ',' );
-                var kPartsLen = kParts.length;
-                tests = new Array( kPartsLen );
-
-                for ( var i = 0; i < kPartsLen; i++ ) {
-                    tests[i] = newKeyTest( kParts[i] );
-                }
-            } else if ( k.indexOf(' ') !== -1 ) {
-                var kParts = k.split( ' ' );
-                testState = 0;
-
-                for ( var i = 0; i < kParts.length; i++ ) {
-                    var k2 = kParts[i];
-
-                    if ( k2 !== '' ) {
-                        if ( k2 === 'shift' ) {
-                            if ( (testState & SHIFT) === 1 ) { fail("'shift' is set on, twice" ); }
-                            testState |= SHIFT
-
-                        } else if ( k2 ===  'ctrl' ) {
-                            if ( (testState & CTRL) === 1  ) { fail("'ctrl' is set on, twice" ); }
-                            testState |= CTRL
-
-                        } else if ( k2 ===  'alt' ) {
-                            if ( (testState & ALT) === 1   ) { fail("'alt' is set on, twice" ); }
-                            testState |= ALT
-
-                        } else if ( k2 ===  'meta' ) {
-                            if ( (testState & META) === 1  ) { fail("'meta' is set on, twice" ); }
-                            testState |= META
-
-                        } else if ( k2 === 'any' ) {
-                            if ( testState !== NONE ) { fail("'any' used in conjunction with other modifiers"); }
-                            testState = ANY
-
-                        // a letter/key was named
-                        } else {
-                            if ( letter !== '' ) {
-                                fail( "Naming more than 1 key for key event, " + letter + ", and " + k2 );
-                            } else {
-                                letter = k2;
-                            }
-                        }
-                    }
-                }
-            } else {
-                letter = k;
-            }
-
-            // validate the letter that was picked
-            if ( letter !== '' ) {
-                var newLetter = normalizeKeyName( letter );
-
-                keyCode = String.KEY_CODES[ newLetter.toUpperCase() ] || 0;
-
-                if ( newLetter.length === 1 ) {
-                    charCode = newLetter.charCodeAt( 0 );
-                } else {
-                    if ( newLetter === 'enter' ) {
-                        charCode = "\r".charCodeAt( 0 );
-                    } else if ( newLetter === 'tab' ) {
-                        charCode = "\t".charCodeAt( 0 );
-                    } else if ( newLetter === 'space' ) {
-                        charCode = " ".charCodeAt( 0 );
-                    }
-                }
-
-                if ( keyCode === 0 && charCode === 0 ) {
-                    fail( "unknown letter given '" + letter + "'" );
-                } else {
-                    letter = newLetter;
-                }
-            }
-
-            return {
-                    /*
-                     * This is for when there are multiple inner tests; the
-                     * other properties should all be ignored when this is not
-                     * null.
-                     */
-                    tests           : tests     ,
-
-                    modifierBitmask : testState ,
-                    letter          : letter    ,
-                    charCode        : charCode  ,
-                    keyCode         : keyCode
-            };
-        }
-
-
-
--------------------------------------------------------------------------------
-
-### addKeyEventOne
-
-This is for setting the keydown / keypress / keyup key events to a DOM node.
-That includes doing all the calculations to work out what it is we are pressing
-and how.
-
-It can take 'data' as in a function to call, or an object describing the key
-to call.
-
-@example
-    bb.on( dom, 'keypress', someFun )
-    // one function for keypress enter, another for escape
-    bb.on( dom, 'keypress', { enter: startFun }, { esc: cancelFun } )
-
-It can also take an array of values which in turn is just the previous two.
-
-@example
-    // sets two functions to the keypress
-    bb.on( dom, 'keypress', [ someFun, anotherFun ] );
-    // one function for keypress enter, another for escape
-    bb.on( dom, 'keypress', [{ enter: startFun }, { esc: cancelFun }] );
-
-The event name can also take keys within that. For example:
-
-@example
-    bb.on( dom, 'keypress enter', startFun )
-    bb.on( dom, 'keypress esc'  , endFun   )
-
--------------------------------------------------------------------------------
-
-        var addKeyEventOne = function(dom, data, useCapture, bb, eventName, key) {
-            // standard key stuff, so just add it
-            if ( isFunction(data) ) {
-                if ( key === '' ) {
-                    dom.addEventListener( eventName, data );
-                } else {
-                    addCleverKeyEventOne( dom, key, '', data, useCapture, bb, eventName );
-                }
-
-            } else if ( isArray(data) ) {
-                for ( var i = 0; i < data.length; i++ ) {
-                    addKeyEventOne( dom, data[i], useCapture, bb, eventName, key );
-                }
-
-            } else if ( isObjectLiteral(data) ) {
-                for ( var keyAlt in data ) {
-                    if ( data.has(keyAlt) ) {
-                        addCleverKeyEventOne( dom, key, keyAlt, data[keyAlt], useCapture, bb, eventName);
-                    }
-                }
-
-            } else {
-                fail( "unknown data given for '" + eventName + "'" );
-            }
-        };
 
         bb.setup.event( 'keypress', addKeyEventOne );
         bb.setup.event( 'keydown' , addKeyEventOne );
         bb.setup.event( 'keyup'   , addKeyEventOne );
-
-
-
--------------------------------------------------------------------------------
-
-@param k:string A string describing the key to press.
-
--------------------------------------------------------------------------------
-
-        var addCleverKeyEventOne = function(dom, k, keyAlt, val, useCapture, bb, eventName) {
-            if ( k === '' ) {
-                if ( keyAlt === '' ) {
-                    k = 'any';
-                } else {
-                    k = keyAlt;
-                }
-            } else {
-                if ( keyAlt !== '' ) {
-                    k += ',' + keyAlt;
-                }
-            }
-
-            if ( isObjectLiteral(val) ) {
-                var kParts;
-                if ( k.indexOf(',') !== -1 ) {
-                    kParts = k.split( ',' );
-                } else {
-                    kParts = null;
-                }
-
-                for ( var l in val ) {
-                    if ( val.has(l) ) {
-                        var valVal = val[l];
-                        var k2;
-
-                        if ( l.indexOf(',') !== -1 ) {
-                            lParts = l.split(',');
-
-                            if ( kParts !== null ) {
-                                var k2Parts = new Array( lParts.length * kParts.length );
-                                var k2Inc = 0;
-
-                                for ( var i = 0; i < kParts.length; k++ ) {
-                                    var k2Temp = kParts[i] + ' ';
-
-                                    for ( var j = 0; j < lParts.length; j++ ) {
-                                        k2Parts[ k2Inc++ ] = k2Temp + lParts[j];
-                                    }
-                                }
-
-                                k2 = k2Parts.join( ',' );
-                            } else {
-                                for ( var i = 0; i < lParts.length; i++ ) {
-                                    lParts[i] = k + ' ' + lParts[i];
-                                }
-
-                                k2 = lParts.join( ',' );
-                            }
-                        } else if ( kParts !== null ) {
-                            var k2Parts = new Array( kParts.length );
-                            for ( var i = 0; i < kParts.length; i++ ) {
-                                k2Parts[i] = kParts[i] + ' ' + l;
-                            }
-
-                            k2 = k2Parts.join( ',' );
-                        } else {
-                            k2 = k + ' ' + l;
-                        }
-
-                        if ( isFunction(valVal) || isArray(valVal) || isObjectLiteral(valVal) ) {
-                            addCleverKeyEventOne( dom, k2, valVal, useCapture, bb, eventName );
-                        } else {
-                            fail( "unknown callback given for '" + eventName + "', at '" + k2 + "'" );
-                        }
-                    }
-                }
-
-            } else if ( isArray(val) ) {
-                for ( var i = 0; i < val.length; i++ ) {
-                    addCleverKeyEventOne( dom, k, val[i], useCapture, bb, eventName );
-                }
-
-            } else if ( isFunction(val) ) {
-                var test = newKeyTest( k );
-                var testFun = function(ev) {
-                    if ( testKeyboardEvent(ev, test) ) {
-                        return val.call( this, ev );
-                    }
-                }
-
-                bb.onInternal( dom, eventName, val, testFun, useCapture );
-
-            // failure
-            } else {
-                var eventDescription = "'" + eventName + " " + k + "'" ;
-
-                if ( val === undefined ) {
-                    fail( "Undefined function given for " + eventDescription );
-                } else if ( val === null ) {
-                    fail( "Null function given for " + eventDescription );
-                } else {
-                    fail( "non-function given for " + eventDescription );
-                }
-            }
-        };
-
-
-
--------------------------------------------------------------------------------
-
-### testKeyboardEvent ev:KeyboardEvent keyTest
-
-For building the test to see if the keyboard key given is the key we are after
-or not.
-
--------------------------------------------------------------------------------
-
-        var testKeyboardEvent = function( ev, keyTest ) {
-            if ( keyTest.tests !== null ) {
-                var tests = keyTest.tests;
-
-                for ( var i = 0; i < tests.length; i++ ) {
-                    if ( testKeyboardEvent(ev, tests[i]) ) {
-                        return true;
-                    }
-                }
-            } else {
-                var t = keyTest.modifierBitmask;
-
-                /*
-                 * Test the modifier keys, either ...
-                 *
-                 *  * the bit mask is set to 'any',
-                 *  * or the ev modifier is false and the bit in test state is 0
-                 *  * or the ev modifier is true and the bit in test state is 1
-                 */
-                if (
-                        // the bitmask is set to any
-                        t === ANY || (
-                                (!!ev.shiftDown || !!ev.shiftKey) === ((t & SHIFT) === 1) &&
-                                (!!ev.ctrlDown  || !!ev.ctrlKey ) === ((t & CTRL ) === 1) &&
-                                (!!ev.altDown   || !!ev.altKey  ) === ((t & ALT  ) === 1) &&
-                                (!!ev.metaDown  || !!ev.metaKey ) === ((t & META ) === 1)
-                        )
-                ) {
-
-                    /*
-                     * Now test the actual key.
-                     *
-                     * These tests are ...
-                     *  - there is a charCode, and it matches test
-                     *  - there is a keyCode, and it matches test
-                     *  - there is a named key, and it matches test
-                     *  - there is a char, and it matches test
-                     */
-                    if (
-                        ( ev.charCode !== 0 && ev.charCode === keyTest.charCode ) ||
-                        ( ev.keyCode  !== 0 && ev.keyCode  === keyTest.keyCode  )
-                    ) {
-                        return true;
-
-                    } else if ( keyTest.letter !== undefined ) {
-                        var evKey = ev.key || ev.keyIdentifier
-
-                        if ( isString(evKey) && evKey.toLowerCase() === keyTest.letter ) {
-                          return true
-                        }
-
-                        var c = ev.char
-                        if ( isString(c) && c.toLowerCase() === keyTest.letter ) {
-                          return true
-                        }
-
-                        return false
-                    }
-                }
-            }
-
-            return false;
-        }
 
         return bb;
     }
