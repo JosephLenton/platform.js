@@ -240,7 +240,7 @@
             seenExample     = false,
             isList          = false;
 
-        var code = [ '"use strict";(function() {' + injectedCode ];
+        var code = [ injectedCode ];
 
         var isDoubleComment = false;
         var inDoubleString  = false;
@@ -551,7 +551,6 @@
             }
         }
 
-        code.push( '})();' );
         code.push( '' );
 
         return code.join( "\n" );
@@ -578,8 +577,11 @@
  */
 
 (function() {
-
-
+    var SELF_EXECUTING_FUNCTION_OPTIONS = {
+        PER_FILE  : 'perfile',
+        GLOBAL    : 'global',
+        NONE      : 'none'
+    }
 
     /*
      * SETUP
@@ -593,12 +595,12 @@
 
     var VERSION_MESSAGE = "JSX Compiler, v. " + VERSION_NUMBER + "\n" + VERSION_NAME ;
     var HELP_MESSAGE =
-            "JSX Compiler\n" +
-            "by Joseph Lenton\n" +
             "  \n" +
-            "This is essentially JavaScript, with some extra language features.\n" +
-            "JSX source files to be compiled by this, are expected to be using the extension\n" +
-            "'.jsx'.\n" +
+            "  JSX Compiler\n" +
+            "  by Joseph Lenton\n" +
+            "  \n" +
+            "This is JavaScript with some extra language features.\n" +
+            "JSX source files to be compiled by this are expected to be using the .jsx extension.\n" +
             "  \n" +
             "  \n" +
             "  \n" +
@@ -629,6 +631,15 @@
             "    -r --recurse If a folder is supplied, then this will search them \n" +
             "                 recursively. Otherwise it's not recursive by default.\n" +
             "                       jsx -r -f ./my-project -o ./my-project.js\n" +
+            "  \n" +
+            "    -x --selfExecutingFunction Denotes how code is wrapped in a self executing function.\n" +
+            "                 A 'self executing function' is when you wrap code in a\n" +
+            "                 (function() { ... })() block so it is self contained.\n" +
+            "  \n" +
+            "                 Options are ...\n" +
+            "                     * --selfExecutingFunction perfile\n" +
+            "                     * --selfExecutingFunction global\n" +
+            "                     * --selfExecutingFunction none\n" +
             "  \n" +
             "  \n" +
             "    --Xtimestamp Adds the global variable __COMPILE_TIMESTAMP__ which holds\n" +
@@ -678,6 +689,11 @@
             recurse: {
                     short       : 'r',
                     takesValue  : false
+            },
+
+            selfExecutingFunction: {
+                    short       : 'x',
+                    takesValue  : true
             },
 
             Xtimestamp: {
@@ -800,6 +816,7 @@
         var folders   = params.folder;
         var out       = params.out;
         var seenFiles = {};
+        var sef       = SELF_EXECUTING_FUNCTION_OPTIONS.PER_FILE
 
         // -s / --src validation
         if ( src !== undefined ) {
@@ -923,7 +940,7 @@
 
         if ( out ) {
             log.debug( '--out validation' );
-            log.debug( 'using,', out );
+            log.debug( 'using ', out );
 
             if ( ! IS_JS_REGEX.test(out) ) {
                 log.debug( 'out file is not a JS file, adding ".js" to the end' );
@@ -940,6 +957,18 @@
             log.debug();
         }
 
+        if ( params.selfExecutingFunction ) {
+            sef = params.selfExecutingFunction
+        }
+
+        if (
+                sef !== SELF_EXECUTING_FUNCTION_OPTIONS.PER_FILE  &&
+                sef !== SELF_EXECUTING_FUNCTION_OPTIONS.GLOBAL    &&
+                sef !== SELF_EXECUTING_FUNCTION_OPTIONS.NONE
+        ) {
+            log.error( "unknown --selfExecutingFunction option given " + sef );
+            hasError = true;
+        }
 
 
         // the X-Options.
@@ -992,7 +1021,11 @@
 
         log.debug( "Actually compiling now ..." );
 
-        var code = '';
+        var code = '"use strict";'
+        if ( sef === SELF_EXECUTING_FUNCTION_OPTIONS.GLOBAL ) {
+          code += '(function() {'
+        }
+
         for ( var i = 0; i < allFiles.length; i++ ) {
             var file = allFiles[i];
 
@@ -1010,19 +1043,33 @@
                     }
                 }
 
+                if ( sef === SELF_EXECUTING_FUNCTION_OPTIONS.PER_FILE ) {
+                  jsCode = '(function() {' + jsCode + '})();'
+                }
+
                 code += jsCode;
 
             } else if ( IS_JSX_REGEX.test(file) ) {
                 log.debug( " - as JSX ", file );
 
-                code += global.jsx.parse(
+                var jsxCode = global.jsx.parse(
                         FS.readFileSync( file, 'utf8' ),
                         injects
                 );
 
+                if ( sef === SELF_EXECUTING_FUNCTION_OPTIONS.PER_FILE ) {
+                  jsxCode = '(function() {' + jsxCode + '})();'
+                }
+
+                code += jsxCode
+
             } else {
                 log.debug( "-- File Ignored --", file );
             }
+        }
+
+        if ( sef === SELF_EXECUTING_FUNCTION_OPTIONS.GLOBAL ) {
+          code += '})();'
         }
 
         // finally, write it all to disk
