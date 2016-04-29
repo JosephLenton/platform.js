@@ -2210,13 +2210,8 @@ Used as the standard way to
             }
 
             var initFuns = InitFuns_create()
-            var dom = applyArray(
-                    bb,
-                    createOne( bb, obj, initFuns ),
-                    args,
-                    i,
-                    initFuns
-            )
+            var initDom = createOne( bb, obj, initFuns )
+            var dom = applyArray( bb, initDom, args, i, initFuns )
             InitFuns_callAndFree( initFuns )
 
             return dom
@@ -2998,96 +2993,19 @@ within it.
 
 ## bb.attr dom
 
-The dom it takes, can be a query for a dom, or a HTML Element.
-For example:
-
-```
-    // grab a title, and retrieve the text within it
-    var titleDom = bb.get( "h1.title" );
-    var mainTitleText = bb.attr( titleDom, "textContent" );
-    // the above could be shortened to just ...
-    var mainTitleText = bb.attr( "h1.title", "textContent" );
-
-### Special Properties
-
- - on, events
- - className
- - id
- - style
-
- - html
- - text     Sets the textContent of this element.
- - value,   Sets the value within this element. This applies to inputs and
-   textareas.
-
- - stopPropagation For the events named, they are set, with a function which
-   will simply stop propagation of that event.
- - preventDefault  For the events named, this will set a function, which
-   prevents the default action from taking place.
-
- - addTo,   given an element (or a description of an element), this element
-   is added to the one given.
-
-Anything else is set as an attribute of the object.
+This is the same as calling 'bb' but instead of creating a new DOM element you
+provide it as the base. This allows you to use 'bb()' on a pre-existing element.
 
 -------------------------------------------------------------------------------
 
         bb.attr = function( dom, obj, val ) {
-            if ( arguments.length === 2 ) {
-                if ( isString(obj) ) {
-                    var realDom = bbGetOrCreate( dom );
+            var initDom = bbGet( dom )
 
-                    if ( obj === 'className' || obj === 'class' ) {
-                        return realDom.className;
-                    } else if (
-                            obj === 'value' ||
-                            ( realDom instanceof HTMLInputElement && (
-                                    obj === 'text' ||
-                                    obj === 'textContent'
-                            ) )
-                    ) {
-                        return obj.value;
-                    } else if ( obj === 'id' ) {
-                        return realDom.id;
-                    } else if (
-                            obj === 'html'      ||
-                            obj === 'innerHTML' ||
-                            obj === 'innerHtml'
-                    ) {
-                        return realDom.innerHTML;
-                    } else if (
-                            obj === 'text'        ||
-                            obj === 'textContent' ||
-                           (obj === 'value' && realDom instanceof HTMLInputElement)
-                    ) {
-                        return realDom.textContent;
-                    } else if ( obj === 'style' ) {
-                        return realDom.style;
-                    } else if ( obj === "nodeName" || obj === "tagName" ) {
-                        return realDom.nodeName;
-                    } else {
-                        return realDom.getAttribute( obj );
-                    }
-                } else if ( isObjectLiteral(obj) ) {
-                    attrObj( bb, dom, obj, false, initFuns );
-                } else {
-                    fail( "invalid parameter given", obj );
-                }
-            } else if ( arguments.length === 3 ) {
-                assertString( obj, "non-string given as key for attr", obj )
+            var initFuns = InitFuns_create()
+            var dom = applyArray( bb, initDom, arguments, 1, initFuns )
+            InitFuns_callAndFree( initFuns )
 
-                var initFuns = InitFuns_create()
-                attrOne( this, dom, obj, val, false, initFuns )
-                InitFuns_callAndFree( initFuns )
-            } else {
-                if ( arguments.length < 2 ) {
-                    throw new Error( "not enough parameters given" );
-                } else {
-                    throw new Error( "too many parameters given" );
-                }
-            }
-
-            return dom;
+            return dom
         }
 
         var htmlElementsLen = HTML_ELEMENTS.length;
