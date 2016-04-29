@@ -8,15 +8,6 @@ The absolute core bootstrap, used by everything.
 
 -------------------------------------------------------------------------------
 
-Object.defineProperty is present for IE 8 and above,
-it just doesn't work in IE 8 for non-HTMLElements.
-
-So don't bother emulating it!
-
--------------------------------------------------------------------------------
-
--------------------------------------------------------------------------------
-
 ### OBJECT_DESCRIPTION
 
 A re-usable object, for setting descriptions. It's re-used to avoid object
@@ -30,7 +21,7 @@ creation.
         writable        : true,
         configurable    : true
     };
-    
+
 
 
 -------------------------------------------------------------------------------
@@ -166,7 +157,7 @@ Only rely on these sparingly; always feature detect where possible!
 
 ## IS_IE
 
-A global property which is truthy when this is running in IE holding the 
+A global property which is truthy when this is running in IE holding the
 version of IE we are running on.
 
 When it's not IE this will hold false.
