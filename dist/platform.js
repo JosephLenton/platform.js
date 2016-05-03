@@ -1536,6 +1536,108 @@ array as a parameter.
         configurable    : true
     }
 
+    var KEY_CODES = {
+        BACKSPACE   : 8,
+
+        TAB         : 9,
+        "\t"        : 9,
+
+        ENTER       : 13,
+        "\r"        : 13,
+        "\n"        : 13,
+
+        CTRL        : 17,
+
+        ALT         : 18,
+        SHIFT       : 16,
+
+        ESCAPE      : 27,
+
+        SPACE       : 32,
+        ' '         : 32,
+
+        PAGE_UP     : 33,
+        PAGE_DOWN   : 34,
+        END         : 35,
+        HOME        : 36,
+
+        LEFT_ARROW  : 37,
+        UP_ARROW    : 38,
+        RIGHT_ARROW : 39,
+        DOWN_ARROW  : 40,
+
+        INSERT      : 45,
+        DELETE      : 46,
+
+        0           : 48,
+        1           : 49,
+        2           : 50,
+        3           : 51,
+        4           : 52,
+        5           : 53,
+        6           : 54,
+        7           : 55,
+        8           : 56,
+        9           : 57,
+
+        A           : 65,
+        B           : 66,
+        C           : 67,
+        D           : 68,
+        E           : 69,
+        F           : 70,
+        G           : 71,
+        H           : 72,
+        I           : 73,
+        J           : 74,
+        K           : 75,
+        L           : 76,
+        M           : 77,
+        N           : 78,
+        O           : 79,
+        P           : 80,
+        Q           : 81,
+        R           : 82,
+        S           : 83,
+        T           : 84,
+        U           : 85,
+        V           : 86,
+        W           : 87,
+        X           : 88,
+        Y           : 89,
+        Z           : 90,
+
+        F1          : 112,
+        F2          : 113,
+        F3          : 114,
+        F4          : 115,
+
+        F5          : 116,
+        F6          : 117,
+        F7          : 118,
+        F8          : 119,
+
+        F9          : 120,
+        F10         : 121,
+        F11         : 122,
+        F12         : 123,
+
+        LESS_THAN   : 188,
+        '<'         : 188,
+        GREATER_THAN: 190,
+        '>'         : 190,
+
+        COMMA       : 188,
+        ','         : 188,
+        FULL_STOP   : 190,
+        '.'         : 190,
+
+        PLUS        : ( IS_MOZILLA ? 61  : 187 ),
+        '+'         : ( IS_MOZILLA ? 61  : 187 ),
+        MINUS       : ( IS_MOZILLA ? 173 : 189 ),
+        '-'         : ( IS_MOZILLA ? 173 : 189 )
+    }
+
 
 
 /* The blank data is used internally for HTML events. All of the HTML events are
@@ -3345,7 +3447,7 @@ alternative names for keys. For example 'esc' will be changed to 'escape', and
         if ( letter !== '' ) {
             var newLetter = normalizeKeyName( letter );
 
-            keyCode = String.KEY_CODES[ newLetter.toUpperCase() ] || 0;
+            keyCode = KEY_CODES[ newLetter.toUpperCase() ] || 0;
 
             if ( newLetter.length === 1 ) {
                 charCode = newLetter.charCodeAt( 0 );
