@@ -89,26 +89,53 @@ array as a parameter.
         "\n"        : 13,
 
         CTRL        : 17,
+        CONTROL     : 17,
 
         ALT         : 18,
         SHIFT       : 16,
 
+        ESC         : 27,
         ESCAPE      : 27,
 
         SPACE       : 32,
         ' '         : 32,
 
         PAGE_UP     : 33,
+        PAGEUP      : 33,
+
         PAGE_DOWN   : 34,
+        PAGEDOWN    : 34,
+
         END         : 35,
         HOME        : 36,
 
+        LEFT        : 37,
         LEFT_ARROW  : 37,
+        LEFTARROW   : 37,
+        ARROW_LEFT  : 37,
+        ARROWLEFT   : 37,
+
+        UP          : 38,
         UP_ARROW    : 38,
+        UPARROW     : 38,
+        ARROW_UP    : 38,
+        ARROWUP     : 38,
+
+        RIGHT       : 39,
         RIGHT_ARROW : 39,
+        RIGHTARROW  : 39,
+        ARROW_RIGHT : 39,
+        ARROWRIGHT  : 39,
+
+        DOWN        : 40,
         DOWN_ARROW  : 40,
+        DOWNARROW   : 40,
+        ARROW_DOWN  : 40,
+        ARROWDOWN   : 40,
 
         INSERT      : 45,
+
+        DEL         : 46,
         DELETE      : 46,
 
         0           : 48,
@@ -165,13 +192,18 @@ array as a parameter.
         F12         : 123,
 
         LESS_THAN   : 188,
+        LESSTHAN    : 188,
         '<'         : 188,
+
         GREATER_THAN: 190,
+        GREATERTHAN : 190,
         '>'         : 190,
 
         COMMA       : 188,
         ','         : 188,
+
         FULL_STOP   : 190,
+        FULLSTOP    : 190,
         '.'         : 190,
 
         PLUS        : ( IS_MOZILLA ? 61  : 187 ),
@@ -1268,32 +1300,10 @@ so it's DRY'd up and placed here.
                         0,
                         initFuns
                 )
-            } else if ( isFunction(val) ) {
-                if ( domType === 'a' ) {
-                    newDom.addEventListener( 'click', val );
-                } else if ( domType === 'input' ) {
-                    var inputType = newDom.getAttribute('type');
 
-                    if (
-                            inputType === 'button' ||
-                            inputType === 'submit' ||
-                            inputType === 'checkbox'
-                    ) {
-                        newDom.addEventListener( 'click', val );
-                    } else {
-                        fail(
-                                "function given for object description for new input of " +
-                                inputType +
-                                " (don't know what to do with it)"
-                        );
-                    }
-                } else {
-                    fail( "function given for object description for new " +
-                            domType + ", (don't know what to do with it)" );
-                }
             } else {
-                fail( "invalid object description given for, " + debugVal,
-                        debugVal );
+                fail( "invalid object description given for, " + debugVal, debugVal );
+
             }
         }
 
@@ -1413,7 +1423,12 @@ created.
                 createOne( bb, val, initFuns ).appendChild( dom )
 
             /* Events, includes HTML and custom  */
-            } else if ( (ev = bb.setup.getEvent(k)) !== null ) {
+            } else if (
+                ( ev = bb.setup.getEvent(k) ) !== null &&
+
+                // I am cutting a hole specifically for handling input's
+                ! ( k === 'input' && !(val instanceof Function) )
+            ) {
                 if ( ev.isFunction ) {
                     ev.fun( dom, val, false, bb, k, rest );
                 } else {
@@ -1802,102 +1817,6 @@ something more sophisticated, build it yourself.
 
 -------------------------------------------------------------------------------
 
-### normalizeKeyName key:string -> string
-
-Given the name of a key, this will return a normalized version for some common
-alternative names for keys. For example 'esc' will be changed to 'escape', and
-'ctrl' would return 'control'.
-
--------------------------------------------------------------------------------
-
-    var normalizeKeyName = function( key ) {
-        if ( key === '' ) {
-            return '';
-
-        } else {
-            key = key.toLowerCase().replace( /_/g, '' );
-
-            // an escaped comma
-            if ( key === "\\," ) {
-                return ',';
-
-            } else if ( key === 'enter' ) {
-                return '\r';
-
-            } else if ( key === 'space' ) {
-                return ' ';
-
-            } else if ( key === 'comma' ) {
-                return ',';
-
-            } else if ( key === 'fullstop' ) {
-                return '.';
-
-
-            } else if ( key === 'singlequote' ) {
-                return "'";
-
-            } else if ( key === 'doublequote' ) {
-                return '"';
-
-            } else if ( key === 'plus' ) {
-                return '+';
-
-            } else if ( key === 'multiply' ) {
-                return '*';
-
-
-            } else if ( key === 'del' ) {
-                return 'delete';
-
-            } else if ( key === 'menu' ) {
-                return 'contextmenu';
-
-            } else if ( key === 'esc' ) {
-                return 'escape';
-
-            } else if ( key === 'ctrl' ) {
-                return 'control';
-
-
-            } else if ( key === 'left' ) {
-                return 'arrowleft';
-
-            } else if ( key === 'leftarrow' ) {
-                return 'arrowleft';
-
-
-            } else if ( key === 'right' ) {
-                return 'arrowright';
-
-            } else if ( key === 'rightarrow' ) {
-                return 'arrowright';
-
-
-            } else if ( key === 'down' ) {
-                return 'arrowdown';
-
-            } else if ( key === 'downarrow' ) {
-                return 'arrowdown';
-
-
-            } else if ( key === 'up' ) {
-                return 'arrowup';
-
-            } else if ( key === 'uparrow' ) {
-                return 'arrowup';
-
-
-            } else {
-                return key;
-            }
-        }
-    }
-
-
-
--------------------------------------------------------------------------------
-
 ### newKeyTest k:string
 
 -------------------------------------------------------------------------------
@@ -1987,26 +1906,43 @@ alternative names for keys. For example 'esc' will be changed to 'escape', and
 
         // validate the letter that was picked
         if ( letter !== '' ) {
-            var newLetter = normalizeKeyName( letter );
+            keyCode = KEY_CODES[ letter.toUpperCase() ] || 0
 
-            keyCode = KEY_CODES[ newLetter.toUpperCase() ] || 0;
+            if ( letter.length === 1 ) {
+                charCode = letter.charCodeAt( 0 )
 
-            if ( newLetter.length === 1 ) {
-                charCode = newLetter.charCodeAt( 0 );
             } else {
-                if ( newLetter === 'enter' ) {
-                    charCode = "\r".charCodeAt( 0 );
-                } else if ( newLetter === 'tab' ) {
-                    charCode = "\t".charCodeAt( 0 );
-                } else if ( newLetter === 'space' ) {
-                    charCode = " ".charCodeAt( 0 );
+                if ( letter === 'enter' ) {
+                    charCode = "\r".charCodeAt( 0 )
+
+                } else if ( letter === 'tab' ) {
+                    charCode = "\t".charCodeAt( 0 )
+
+                } else if ( letter === 'space' ) {
+                    charCode = " ".charCodeAt( 0 )
+
+                } else if ( letter === 'comma' ) {
+                    charCode = ','.charCodeAt( 0 )
+
+                } else if ( letter === 'singlequote' ) {
+                    charCode = "'".charCodeAt( 0 )
+
+                } else if ( letter === 'doublequote' ) {
+                    charCode = '"'.charCodeAt( 0 )
+
+                } else if ( letter === 'plus' ) {
+                    charCode = '+'.charCodeAt( 0 )
+
+                } else if ( letter === 'multiply' ) {
+                    charCode = '*'.charCodeAt( 0 )
+
+                } else if ( letter === 'dollar' ) {
+                    letter = '$'.charCodeAt( 0 )
                 }
             }
 
             if ( keyCode === 0 && charCode === 0 ) {
-                fail( "unknown letter given '" + letter + "'" );
-            } else {
-                letter = newLetter;
+                fail( "unknown letter given '" + letter + "'" )
             }
         }
 
@@ -2464,52 +2400,7 @@ adding new custom events which you can use on DOM elements.
                     var anchor = document.createElement('a');
                     anchor.setAttribute( 'href', '#' );
                     return anchor;
-                } ).
-
-                /**
-                 * If you create an element, which is named with one of those
-                 * below, then it will be created as an input with that type.
-                 *
-                 * For example:
-                 *
-                 *      // returns <input type="submit"></input>
-                 *      bb.createElement( 'submit' );
-                 *
-                 */
-                element( [
-                                'button',
-                                'checkbox',
-                                'color',
-                                'date',
-                                'datetime',
-                                'datetime-local',
-                                'email',
-                                'file',
-                                'hidden',
-                                'image',
-                                'month',
-                                'number',
-                                'password',
-                                'radio',
-                                'range',
-                                'reset',
-                                'search',
-                                'submit',
-                                'tel',
-                                'text',
-                                'time',
-                                'url',
-                                'week'
-                        ],
-
-                        function( type ) {
-                            assert( type );
-
-                            var input = document.createElement('input');
-                            input.setAttribute( 'type', type );
-                            return input;
-                        }
-                );
+                } )
 
 
 
@@ -3632,7 +3523,6 @@ Events for click, and hold, under touch interface, is pre-provided.
 
             bb.setup.event( 'hold', touchy.hold )
         }
-
 
 
 
