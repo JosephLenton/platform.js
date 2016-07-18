@@ -256,7 +256,7 @@ set to the same BROWSER_PROVIDED_DEFAULT object.
       }
     }
 
-    var InitFuns_callAndFree = function( initFuns ) {
+    var InitFuns_callAndFree = function( bb, initFuns ) {
       var arr = initFuns.arr
       var len = initFuns.length
 
@@ -264,7 +264,12 @@ set to the same BROWSER_PROVIDED_DEFAULT object.
         var initFun = arr[i]
         var dom = initFun.dom
 
-        initFun.fun.call( dom, dom )
+        var result = initFun.fun.call( dom, dom )
+        if ( result ) {
+          var initFuns2 = InitFuns_create()
+          applyOne( bb, dom, result, true, initFuns2 )
+          InitFuns_callAndFree( bb, initFuns2 )
+        }
 
         // clear
         initFun.dom = initFun.fun = null
@@ -875,8 +880,13 @@ before this code is called.
             } else {
                 addClassOneString( dom, arg )
             }
+
         } else if ( isObjectLiteral(arg) ) {
             attrObj( bb, dom, arg, true, initFuns )
+
+        } else if ( isFunction(arg) ) {
+            InitFuns_add( initFuns, dom, arg )
+
         } else {
             fail( "invalid argument given", arg )
         }
@@ -1545,7 +1555,7 @@ HTMLInput.
 
 -------------------------------------------------------------------------------
 
-### combineStringOne text:array|string
+### combineStringOne text:array|string|number|boolean
 
 If an array is given, then the array is joined, and the result is returned. If
 the given value is a string, then this is just returned.
@@ -1568,8 +1578,17 @@ This exists as a function for unifying strings and arrays of strings, as one.
             return text
 
         } else {
-            fail( "non-string given for text content", text )
+            var type = (typeof text)
 
+            if (
+                    type === 'number' ||
+                    type === 'boolean'
+            ) {
+              return '' + text
+
+            } else {
+              fail( "non-string given for text content", text )
+            }
         }
     }
 
@@ -1792,7 +1811,7 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
         if ( isObjectLiteral(dom) ) {
             var initFuns = InitFuns_create()
             var dom = createObj( bb, dom, initFuns )
-            InitFuns_callAndFree( initFuns )
+            InitFuns_callAndFree( bb, initFuns )
 
             return dom
         } else {
@@ -2681,7 +2700,7 @@ Used as the standard way to
             var initFuns = InitFuns_create()
             var initDom = createOne( bb, obj, initFuns )
             var dom = applyArray( bb, initDom, args, i, initFuns )
-            InitFuns_callAndFree( initFuns )
+            InitFuns_callAndFree( bb, initFuns )
 
             return dom
         }
@@ -2707,7 +2726,7 @@ arguments-add-class stuff.
         bb.createOne = function( obj ) {
             var initFuns = InitFuns_create()
             var dom = createOne( bb, obj, initFuns )
-            InitFuns_callAndFree( initFuns )
+            InitFuns_callAndFree( bb, initFuns )
 
             return dom
         }
@@ -3097,27 +3116,39 @@ previous classes are gone.
 
         bb.style = function( dom, k, val ) {
             if ( arguments.length === 2 ) {
-                if ( isString(k) ) {
-                    return dom.style[k];
-                } else if ( k instanceof Array ) {
+                if ( k instanceof Array ) {
                     for ( var i = 0; i < k.length; i++ ) {
                         bb.style( dom, k[i] );
                     }
+
                 } else if ( isObjectLiteral(k) ) {
                     for ( var i in k ) {
                         if ( k.hasOwnProperty(i) ) {
                             bb.style( dom, i, k[i] );
                         }
                     }
+
+                } else {
+                  fail( "unknown object given", arguments );
                 }
+
             } else if ( arguments.length === 3 ) {
                 if ( isString(k) ) {
-                    dom.style[k] = val;
+                    if ( val instanceof Array ) {
+                        dom.style[k] = val.join(' ')
+                    } else {
+                        dom.style[k] = val;
+                    }
+
                 } else if ( k instanceof Array ) {
                     for ( var i = 0; i < k.length; i++ ) {
                         bb.style( dom, k[i], val );
                     }
+
+                } else {
+                  fail( "unknown object given", arguments );
                 }
+
             } else {
                 fail( "unknown object given", arguments );
             }
@@ -3472,7 +3503,7 @@ provide it as the base. This allows you to use 'bb()' on a pre-existing element.
 
             var initFuns = InitFuns_create()
             var dom = applyArray( bb, initDom, arguments, 1, initFuns )
-            InitFuns_callAndFree( initFuns )
+            InitFuns_callAndFree( bb, initFuns )
 
             return dom
         }
