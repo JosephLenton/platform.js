@@ -2966,7 +2966,7 @@ created.
         } else if ( el instanceof Array ) {
             bb.htmlArray( dom, el, 0 )
         } else if ( isObjectLiteral(el) ) {
-            dom.appendChild( bb.describe(el) )
+            dom.appendChild( bb.createOne(el) )
         } else {
             fail( "Unknown html value given", el );
         }
@@ -4172,9 +4172,8 @@ Used as the standard way to
 Just describes the dom, based on the object given,
 and nothing more.
 
-This is mostly for internal use, where I *only*
-want to describe a dom. I don't want any of the
-arguments-add-class stuff.
+This is mostly for internal use, where I *only* want to describe a dom. I don't
+want any of the arguments-add-class stuff.
 
 @param obj A JavaScript object literal describing an object to create.
 @return A Element based on the object given.
@@ -4877,7 +4876,7 @@ Sets the HTML content within this element.
                         dom.appendChild( el )
 
                     } else if ( isObjectLiteral(el) ) {
-                        dom.appendChild( bb.describe(el) )
+                        dom.appendChild( bb.createOne(el) )
                     }
                 }
             }
