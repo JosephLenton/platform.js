@@ -1517,6 +1517,8 @@ array as a parameter.
 
 =============================================================================== */
 
+    var HTMLDocument = ( window['HTMLDocument'] || null );
+
     var DEFAULT_ELEMENT = 'div';
 
     var WHITESPACE_REGEX = / +/g;
@@ -3925,9 +3927,9 @@ These events include:
             assert(
                     dom === window ||
                     (dom instanceof HTMLElement ) ||
-                    (dom instanceof HTMLDocument) ||
                     (dom instanceof NodeList    ) ||
-                    (dom instanceof Array       ),
+                    (dom instanceof Array       ) ||
+                    (dom instanceof HTMLDocument),
 
                     "HTML Element expected in bb.on."
             )
@@ -3987,9 +3989,9 @@ These events include:
             assert(
                     dom === window ||
                     (dom instanceof HTMLElement ) ||
-                    (dom instanceof HTMLDocument) ||
                     (dom instanceof NodeList    ) ||
-                    (dom instanceof Array       ),
+                    (dom instanceof Array       ) ||
+                    (dom instanceof HTMLDocument),
 
                     "HTML Element expected in bb.on."
             )
