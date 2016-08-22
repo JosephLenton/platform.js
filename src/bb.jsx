@@ -934,7 +934,7 @@ before this code is called.
     var createObj = function( bb, obj, initFuns ) {
         var dom = obj.hasOwnProperty("nodeName") ? bb.createElement( obj["nodeName"] ) :
                   obj.hasOwnProperty("tagName")  ? bb.createElement( obj["tagName"]  ) :
-                                        bb.createElement()                  ;
+                                                   bb.createElement()                  ;
 
         for ( var k in obj ) {
             if ( obj.hasOwnProperty(k) ) {
