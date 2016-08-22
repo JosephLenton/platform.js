@@ -1284,7 +1284,10 @@ so it's DRY'd up and placed here.
     var newOneNewChildInner = function( bb, dom, domType, val, debugVal, initFuns ) {
         var newDom
 
-        if ( isObjectLiteral(val) ) {
+        if ( val === undefined || val === null ) {
+            fail( "Null or undefined value given for new node, " + debugVal, debugVal );
+
+        } else if ( isObjectLiteral(val) ) {
             assert( bb.setup.isElement(domType), "invalid element type given, " + domType )
             val["nodeName"] = domType
 
@@ -1300,7 +1303,10 @@ so it's DRY'd up and placed here.
         } else {
             newDom = bb.createElement( domType )
 
-            if ( val.nodeType !== undefined ) {
+            if ( val instanceof Function ) {
+                InitFuns_add( initFuns, newDom, val )
+
+            } else if ( val.nodeType !== undefined ) {
                 newDom.appendChild( val )
 
             } else if ( isString(val) ) {

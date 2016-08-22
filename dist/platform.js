@@ -1983,6 +1983,8 @@ All of the HTML events available.
             'keypress'                    : BROWSER_PROVIDED_DEFAULT,
             'keyup'                       : BROWSER_PROVIDED_DEFAULT,
 
+            'paste'                       : BROWSER_PROVIDED_DEFAULT,
+
             'compositionstart'            : BROWSER_PROVIDED_DEFAULT,
             'compositionupdate'           : BROWSER_PROVIDED_DEFAULT,
             'compositionend'              : BROWSER_PROVIDED_DEFAULT,
@@ -2390,7 +2392,7 @@ before this code is called.
     var createObj = function( bb, obj, initFuns ) {
         var dom = obj.hasOwnProperty("nodeName") ? bb.createElement( obj["nodeName"] ) :
                   obj.hasOwnProperty("tagName")  ? bb.createElement( obj["tagName"]  ) :
-                                        bb.createElement()                  ;
+                                                   bb.createElement()                  ;
 
         for ( var k in obj ) {
             if ( obj.hasOwnProperty(k) ) {
@@ -2740,7 +2742,10 @@ so it's DRY'd up and placed here.
     var newOneNewChildInner = function( bb, dom, domType, val, debugVal, initFuns ) {
         var newDom
 
-        if ( isObjectLiteral(val) ) {
+        if ( val === undefined || val === null ) {
+            fail( "Null or undefined value given for new node, " + debugVal, debugVal );
+
+        } else if ( isObjectLiteral(val) ) {
             assert( bb.setup.isElement(domType), "invalid element type given, " + domType )
             val["nodeName"] = domType
 
@@ -2756,7 +2761,10 @@ so it's DRY'd up and placed here.
         } else {
             newDom = bb.createElement( domType )
 
-            if ( val.nodeType !== undefined ) {
+            if ( val instanceof Function ) {
+                InitFuns_add( initFuns, newDom, val )
+
+            } else if ( val.nodeType !== undefined ) {
                 newDom.appendChild( val )
 
             } else if ( isString(val) ) {
