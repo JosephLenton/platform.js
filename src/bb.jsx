@@ -525,6 +525,8 @@ All of the HTML events available.
             'keypress'                    : BROWSER_PROVIDED_DEFAULT,
             'keyup'                       : BROWSER_PROVIDED_DEFAULT,
 
+            'paste'                       : BROWSER_PROVIDED_DEFAULT,
+
             'compositionstart'            : BROWSER_PROVIDED_DEFAULT,
             'compositionupdate'           : BROWSER_PROVIDED_DEFAULT,
             'compositionend'              : BROWSER_PROVIDED_DEFAULT,
