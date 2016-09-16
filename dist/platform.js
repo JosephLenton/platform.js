@@ -2178,7 +2178,7 @@ before this code is called.
             }
 
         // isWindow dom = ( dom.self === dom )
-        } else if ( dom.nodeType !== undefined || (dom.self === dom) ) {
+        } else if ( (dom instanceof Node) || (dom.self === dom) ) {
             if ( evFun !== null ) {
                 evFun.fun( dom, fun, useCapture, bb, evName, evParams );
 
@@ -2208,7 +2208,7 @@ before this code is called.
             }
 
         // isWindow dom = ( dom.self === dom )
-        } else if ( dom.nodeType !== undefined || (dom.self === dom) ) {
+        } else if ( (dom instanceof Node) || (dom.self === dom) ) {
             if ( evFun !== null && ! evFun.isBrowserProvided ) {
                 fail( "Feature not supported: setting off custom events" );
             }
@@ -2326,11 +2326,21 @@ before this code is called.
     }
 
     var applyOne = function( bb, dom, arg, stringsAreContent, initFuns ) {
-        if (arg instanceof Array) {
+        // if false, skip
+        if ( isObjectLiteral(arg) ) {
+            attrObj( bb, dom, arg, true, initFuns )
+
+        } else if ( isFunction(arg) ) {
+            InitFuns_add( initFuns, dom, arg )
+
+        } else if ( arg instanceof Array) {
             applyArray( bb, dom, arg, 0, initFuns )
 
-        } else if ( arg.nodeType !== undefined ) {
+        } else if ( arg instanceof Node ) {
             dom.appendChild( arg )
+
+        } else if ( arg === false ) {
+            return
 
         /*
          * - html
@@ -2342,12 +2352,6 @@ before this code is called.
             } else {
                 addClassOneString( dom, arg )
             }
-
-        } else if ( isObjectLiteral(arg) ) {
-            attrObj( bb, dom, arg, true, initFuns )
-
-        } else if ( isFunction(arg) ) {
-            InitFuns_add( initFuns, dom, arg )
 
         } else {
             fail( "invalid argument given", arg )
@@ -2380,7 +2384,7 @@ before this code is called.
             } else {
                 return bb.createElement();
             }
-        } else if ( obj.nodeType !== undefined ) {
+        } else if ( obj instanceof Node ) {
             return obj;
         } else if ( isObjectLiteral(obj) ) {
             return createObj( bb, obj, initFuns );
@@ -2649,7 +2653,7 @@ so it's DRY'd up and placed here.
                 for ( var i = 0; i < arg.length; i++ ) {
                     beforeOne( bb, parentDom, dom, arg[i] );
                 }
-            } else if ( arg.nodeType !== undefined ) {
+            } else if ( arg instanceof Node ) {
                 parentDom.insertBefore( arg, dom );
             } else if ( isString(arg) ) {
                 dom.insertAdjacentHTML( 'beforebegin', arg );
@@ -2669,7 +2673,7 @@ so it's DRY'd up and placed here.
                 for ( var i = 0; i < arg.length; i++ ) {
                     afterOne( bb, parentDom, dom, arg[i] );
                 }
-            } else if ( arg.nodeType !== undefined ) {
+            } else if ( arg instanceof Node ) {
                 parentDom.insertAfter( arg, dom );
             } else if ( isString(arg) ) {
                 dom.insertAdjacentHTML( 'afterend', arg );
@@ -2689,7 +2693,7 @@ so it's DRY'd up and placed here.
                 for ( var i = 0; i < arg.length; i++ ) {
                     addOne( bb, dom, arg[i] );
                 }
-            } else if ( arg.nodeType !== undefined ) {
+            } else if ( arg instanceof Node ) {
                 assert( arg.parentNode === null, "adding element, which already has a parent" );
                 dom.appendChild( arg );
             } else if ( isString(arg) ) {
@@ -2764,7 +2768,7 @@ so it's DRY'd up and placed here.
             if ( val instanceof Function ) {
                 InitFuns_add( initFuns, newDom, val )
 
-            } else if ( val.nodeType !== undefined ) {
+            } else if ( val instanceof Node ) {
                 newDom.appendChild( val )
 
             } else if ( isString(val) ) {
@@ -2971,7 +2975,7 @@ created.
             } else {
                 dom.innerHTML = el
             }
-        } else if ( el.nodeType !== undefined ) {
+        } else if ( el instanceof Node ) {
             dom.appendChild( el );
         } else if ( el instanceof Array ) {
             bb.htmlArray( dom, el, 0 )
@@ -3267,7 +3271,7 @@ This is for when the DOM is *pre* known and verified as a HTMLElement.
         if ( isString(dom) ) {
             return document.querySelector(dom) || null;
 
-        } else if ( dom.nodeType !== undefined ) {
+        } else if ( dom instanceof Node ) {
             return dom;
 
         } else {
@@ -4198,6 +4202,8 @@ want any of the arguments-add-class stuff.
             return dom
         }
 
+
+
 /* -------------------------------------------------------------------------------
 
 ## bb.createString
@@ -4274,7 +4280,7 @@ What makes this special is that it also hooks into the provided names, such as
                     dom = elEv.fun( type )
 
                     assert(
-                            dom && dom.nodeType !== undefined,
+                            dom && (dom instanceof Node),
                             "html element event must return a HTML Element",
                             dom
                     )
@@ -4539,7 +4545,7 @@ This is useful for using conditions to set a class on or off.
 
         bb.addClassOne = function(dom, klass) {
             dom = bbGet(dom);
-            assert( dom && dom.nodeType !== undefined, "falsy dom given for bb.addClassOne" );
+            assert( dom && (dom instanceof Node), "falsy dom given for bb.addClassOne" );
 
             return addClassOne( dom, klass );
         }
@@ -4882,7 +4888,7 @@ Sets the HTML content within this element.
                     if ( el instanceof Array ) {
                         bb.htmlArray( dom, el, 0 )
 
-                    } else if ( el.nodeType !== undefined ) {
+                    } else if ( el instanceof Node ) {
                         dom.appendChild( el )
 
                     } else if ( isObjectLiteral(el) ) {
